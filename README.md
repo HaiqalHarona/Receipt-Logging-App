@@ -1,4 +1,4 @@
-# reciept_logging
+# receipt_logging_app
 
 A new Flutter project.
 
