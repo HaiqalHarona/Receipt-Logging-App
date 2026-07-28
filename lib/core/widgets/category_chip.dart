@@ -21,7 +21,7 @@ class CategoryChip extends StatelessWidget {
       onTap: onTap,
       child: Neumorphic(
         style: AppTheme.chipStyle.copyWith(
-          color: isSelected ? color.withOpacity(0.15) : null,
+          color: isSelected ? color.withValues(alpha: 0.15) : null,
           depth: isSelected ? -3 : 4,
         ),
         child: Padding(
