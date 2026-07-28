@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:reciept_logging/screens/dashboard/dashboard_screen.dart';
-import 'package:reciept_logging/models/receipt.dart';
+import 'package:reciept_logging/ui/features/dashboard/views/dashboard_screen.dart';
+import 'package:reciept_logging/data/models/receipt.dart';
 
 void main() {
   group('DashboardFilter tests', () {

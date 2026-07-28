@@ -6,11 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:reciept_logging/core/constants/app_constants.dart';
-import 'package:reciept_logging/core/theme/app_theme.dart';
-import 'package:reciept_logging/core/theme/app_colors.dart';
-import 'package:reciept_logging/core/providers/isar_provider.dart';
-import 'package:reciept_logging/models/receipt.dart';
+import 'package:reciept_logging/ui/core/constants/app_constants.dart';
+import 'package:reciept_logging/ui/core/theme/app_theme.dart';
+import 'package:reciept_logging/ui/core/theme/app_colors.dart';
+import 'package:reciept_logging/ui/core/providers/isar_provider.dart';
+import 'package:reciept_logging/data/models/receipt.dart';
 
 enum ScanState { idle, processing, review, saving }
 

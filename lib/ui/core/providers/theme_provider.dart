@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:reciept_logging/core/constants/app_constants.dart';
+import 'package:reciept_logging/ui/core/constants/app_constants.dart';
 
 enum AppThemeMode { light, dark }
 

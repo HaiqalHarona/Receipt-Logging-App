@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:reciept_logging/screens/dashboard/dashboard_screen.dart';
-import 'package:reciept_logging/screens/scanner/scanner_screen.dart';
-import 'package:reciept_logging/screens/receipt_detail/receipt_detail_screen.dart';
-import 'package:reciept_logging/screens/settings/settings_screen.dart';
-import 'package:reciept_logging/screens/splash/splash_screen.dart';
+import 'package:reciept_logging/ui/features/dashboard/views/dashboard_screen.dart';
+import 'package:reciept_logging/ui/features/scanner/views/scanner_screen.dart';
+import 'package:reciept_logging/ui/features/receipt_detail/views/receipt_detail_screen.dart';
+import 'package:reciept_logging/ui/features/settings/views/settings_screen.dart';
+import 'package:reciept_logging/ui/features/splash/views/splash_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(

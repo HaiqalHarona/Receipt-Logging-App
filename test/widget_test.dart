@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reciept_logging/main.dart';
-import 'package:reciept_logging/core/providers/theme_provider.dart';
+import 'package:reciept_logging/ui/core/providers/theme_provider.dart';
 
 void main() {
   testWidgets('App smoke test — ReceiptLoggerApp renders in dark mode without crashing',

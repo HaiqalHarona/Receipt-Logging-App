@@ -2,12 +2,12 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:reciept_logging/core/theme/app_theme.dart';
-import 'package:reciept_logging/core/theme/app_colors.dart';
-import 'package:reciept_logging/core/widgets/neu_card.dart';
-import 'package:reciept_logging/core/widgets/amount_display.dart';
-import 'package:reciept_logging/core/providers/isar_provider.dart';
-import 'package:reciept_logging/models/receipt.dart';
+import 'package:reciept_logging/ui/core/theme/app_theme.dart';
+import 'package:reciept_logging/ui/core/theme/app_colors.dart';
+import 'package:reciept_logging/ui/core/widgets/neu_card.dart';
+import 'package:reciept_logging/ui/core/widgets/amount_display.dart';
+import 'package:reciept_logging/ui/core/providers/isar_provider.dart';
+import 'package:reciept_logging/data/models/receipt.dart';
 
 final receiptByIdProvider = FutureProvider.family<Receipt?, int>((ref, id) async {
   final isar = await ref.watch(isarProvider.future);

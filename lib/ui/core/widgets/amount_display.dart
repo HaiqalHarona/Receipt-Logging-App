@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:reciept_logging/core/theme/app_theme.dart';
+import 'package:reciept_logging/ui/core/theme/app_theme.dart';
 
 class AmountDisplay extends StatelessWidget {
   final double amount;

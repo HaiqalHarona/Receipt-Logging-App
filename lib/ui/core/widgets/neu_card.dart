@@ -1,5 +1,5 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
-import 'package:reciept_logging/core/theme/app_theme.dart';
+import 'package:reciept_logging/ui/core/theme/app_theme.dart';
 
 class NeuCard extends StatelessWidget {
   final Widget child;

@@ -1,8 +1,8 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:reciept_logging/core/theme/app_theme.dart';
-import 'package:reciept_logging/core/providers/theme_provider.dart';
+import 'package:reciept_logging/ui/core/theme/app_theme.dart';
+import 'package:reciept_logging/ui/core/providers/theme_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});

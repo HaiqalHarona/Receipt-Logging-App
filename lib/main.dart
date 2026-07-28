@@ -1,8 +1,8 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/providers/theme_provider.dart';
-import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
+import 'ui/core/providers/theme_provider.dart';
+import 'ui/core/router/app_router.dart';
+import 'ui/core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
