@@ -1,7 +1,8 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
+import 'ui/core/providers/theme_provider.dart';
+import 'ui/core/router/app_router.dart';
+import 'ui/core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,14 +19,18 @@ class ReceiptLoggerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final appThemeMode = ref.watch(themeProvider);
+    final isDark = appThemeMode == AppThemeMode.dark;
+    final mode = isDark ? ThemeMode.dark : ThemeMode.light;
 
     return NeumorphicTheme(
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light,
+      themeMode: mode,
       child: MaterialApp.router(
         title: 'Receipt Logger',
         debugShowCheckedModeBanner: false,
+        themeMode: mode,
         theme: ThemeData(
           fontFamily: 'Inter',
           scaffoldBackgroundColor: AppTheme.lightBackground,
@@ -36,6 +41,22 @@ class ReceiptLoggerApp extends ConsumerWidget {
             onPrimary: Colors.white,
             onSecondary: Colors.white,
             onSurface: AppTheme.textPrimary,
+          ),
+          inputDecorationTheme: const InputDecorationTheme(
+            border: InputBorder.none,
+          ),
+          useMaterial3: true,
+        ),
+        darkTheme: ThemeData(
+          fontFamily: 'Inter',
+          scaffoldBackgroundColor: AppTheme.darkBackground,
+          colorScheme: const ColorScheme.dark(
+            primary: AppTheme.accentColor,
+            secondary: AppTheme.accentLight,
+            surface: AppTheme.darkBackground,
+            onPrimary: Colors.white,
+            onSecondary: Colors.white,
+            onSurface: AppTheme.darkTextPrimary,
           ),
           inputDecorationTheme: const InputDecorationTheme(
             border: InputBorder.none,
