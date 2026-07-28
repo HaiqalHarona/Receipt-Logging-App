@@ -71,16 +71,25 @@ class DashboardScreen extends ConsumerWidget {
     DateFilter.allTime => 'All Time',
   };
 
+  String _filterHumanDescription(DateFilter f) => switch (f) {
+    DateFilter.thisWeek => 'Past 7 days of expenses',
+    DateFilter.thisMonth => 'Current month expenses',
+    DateFilter.last3Months => 'Expenses over the last 90 days',
+    DateFilter.allTime => 'All time recorded expenses',
+  };
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final receiptsAsync = ref.watch(filteredReceiptsProvider);
     final totalAsync = ref.watch(monthlyTotalProvider);
     final categoryAsync = ref.watch(categoryBreakdownProvider);
     final filter = ref.watch(dashboardFilterProvider);
+    final primaryColor = AppTheme.textPrimaryOf(context);
+    final secondaryColor = AppTheme.textSecondaryOf(context);
 
     return NeumorphicBackground(
       child: Scaffold(
-        backgroundColor: AppTheme.lightBackground,
+        backgroundColor: AppTheme.backgroundColorOf(context),
         floatingActionButton: GestureDetector(
           onTap: () => context.go('/scanner'),
           child: Neumorphic(
@@ -102,16 +111,16 @@ class DashboardScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Dashboard', style: AppTheme.displayLarge.copyWith(fontSize: 26)),
-                        Text(DateFormat('MMMM yyyy').format(DateTime.now()), style: AppTheme.bodyMedium),
+                        Text('Dashboard', style: AppTheme.displayLarge.copyWith(fontSize: 26, color: primaryColor)),
+                        Text(DateFormat('MMMM yyyy').format(DateTime.now()), style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
                       ]),
                       GestureDetector(
                         onTap: () => context.push('/settings'),
                         child: Neumorphic(
                           style: const NeumorphicStyle(depth: 5, boxShape: NeumorphicBoxShape.circle()),
-                          child: const Padding(
-                            padding: EdgeInsets.all(10),
-                            child: Icon(Icons.settings_rounded, size: 22, color: AppTheme.textSecondary),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Icon(Icons.settings_rounded, size: 22, color: secondaryColor),
                           ),
                         ),
                       ),
@@ -131,11 +140,14 @@ class DashboardScreen extends ConsumerWidget {
                           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(_filterLabel(filter.dateFilter).toUpperCase(),
                                 style: AppTheme.labelSmall),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
+                            Text(_filterHumanDescription(filter.dateFilter),
+                                style: AppTheme.bodyMedium.copyWith(fontSize: 12, color: secondaryColor)),
+                            const SizedBox(height: 8),
                             totalAsync.when(
                               loading: () => const SizedBox(height: 40,
                                   child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
-                              error: (_, __) => const Text('--'),
+                              error: (_, __) => const AmountDisplay(amount: 0.0, large: true),
                               data: (total) => AmountDisplay(amount: total, large: true),
                             ),
                           ]),
@@ -180,7 +192,7 @@ class DashboardScreen extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 0, 0),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Time Range', style: AppTheme.bodyMedium),
+                    Text('Time Range', style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
                     const SizedBox(height: 10),
                     SizedBox(
                       height: 38,
@@ -201,7 +213,7 @@ class DashboardScreen extends ConsumerWidget {
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                   child: Text(_filterLabel(f), style: AppTheme.bodyMedium.copyWith(
-                                    color: isSel ? AppTheme.accentColor : AppTheme.textSecondary,
+                                    color: isSel ? AppTheme.accentColor : secondaryColor,
                                     fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
                                   )),
                                 ),
@@ -224,7 +236,7 @@ class DashboardScreen extends ConsumerWidget {
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                         child: NeuCard(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('By Category', style: AppTheme.titleLarge),
+                            Text('By Category', style: AppTheme.titleLarge.copyWith(color: primaryColor)),
                             const SizedBox(height: 16),
                             ...breakdown.entries.take(5).map((entry) {
                               final maxVal = breakdown.values.first;
@@ -240,12 +252,12 @@ class DashboardScreen extends ConsumerWidget {
                                         Container(width: 10, height: 10,
                                             decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
                                         const SizedBox(width: 8),
-                                        Text(entry.key, style: AppTheme.bodyMedium),
+                                        Text(entry.key, style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
                                       ]),
                                       Text(
                                         NumberFormat.currency(symbol: '\$').format(entry.value),
                                         style: AppTheme.bodyMedium.copyWith(
-                                          fontWeight: FontWeight.w600, color: AppTheme.textPrimary,
+                                          fontWeight: FontWeight.w600, color: primaryColor,
                                         ),
                                       ),
                                     ],
@@ -284,9 +296,9 @@ class DashboardScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Receipt Timeline', style: AppTheme.titleLarge),
+                      Text('Receipt Timeline', style: AppTheme.titleLarge.copyWith(color: primaryColor)),
                       receiptsAsync.maybeWhen(
-                        data: (r) => Text('${r.length} receipts', style: AppTheme.bodyMedium),
+                        data: (r) => Text('${r.length} receipts', style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
                         orElse: () => const SizedBox.shrink(),
                       ),
                     ],
@@ -301,7 +313,30 @@ class DashboardScreen extends ConsumerWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )),
                 ),
-                error: (e, _) => SliverToBoxAdapter(child: Center(child: Text('Error: $e'))),
+                error: (e, _) => SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: NeuCard(
+                      child: Column(
+                        children: [
+                          const Icon(Icons.cloud_off_rounded, size: 36, color: AppTheme.warningColor),
+                          const SizedBox(height: 12),
+                          Text('Unable to load receipts',
+                              style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600, color: primaryColor)),
+                          const SizedBox(height: 6),
+                          Text('Storage connection initializing. Tap retry to refresh.',
+                              style: AppTheme.bodyMedium.copyWith(color: secondaryColor), textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          NeumorphicButton(
+                            onPressed: () => ref.invalidate(filteredReceiptsProvider),
+                            style: AppTheme.buttonStyle,
+                            child: Text('Retry', style: AppTheme.bodyMedium.copyWith(color: AppTheme.accentColor, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 data: (receipts) => receipts.isEmpty
                     ? SliverToBoxAdapter(child: _EmptyState())
                     : SliverList(
@@ -344,6 +379,8 @@ class _ReceiptCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AppColors.getCategoryColor(receipt.category);
+    final primaryColor = AppTheme.textPrimaryOf(context);
+    final secondaryColor = AppTheme.textSecondaryOf(context);
     return GestureDetector(
       onTap: onTap,
       child: Neumorphic(
@@ -365,12 +402,12 @@ class _ReceiptCard extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(receipt.merchantName,
-                    style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+                    style: AppTheme.bodyLarge.copyWith(fontWeight: FontWeight.w600, color: primaryColor),
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
                 Row(children: [
                   Text(DateFormat('MMM d').format(receipt.date),
-                      style: AppTheme.bodyMedium.copyWith(fontSize: 12)),
+                      style: AppTheme.bodyMedium.copyWith(fontSize: 12, color: secondaryColor)),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -422,7 +459,7 @@ class _StatPill extends StatelessWidget {
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label, style: AppTheme.labelSmall),
             Text(value, style: AppTheme.bodyMedium.copyWith(
-              fontWeight: FontWeight.w700, color: AppTheme.textPrimary, fontSize: 13,
+              fontWeight: FontWeight.w700, color: AppTheme.textPrimaryOf(context), fontSize: 13,
             )),
           ]),
         ]),
@@ -447,10 +484,10 @@ class _EmptyState extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        Text('No receipts yet', style: AppTheme.titleLarge.copyWith(color: AppTheme.textSecondary)),
+        Text('No receipts yet', style: AppTheme.titleLarge.copyWith(color: AppTheme.textPrimaryOf(context))),
         const SizedBox(height: 8),
         Text('Tap the scan button to capture your first receipt',
-            style: AppTheme.bodyMedium, textAlign: TextAlign.center),
+            style: AppTheme.bodyMedium.copyWith(color: AppTheme.textSecondaryOf(context)), textAlign: TextAlign.center),
       ]),
     );
   }

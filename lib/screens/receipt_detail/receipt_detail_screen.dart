@@ -21,25 +21,27 @@ class ReceiptDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final receiptAsync = ref.watch(receiptByIdProvider(receiptId));
+    final primaryColor = AppTheme.textPrimaryOf(context);
+    final secondaryColor = AppTheme.textSecondaryOf(context);
 
     return NeumorphicBackground(
       child: Scaffold(
-        backgroundColor: AppTheme.lightBackground,
+        backgroundColor: AppTheme.backgroundColorOf(context),
         appBar: NeumorphicAppBar(
-          title: const Text('Receipt Detail'),
+          title: Text('Receipt Detail', style: TextStyle(color: primaryColor)),
           leading: NeumorphicButton(
             style: const NeumorphicStyle(boxShape: NeumorphicBoxShape.circle()),
             padding: const EdgeInsets.all(8),
             onPressed: () => context.pop(),
-            child: const Icon(Icons.arrow_back_ios_new, size: 18),
+            child: Icon(Icons.arrow_back_ios_new, size: 18, color: primaryColor),
           ),
         ),
         body: receiptAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => Center(child: Text('Unable to load receipt details', style: TextStyle(color: secondaryColor))),
           data: (receipt) {
             if (receipt == null) {
-              return const Center(child: Text('Receipt not found'));
+              return Center(child: Text('Receipt not found', style: TextStyle(color: secondaryColor)));
             }
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20),

@@ -205,124 +205,180 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Container(
-          decoration: const BoxDecoration(
-            color: AppTheme.lightBackground,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-            left: 24, right: 24, top: 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: AppTheme.textMuted,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+        builder: (ctx, setSheetState) {
+          final primaryColor = AppTheme.textPrimaryOf(ctx);
+          final secondaryColor = AppTheme.textSecondaryOf(ctx);
+          final maxSheetHeight = MediaQuery.of(ctx).size.height * 0.85;
+
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
               ),
-              Text('Review Receipt', style: AppTheme.headlineMedium),
-              const SizedBox(height: 4),
-              Text('Verify extracted data before saving', style: AppTheme.bodyMedium),
-              const SizedBox(height: 20),
-              _NeumorphicField(label: 'Merchant', controller: _merchantController,
-                  hint: 'e.g. Starbucks', prefixIcon: Icons.store_rounded),
-              const SizedBox(height: 12),
-              _NeumorphicField(label: 'Total Amount', controller: _amountController,
-                  hint: '0.00', prefixIcon: Icons.attach_money_rounded,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) setSheetState(() => _selectedDate = picked);
-                },
-                child: Neumorphic(
-                  style: AppTheme.insetStyle,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(children: [
-                      const Icon(Icons.calendar_today_rounded, size: 18, color: AppTheme.accentColor),
-                      const SizedBox(width: 12),
-                      Text(DateFormat('MMM d, yyyy').format(_selectedDate), style: AppTheme.bodyLarge),
-                    ]),
-                  ),
+              child: Container(
+                constraints: BoxConstraints(maxHeight: maxSheetHeight),
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColorOf(ctx),
+                  borderRadius: BorderRadius.circular(28),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text('Category', style: AppTheme.bodyMedium),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: AppConstants.categories.map((cat) {
-                    final isSel = cat == _selectedCategory;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
-                        onTap: () => setSheetState(() => _selectedCategory = cat),
-                        child: Neumorphic(
-                          style: AppTheme.chipStyle.copyWith(
-                            depth: isSel ? -3 : 4,
-                            color: isSel ? AppColors.getCategoryColor(cat).withValues(alpha: 0.15) : null,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: Text(cat, style: AppTheme.bodyMedium.copyWith(
-                              color: isSel ? AppColors.getCategoryColor(cat) : AppTheme.textSecondary,
-                              fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
-                            )),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.textMuted,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Review Receipt',
+                              style: AppTheme.headlineMedium.copyWith(color: primaryColor),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Verify extracted data before saving',
+                              style: AppTheme.bodyMedium.copyWith(color: secondaryColor),
+                            ),
+                            const SizedBox(height: 20),
+                            _NeumorphicField(
+                              label: 'Merchant',
+                              controller: _merchantController,
+                              hint: 'e.g. Starbucks',
+                              prefixIcon: Icons.store_rounded,
+                            ),
+                            const SizedBox(height: 12),
+                            _NeumorphicField(
+                              label: 'Total Amount',
+                              controller: _amountController,
+                              hint: '0.00',
+                              prefixIcon: Icons.attach_money_rounded,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            ),
+                            const SizedBox(height: 12),
+                            GestureDetector(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: ctx,
+                                  initialDate: _selectedDate,
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (picked != null) setSheetState(() => _selectedDate = picked);
+                              },
+                              child: Neumorphic(
+                                style: AppTheme.insetStyle,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  child: Row(children: [
+                                    const Icon(Icons.calendar_today_rounded, size: 18, color: AppTheme.accentColor),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      DateFormat('MMM d, yyyy').format(_selectedDate),
+                                      style: AppTheme.bodyLarge.copyWith(color: primaryColor),
+                                    ),
+                                  ]),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text('Category', style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 40,
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
+                                children: AppConstants.categories.map((cat) {
+                                  final isSel = cat == _selectedCategory;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: GestureDetector(
+                                      onTap: () => setSheetState(() => _selectedCategory = cat),
+                                      child: Neumorphic(
+                                        style: AppTheme.chipStyle.copyWith(
+                                          depth: isSel ? -3 : 4,
+                                          color: isSel ? AppColors.getCategoryColor(cat).withValues(alpha: 0.15) : null,
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          child: Text(
+                                            cat,
+                                            style: AppTheme.bodyMedium.copyWith(
+                                              color: isSel ? AppColors.getCategoryColor(cat) : secondaryColor,
+                                              fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(children: [
+                      Expanded(
+                        child: NeumorphicButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            ref.read(scanStateProvider.notifier).reset();
+                          },
+                          style: AppTheme.buttonStyle,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Center(
+                            child: Text(
+                              'Discard',
+                              style: AppTheme.bodyLarge.copyWith(
+                                color: secondaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: NeumorphicButton(
+                          onPressed: () => _saveReceipt(ctx),
+                          style: AppTheme.buttonStyle.copyWith(color: AppTheme.accentColor),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Center(
+                            child: Text(
+                              'Save Receipt',
+                              style: AppTheme.bodyLarge.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-              Row(children: [
-                Expanded(
-                  child: NeumorphicButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      ref.read(scanStateProvider.notifier).reset();
-                    },
-                    style: AppTheme.buttonStyle,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Center(child: Text('Discard', style: AppTheme.bodyLarge.copyWith(
-                      color: AppTheme.textSecondary, fontWeight: FontWeight.w500,
-                    ))),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: NeumorphicButton(
-                    onPressed: () => _saveReceipt(ctx),
-                    style: AppTheme.buttonStyle.copyWith(color: AppTheme.accentColor),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Center(child: Text('Save Receipt', style: AppTheme.bodyLarge.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w600,
-                    ))),
-                  ),
-                ),
-              ]),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -340,7 +396,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         ..rawOcrText = _rawOcrLines
         ..isSynced = false;
       await isar.writeTxn(() => isar.receipts.put(receipt));
-      if (mounted) {
+      if (sheetContext.mounted && mounted) {
         Navigator.pop(sheetContext);
         context.go('/dashboard');
       }
@@ -401,22 +457,25 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
   }
 
   Widget _buildFallbackUI(BuildContext context, ScanState scanState, String? errorMessage) {
+    final primaryColor = AppTheme.textPrimaryOf(context);
+    final secondaryColor = AppTheme.textSecondaryOf(context);
+
     return Scaffold(
-      backgroundColor: AppTheme.lightBackground,
+      backgroundColor: AppTheme.backgroundColorOf(context),
       appBar: NeumorphicAppBar(
-        title: const Text('Scan Receipt'),
+        title: Text('Scan Receipt', style: TextStyle(color: primaryColor)),
         leading: NeumorphicButton(
           style: const NeumorphicStyle(boxShape: NeumorphicBoxShape.circle()),
           padding: const EdgeInsets.all(8),
           onPressed: () => context.go('/dashboard'),
-          child: const Icon(Icons.dashboard_rounded, size: 20),
+          child: Icon(Icons.dashboard_rounded, size: 20, color: primaryColor),
         ),
         actions: [
           NeumorphicButton(
             style: const NeumorphicStyle(boxShape: NeumorphicBoxShape.circle()),
             padding: const EdgeInsets.all(8),
             onPressed: () => context.push('/settings'),
-            child: const Icon(Icons.settings_rounded, size: 20),
+            child: Icon(Icons.settings_rounded, size: 20, color: primaryColor),
           ),
         ],
       ),
@@ -448,14 +507,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                   const SizedBox(height: 24),
                   Text(
                     'Camera Unavailable',
-                    style: AppTheme.headlineMedium,
+                    style: AppTheme.headlineMedium.copyWith(color: primaryColor),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     errorMessage ??
                         'Live camera preview is not available on this browser or device target. You can pick any receipt photo or document directly below.',
-                    style: AppTheme.bodyMedium,
+                    style: AppTheme.bodyMedium.copyWith(color: secondaryColor),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
@@ -491,7 +550,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     child: Text(
                       'Retry Camera Access',
-                      style: AppTheme.bodyMedium.copyWith(color: AppTheme.textPrimary),
+                      style: AppTheme.bodyMedium.copyWith(color: primaryColor, fontWeight: FontWeight.w600),
                     ),
                   ),
                   if (scanState == ScanState.processing || scanState == ScanState.saving)
@@ -503,7 +562,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
                           const SizedBox(height: 12),
                           Text(
                             scanState == ScanState.saving ? 'Saving...' : 'Reading receipt...',
-                            style: AppTheme.bodyMedium,
+                            style: AppTheme.bodyMedium.copyWith(color: secondaryColor),
                           ),
                         ],
                       ),
@@ -729,15 +788,17 @@ class _NeumorphicField extends StatelessWidget {
       required this.hint, required this.prefixIcon, this.keyboardType});
   @override
   Widget build(BuildContext context) {
+    final primaryColor = AppTheme.textPrimaryOf(context);
+    final secondaryColor = AppTheme.textSecondaryOf(context);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: AppTheme.bodyMedium),
+      Text(label, style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
       const SizedBox(height: 6),
       Neumorphic(
         style: AppTheme.insetStyle,
         child: TextField(
           controller: controller,
           keyboardType: keyboardType,
-          style: AppTheme.bodyLarge,
+          style: AppTheme.bodyLarge.copyWith(color: primaryColor),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: AppTheme.bodyMedium.copyWith(color: AppTheme.textMuted),

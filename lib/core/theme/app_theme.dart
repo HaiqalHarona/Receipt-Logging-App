@@ -19,13 +19,25 @@ class AppTheme {
   static const Color darkShadowDark = Color(0xFF15171D);
   static const Color darkShadowLight = Color(0xFF2B2F3E);
   static const Color darkTextPrimary = Color(0xFFE2E8F0);
-  static const Color darkTextSecondary = Color(0xFF718096);
+  static const Color darkTextSecondary = Color(0xFFA0AEC0);
+
+  // ── Dynamic Helper Colors ──────────────────────────────────────────────────
+  static Color backgroundColorOf(BuildContext context) =>
+      NeumorphicTheme.isUsingDark(context) ? darkBackground : lightBackground;
+
+  static Color textPrimaryOf(BuildContext context) =>
+      NeumorphicTheme.isUsingDark(context) ? darkTextPrimary : textPrimary;
+
+  static Color textSecondaryOf(BuildContext context) =>
+      NeumorphicTheme.isUsingDark(context) ? darkTextSecondary : textSecondary;
 
   static NeumorphicThemeData get lightTheme => const NeumorphicThemeData(
         baseColor: lightBackground,
         lightSource: LightSource.topLeft,
         depth: 8,
         intensity: 0.6,
+        shadowLightColor: lightShadowLight,
+        shadowDarkColor: lightShadowDark,
         shadowLightColorEmboss: lightShadowLight,
         shadowDarkColorEmboss: lightShadowDark,
         defaultTextColor: textPrimary,
@@ -49,11 +61,26 @@ class AppTheme {
         baseColor: darkBackground,
         lightSource: LightSource.topLeft,
         depth: 6,
-        intensity: 0.5,
+        intensity: 0.6,
+        shadowLightColor: darkShadowLight,
+        shadowDarkColor: darkShadowDark,
         shadowLightColorEmboss: darkShadowLight,
         shadowDarkColorEmboss: darkShadowDark,
         defaultTextColor: darkTextPrimary,
         accentColor: accentColor,
+        variantColor: darkTextSecondary,
+        disabledColor: textMuted,
+        borderColor: Colors.transparent,
+        borderWidth: 0,
+        appBarTheme: NeumorphicAppBarThemeData(
+          color: darkBackground,
+          textStyle: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: darkTextPrimary,
+          ),
+        ),
       );
 
   // ── Reusable NeumorphicStyle presets ───────────────────────────────────────

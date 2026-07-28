@@ -12,18 +12,21 @@ class SettingsScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == AppThemeMode.dark;
 
+    final primaryColor = AppTheme.textPrimaryOf(context);
+    final secondaryColor = AppTheme.textSecondaryOf(context);
+
     return NeumorphicBackground(
       child: Scaffold(
-        backgroundColor: AppTheme.lightBackground,
+        backgroundColor: AppTheme.backgroundColorOf(context),
         appBar: NeumorphicAppBar(
-          title: const Text('Settings'),
+          title: Text('Settings', style: TextStyle(color: primaryColor)),
           leading: NeumorphicButton(
             style: const NeumorphicStyle(
               boxShape: NeumorphicBoxShape.circle(),
             ),
             padding: const EdgeInsets.all(8),
             onPressed: () => context.pop(),
-            child: const Icon(Icons.arrow_back_ios_new, size: 18),
+            child: Icon(Icons.arrow_back_ios_new, size: 18, color: primaryColor),
           ),
         ),
         body: ListView(
@@ -39,8 +42,8 @@ class SettingsScreen extends ConsumerWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Dark Mode', style: AppTheme.titleLarge),
-                        Text('Switch to dark theme', style: AppTheme.bodyMedium),
+                        Text('Dark Mode', style: AppTheme.titleLarge.copyWith(color: primaryColor)),
+                        Text('Switch to dark theme', style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
                       ],
                     ),
                     NeumorphicSwitch(
@@ -59,10 +62,10 @@ class SettingsScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('About', style: AppTheme.titleLarge),
+                    Text('About', style: AppTheme.titleLarge.copyWith(color: primaryColor)),
                     const SizedBox(height: 8),
-                    Text('Version 1.0.0', style: AppTheme.bodyMedium),
-                    Text('Receipt Logger — Scan & Track Expenses', style: AppTheme.bodyMedium),
+                    Text('Version 1.0.0', style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
+                    Text('Receipt Logger — Scan & Track Expenses', style: AppTheme.bodyMedium.copyWith(color: secondaryColor)),
                   ],
                 ),
               ),

@@ -10,14 +10,18 @@ class ThemeNotifier extends Notifier<AppThemeMode> {
   @override
   AppThemeMode build() {
     _loadTheme();
-    return AppThemeMode.light;
+    return AppThemeMode.dark;
   }
 
   Future<void> _loadTheme() async {
-    final saved = await _storage.read(key: AppConstants.keyThemeMode);
-    if (saved == 'dark') {
-      state = AppThemeMode.dark;
-    }
+    try {
+      final saved = await _storage.read(key: AppConstants.keyThemeMode);
+      if (saved == 'light') {
+        state = AppThemeMode.light;
+      } else if (saved == 'dark') {
+        state = AppThemeMode.dark;
+      }
+    } catch (_) {}
   }
 
   void toggle() {

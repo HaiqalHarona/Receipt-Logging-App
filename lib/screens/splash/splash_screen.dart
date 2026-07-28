@@ -44,9 +44,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = AppTheme.backgroundColorOf(context);
+    final primaryColor = AppTheme.textPrimaryOf(context);
+    final secondaryColor = AppTheme.textSecondaryOf(context);
+
     return NeumorphicBackground(
       child: Scaffold(
-        backgroundColor: AppTheme.lightBackground,
+        backgroundColor: bgColor,
         body: Center(
           child: AnimatedBuilder(
             animation: _controller,
@@ -63,7 +67,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         intensity: 0.8,
                         shape: NeumorphicShape.convex,
                         boxShape: const NeumorphicBoxShape.circle(),
-                        color: AppTheme.lightBackground,
+                        color: bgColor,
                       ),
                       child: const SizedBox(
                         width: 100,
@@ -80,12 +84,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     const SizedBox(height: 32),
                     Text(
                       'Receipt Logger',
-                      style: AppTheme.displayLarge.copyWith(fontSize: 28),
+                      style: AppTheme.displayLarge.copyWith(fontSize: 28, color: primaryColor),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Scan. Log. Track.',
-                      style: AppTheme.bodyMedium,
+                      style: AppTheme.bodyMedium.copyWith(color: secondaryColor),
                     ),
                   ],
                 ),
