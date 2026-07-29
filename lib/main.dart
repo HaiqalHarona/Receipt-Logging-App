@@ -1,61 +1,30 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'ui/core/router/app_router.dart';
+import 'ui/core/theme/app_theme.dart';
 
-// Main Function
 void main() {
-// Giving command to runApp() to run the app.
-
-/* The purpose of the runApp() function is to attach
-the given widget to the screen. */
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ReceiptLoggerApp());
 }
 
-// Widget is used to create UI in flutter framework.
-
-/* StatelessWidget is a widget, which does not maintain
-any state of the widget. */
-
-/* MyApp extends StatelessWidget and overrides its
-build method. */
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-// This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      // title of the application
-      title: 'Hello World Demo Application',
-      // theme of the widget
-      theme: ThemeData(
-        primarySwatch: Colors.lightGreen,
-      ),
-      // Inner UI of the application
-      home: const MyHomePage(title: 'Home page'),
-    );
-  }
-}
-
-/* This class is similar to MyApp instead it
-returns Scaffold Widget */
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
-  final String title;
+class ReceiptLoggerApp extends StatelessWidget {
+  const ReceiptLoggerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+    return NeumorphicTheme(
+      themeMode: ThemeMode.dark,
+      darkTheme: AppTheme.darkNeumorphicTheme,
+      theme: AppTheme.lightNeumorphicTheme,
+      child: MaterialApp.router(
+        title: 'Receipt Logger',
+        debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.dark,
+        darkTheme: ThemeData.dark().copyWith(
+          scaffoldBackgroundColor: AppTheme.darkBackground,
+        ),
+        routerConfig: appRouter,
       ),
-      // Sets the content to the
-      // center of the application page
-      body: const Center(
-          // Sets the content of the Application
-          child: Text(
-        'Welcome to GeeksForGeeks!',
-      )),
     );
   }
 }
