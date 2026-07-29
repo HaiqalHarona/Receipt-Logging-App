@@ -13,7 +13,7 @@ Privacy-first, offline-first receipt and expense tracking mobile application bui
 
 ---
 
-## Planned Architecture Scope: 9 Core Screens
+## Planned Architecture Scope & Reference Image Mapping (9 Core Screens)
 
 | # | Screen Name | Description & Core Logic | Route Path | Implementation Status |
 |---|---|---|---|---|
