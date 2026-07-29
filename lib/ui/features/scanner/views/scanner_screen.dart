@@ -396,11 +396,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen>
         ..rawOcrText = _rawOcrLines
         ..isSynced = false;
       await isar.writeTxn(() => isar.receipts.put(receipt));
-<<<<<<< HEAD:lib/screens/scanner/scanner_screen.dart
-      if (sheetContext.mounted) {
-=======
       if (sheetContext.mounted && mounted) {
->>>>>>> 35f8f5d9a3250acfc5e95b2d72260341bb38fe8f:lib/ui/features/scanner/views/scanner_screen.dart
         Navigator.pop(sheetContext);
       }
       if (mounted) {
