@@ -1,70 +1,61 @@
-import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'ui/core/providers/theme_provider.dart';
-import 'ui/core/router/app_router.dart';
-import 'ui/core/theme/app_theme.dart';
+import 'package:flutter/material.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    const ProviderScope(
-      child: ReceiptLoggerApp(),
-    ),
-  );
+// Main Function
+void main() {
+// Giving command to runApp() to run the app.
+
+/* The purpose of the runApp() function is to attach
+the given widget to the screen. */
+  runApp(const MyApp());
 }
 
-class ReceiptLoggerApp extends ConsumerWidget {
-  const ReceiptLoggerApp({super.key});
+// Widget is used to create UI in flutter framework.
+
+/* StatelessWidget is a widget, which does not maintain
+any state of the widget. */
+
+/* MyApp extends StatelessWidget and overrides its
+build method. */
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+// This widget is the root of your application.
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      // title of the application
+      title: 'Hello World Demo Application',
+      // theme of the widget
+      theme: ThemeData(
+        primarySwatch: Colors.lightGreen,
+      ),
+      // Inner UI of the application
+      home: const MyHomePage(title: 'Home page'),
+    );
+  }
+}
+
+/* This class is similar to MyApp instead it
+returns Scaffold Widget */
+class MyHomePage extends StatelessWidget {
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
+  final String title;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-    final appThemeMode = ref.watch(themeProvider);
-    final isDark = appThemeMode == AppThemeMode.dark;
-    final mode = isDark ? ThemeMode.dark : ThemeMode.light;
-
-    return NeumorphicTheme(
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: mode,
-      child: MaterialApp.router(
-        title: 'Receipt Logger',
-        debugShowCheckedModeBanner: false,
-        themeMode: mode,
-        theme: ThemeData(
-          fontFamily: 'Inter',
-          scaffoldBackgroundColor: AppTheme.lightBackground,
-          colorScheme: const ColorScheme.light(
-            primary: AppTheme.accentColor,
-            secondary: AppTheme.accentLight,
-            surface: AppTheme.lightBackground,
-            onPrimary: Colors.white,
-            onSecondary: Colors.white,
-            onSurface: AppTheme.textPrimary,
-          ),
-          inputDecorationTheme: const InputDecorationTheme(
-            border: InputBorder.none,
-          ),
-          useMaterial3: true,
-        ),
-        darkTheme: ThemeData(
-          fontFamily: 'Inter',
-          scaffoldBackgroundColor: AppTheme.darkBackground,
-          colorScheme: const ColorScheme.dark(
-            primary: AppTheme.accentColor,
-            secondary: AppTheme.accentLight,
-            surface: AppTheme.darkBackground,
-            onPrimary: Colors.white,
-            onSecondary: Colors.white,
-            onSurface: AppTheme.darkTextPrimary,
-          ),
-          inputDecorationTheme: const InputDecorationTheme(
-            border: InputBorder.none,
-          ),
-          useMaterial3: true,
-        ),
-        routerConfig: router,
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
       ),
+      // Sets the content to the
+      // center of the application page
+      body: const Center(
+          // Sets the content of the Application
+          child: Text(
+        'Welcome to GeeksForGeeks!',
+      )),
     );
   }
 }
