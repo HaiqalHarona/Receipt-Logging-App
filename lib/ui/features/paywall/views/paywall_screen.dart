@@ -7,6 +7,11 @@ class PaywallScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
+
     final features = [
       "⚡ Unlimited Vision AI Receipt Parsing",
       "☁️ Automatic Cloud Sync & Offsite Backup",
@@ -15,16 +20,19 @@ class PaywallScreen extends StatelessWidget {
     ];
 
     return NeumorphicBackground(
-      backendColor: AppTheme.darkBackground,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.close_rounded, color: AppTheme.darkTextSecondary),
-              onPressed: () => context.pop(),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: NeumorphicIconBadge(
+                icon: Icons.close_rounded,
+                iconSize: 18,
+                onTap: () => context.pop(),
+              ),
             ),
           ],
         ),
@@ -33,26 +41,26 @@ class PaywallScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Column(
               children: [
-                const Center(
+                Center(
                   child: Text(
                     "👑 PRO MEMBERSHIP",
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.darkAccentPinkishRed,
+                      color: accent,
                       letterSpacing: 1,
                     ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Center(
+                Center(
                   child: Text(
                     "Unlock Unlimited AI Scans",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.darkTextPrimary,
+                      color: textPrimary,
                     ),
                   ),
                 ),
@@ -63,25 +71,20 @@ class PaywallScreen extends StatelessWidget {
                   children: features.map((feature) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: AppTheme.darkCardBackground,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              Text(
+                      child: NeumorphicCardWidget(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
                                 feature,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: AppTheme.darkTextPrimary,
+                                  color: textPrimary,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -90,35 +93,28 @@ class PaywallScreen extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Plan Selector Card
-                Neumorphic(
-                  style: NeumorphicStyle(
-                    depth: 4,
-                    color: AppTheme.darkCardBackground,
-                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "ANNUAL PLAN — \$39.99/yr",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkAccentPinkishRed,
-                          ),
+                NeumorphicCardWidget(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "ANNUAL PLAN — \$39.99/yr",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: accent,
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          "Save 33% • Just \$3.33/month",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.darkTextSecondary,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Save 33% • Just \$3.33/month",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -127,14 +123,10 @@ class PaywallScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   height: 52,
-                  child: NeumorphicButton(
+                  child: NeumorphicButtonWidget(
                     onPressed: () {
                       context.pop();
                     },
-                    style: NeumorphicStyle(
-                      color: AppTheme.darkAccentPinkishRed,
-                      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-                    ),
                     child: const Center(
                       child: Text(
                         "Start 7-Day Free Trial",
@@ -155,3 +147,4 @@ class PaywallScreen extends StatelessWidget {
     );
   }
 }
+

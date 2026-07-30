@@ -7,8 +7,12 @@ class AiAssistantScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
+
     return NeumorphicBackground(
-      backendColor: AppTheme.darkBackground,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -20,12 +24,12 @@ class AiAssistantScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "AI Assistant 🤖",
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.darkTextPrimary,
+                          color: textPrimary,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -33,20 +37,15 @@ class AiAssistantScreen extends StatelessWidget {
                       // User Message Bubble
                       Align(
                         alignment: Alignment.centerRight,
-                        child: Neumorphic(
-                          style: NeumorphicStyle(
-                            depth: 4,
-                            color: AppTheme.darkAccentPinkishRed,
-                            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            child: Text(
-                              "How much did I spend on groceries this month?",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.white,
-                              ),
+                        child: NeumorphicButtonWidget(
+                          color: accent,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: const Text(
+                            "How much did I spend on groceries this month?",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
@@ -56,20 +55,13 @@ class AiAssistantScreen extends StatelessWidget {
                       // AI Response Bubble
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Neumorphic(
-                          style: NeumorphicStyle(
-                            depth: 4,
-                            color: AppTheme.darkCardBackground,
-                            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Text(
-                              "You spent \$248.50 across 6 grocery receipts this month.",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.darkTextPrimary,
-                              ),
+                        child: NeumorphicCardWidget(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            "You spent \$248.50 across 6 grocery receipts this month.",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: textPrimary,
                             ),
                           ),
                         ),
@@ -77,29 +69,22 @@ class AiAssistantScreen extends StatelessWidget {
                       const Spacer(),
 
                       // Chat Input Bar
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: -3,
-                          intensity: 0.6,
-                          color: AppTheme.darkCardBackground,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(24)),
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  "Ask about your spending...",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppTheme.darkTextSecondary,
-                                  ),
+                      NeumorphicInputFieldWidget(
+                        borderRadius: 24,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                "Ask about your spending...",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: textSecondary,
                                 ),
                               ),
-                              Icon(Icons.send_rounded, color: AppTheme.darkAccentPinkishRed, size: 20),
-                            ],
-                          ),
+                            ),
+                            Icon(Icons.send_rounded, color: accent, size: 20),
+                          ],
                         ),
                       ),
                     ],
@@ -114,3 +99,4 @@ class AiAssistantScreen extends StatelessWidget {
     );
   }
 }
+

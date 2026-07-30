@@ -7,6 +7,10 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     final historyItems = [
       {"name": "Target Superstore", "date": "Jul 29", "cat": "Shopping", "price": "-\$84.20", "icon": Icons.shopping_cart_rounded},
       {"name": "Shell Gas Station", "date": "Jul 27", "cat": "Transport", "price": "-\$45.00", "icon": Icons.local_gas_station_rounded},
@@ -16,7 +20,6 @@ class HistoryScreen extends StatelessWidget {
     ];
 
     return NeumorphicBackground(
-      backendColor: AppTheme.darkBackground,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -28,39 +31,31 @@ class HistoryScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "Receipt History",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.darkTextPrimary,
+                          color: textPrimary,
                         ),
                       ),
                       const SizedBox(height: 16),
 
                       // Search bar
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: -3,
-                          intensity: 0.6,
-                          color: AppTheme.darkCardBackground,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Row(
-                            children: [
-                              Icon(Icons.search_rounded, color: AppTheme.darkTextSecondary, size: 20),
-                              SizedBox(width: 10),
-                              Text(
-                                "Search merchant or item...",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.darkTextSecondary,
-                                ),
+                      NeumorphicInputFieldWidget(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            Icon(Icons.search_rounded, color: textSecondary, size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              "Search merchant or item...",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: textSecondary,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -73,66 +68,49 @@ class HistoryScreen extends StatelessWidget {
                         separatorBuilder: (context, index) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final item = historyItems[index];
-                          return Neumorphic(
-                            style: NeumorphicStyle(
-                              depth: 3,
-                              intensity: 0.5,
-                              color: AppTheme.darkCardBackground,
-                              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Neumorphic(
-                                    style: const NeumorphicStyle(
-                                      depth: -2,
-                                      boxShape: NeumorphicBoxShape.circle(),
-                                      color: AppTheme.darkBackground,
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(10),
-                                      child: Icon(
-                                        item["icon"] as IconData,
-                                        color: AppTheme.darkAccentPinkishRed,
-                                        size: 20,
+                          return NeumorphicCardWidget(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                NeumorphicIconBadge(
+                                  icon: item["icon"] as IconData,
+                                  isInset: true,
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item["name"] as String,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item["name"] as String,
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.darkTextPrimary,
-                                          ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "${item["cat"]} • ${item["date"]}",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          "${item["cat"]} • ${item["date"]}",
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppTheme.darkTextSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    item["price"] as String,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.darkTextPrimary,
-                                    ),
+                                ),
+                                Text(
+                                  item["price"] as String,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -149,3 +127,4 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 }
+

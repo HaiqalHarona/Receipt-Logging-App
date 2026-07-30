@@ -8,9 +8,14 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final bg = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     return NeumorphicBackground(
-      backendColor: AppTheme.darkBackground,
       child: Scaffold(
+
         backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Column(
@@ -27,117 +32,97 @@ class DashboardScreen extends StatelessWidget {
                         children: [
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
                                 "Hello, Nino 👋",
                                 style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
-                                  color: AppTheme.darkTextPrimary,
+                                  color: textPrimary,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
                                 "Here is your spending breakdown",
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: AppTheme.darkTextSecondary,
+                                  color: textSecondary,
                                 ),
                               ),
                             ],
                           ),
-                          Neumorphic(
-                            style: const NeumorphicStyle(
-                              boxShape: NeumorphicBoxShape.circle(),
-                              depth: 3,
-                              color: AppTheme.darkAccentPinkishRed,
-                            ),
-                            child: const CircleAvatar(
-                              radius: 20,
-                              backgroundColor: AppTheme.darkAccentPinkishRed,
-                              child: Icon(Icons.person, color: Colors.white),
-                            ),
+                          NeumorphicIconBadge(
+                            icon: Icons.person,
+                            iconSize: 24,
+                            onTap: () => context.push('/settings'),
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
 
                       // Total Spent Card
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 5,
-                          intensity: 0.6,
-                          color: AppTheme.darkCardBackground,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "TOTAL SPENT THIS MONTH",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.darkTextSecondary,
-                                  letterSpacing: 0.5,
-                                ),
+                      NeumorphicCardWidget(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "TOTAL SPENT THIS MONTH",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: textSecondary,
+                                letterSpacing: 0.5,
                               ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                "\$1,248.50",
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.darkTextPrimary,
-                                ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "\$1,248.50",
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
                               ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: NeumorphicButton(
-                                  onPressed: () {
-                                    context.push('/scanner');
-                                  },
-                                  style: NeumorphicStyle(
-                                    color: AppTheme.darkAccentPinkishRed,
-                                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 6),
-                                    child: Center(
-                                      child: Text(
-                                        "📷 Quick Scan Receipt",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: NeumorphicButtonWidget(
+                                onPressed: () {
+                                  context.push('/scanner');
+                                },
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: const Center(
+                                  child: Text(
+                                    "📷 Quick Scan Receipt",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 28),
 
                       // Section Header
-                      const Text(
+                      Text(
                         "Recent Receipts",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.darkTextPrimary,
+                          color: textPrimary,
                         ),
                       ),
                       const SizedBox(height: 14),
 
-                      // Recent Item 1
+                      // Recent Receipts List
                       _buildReceiptItem(
+                        context: context,
                         merchant: "Whole Foods Market",
                         subtitle: "Groceries • Today",
                         amount: "-\$42.80",
@@ -145,6 +130,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       _buildReceiptItem(
+                        context: context,
                         merchant: "Chevron Gas Station",
                         subtitle: "Transport • Yesterday",
                         amount: "-\$35.00",
@@ -152,6 +138,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       _buildReceiptItem(
+                        context: context,
                         merchant: "Starbucks Coffee",
                         subtitle: "Dining • July 28",
                         amount: "-\$8.45",
@@ -170,68 +157,61 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildReceiptItem({
+    required BuildContext context,
     required String merchant,
     required String subtitle,
     required String amount,
     required IconData icon,
   }) {
-    return Neumorphic(
-      style: NeumorphicStyle(
-        depth: 3,
-        intensity: 0.5,
-        color: AppTheme.darkCardBackground,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Neumorphic(
-              style: const NeumorphicStyle(
-                depth: -2,
-                boxShape: NeumorphicBoxShape.circle(),
-                color: AppTheme.darkBackground,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Icon(icon, color: AppTheme.darkAccentPinkishRed, size: 20),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    merchant,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.darkTextPrimary,
-                    ),
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
+    return NeumorphicCardWidget(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          NeumorphicIconBadge(
+            icon: icon,
+            isInset: true,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  merchant,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: textPrimary,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.darkTextSecondary,
-                    ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textSecondary,
                   ),
-                ],
-              ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            Text(
-              amount,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.darkTextPrimary,
-              ),
+          ),
+          Text(
+            amount,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: textPrimary,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
+

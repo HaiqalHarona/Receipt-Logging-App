@@ -7,8 +7,11 @@ class AuthScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     return NeumorphicBackground(
-      backendColor: AppTheme.darkBackground,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -18,26 +21,27 @@ class AuthScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     "🧾 Receipt Logger",
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.darkTextPrimary,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     "Sign in to sync your expenses",
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.darkTextSecondary,
+                      color: textSecondary,
                     ),
                   ),
                   const SizedBox(height: 36),
 
                   // Email Input
                   _buildInputField(
+                    context: context,
                     label: "EMAIL ADDRESS",
                     hint: "nino@example.com",
                     icon: Icons.email_rounded,
@@ -46,6 +50,7 @@ class AuthScreen extends StatelessWidget {
 
                   // Password Input
                   _buildInputField(
+                    context: context,
                     label: "PASSWORD",
                     hint: "••••••••••••",
                     icon: Icons.lock_rounded,
@@ -57,14 +62,10 @@ class AuthScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     height: 50,
-                    child: NeumorphicButton(
+                    child: NeumorphicButtonWidget(
                       onPressed: () {
                         context.go('/dashboard');
                       },
-                      style: NeumorphicStyle(
-                        color: AppTheme.darkAccentPinkishRed,
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-                      ),
                       child: const Center(
                         child: Text(
                           "Sign In",
@@ -87,49 +88,47 @@ class AuthScreen extends StatelessWidget {
   }
 
   Widget _buildInputField({
+    required BuildContext context,
     required String label,
     required String hint,
     required IconData icon,
     bool isObscure = false,
   }) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: AppTheme.darkTextSecondary,
+            color: textSecondary,
             letterSpacing: 0.5,
           ),
         ),
         const SizedBox(height: 6),
-        Neumorphic(
-          style: NeumorphicStyle(
-            depth: -3,
-            intensity: 0.6,
-            color: AppTheme.darkCardBackground,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Icon(icon, color: AppTheme.darkTextSecondary, size: 20),
-                const SizedBox(width: 12),
-                Text(
-                  hint,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.darkTextPrimary,
-                  ),
+        NeumorphicInputFieldWidget(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: textSecondary, size: 20),
+              const SizedBox(width: 12),
+              Text(
+                hint,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: textPrimary,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 }
+

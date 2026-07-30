@@ -12,16 +12,20 @@ class AppBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = AppTheme.darkAccentPinkishRed;
-    final inactiveColor = AppTheme.darkTextSecondary;
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final activeColor = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
+    final inactiveColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final navBg = isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground;
 
     return Neumorphic(
-      style: const NeumorphicStyle(
+      style: NeumorphicStyle(
         depth: 4,
         intensity: 0.5,
         boxShape: NeumorphicBoxShape.rect(),
-        color: AppTheme.darkCardBackground,
+
+        color: navBg,
       ),
+
       child: Container(
         height: 72,
         padding: const EdgeInsets.symmetric(horizontal: 16),

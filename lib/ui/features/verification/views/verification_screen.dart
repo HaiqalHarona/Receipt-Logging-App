@@ -7,23 +7,29 @@ class VerificationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     return NeumorphicBackground(
-      backendColor: AppTheme.darkBackground,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_rounded, color: AppTheme.darkTextPrimary),
-            onPressed: () => context.pop(),
+          leading: Center(
+            child: NeumorphicIconBadge(
+              icon: Icons.arrow_back_ios_new_rounded,
+              iconSize: 18,
+              onTap: () => context.pop(),
+            ),
           ),
-          title: const Text(
+          title: Text(
             "Review Receipt",
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppTheme.darkTextPrimary,
+              color: textPrimary,
             ),
           ),
           centerTitle: true,
@@ -34,27 +40,23 @@ class VerificationScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInputField(label: "MERCHANT NAME", initialValue: "Whole Foods Market"),
+                _buildInputField(context: context, label: "MERCHANT NAME", initialValue: "Whole Foods Market"),
                 const SizedBox(height: 18),
-                _buildInputField(label: "DATE", initialValue: "Jul 30, 2026"),
+                _buildInputField(context: context, label: "DATE", initialValue: "Jul 30, 2026"),
                 const SizedBox(height: 18),
-                _buildInputField(label: "TOTAL AMOUNT", initialValue: "\$42.80"),
+                _buildInputField(context: context, label: "TOTAL AMOUNT", initialValue: "\$42.80"),
                 const SizedBox(height: 18),
-                _buildInputField(label: "CATEGORY", initialValue: "Groceries 🛒"),
+                _buildInputField(context: context, label: "CATEGORY", initialValue: "Groceries 🛒"),
                 const SizedBox(height: 36),
 
                 // Save Receipt CTA
                 SizedBox(
                   width: double.infinity,
                   height: 52,
-                  child: NeumorphicButton(
+                  child: NeumorphicButtonWidget(
                     onPressed: () {
                       context.go('/dashboard');
                     },
-                    style: NeumorphicStyle(
-                      color: AppTheme.darkAccentPinkishRed,
-                      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-                    ),
                     child: const Center(
                       child: Text(
                         "Save Receipt",
@@ -75,10 +77,10 @@ class VerificationScreen extends StatelessWidget {
                     onPressed: () {
                       context.pop();
                     },
-                    child: const Text(
+                    child: Text(
                       "Rescan Receipt",
                       style: TextStyle(
-                        color: AppTheme.darkTextSecondary,
+                        color: textSecondary,
                         fontSize: 14,
                       ),
                     ),
@@ -92,38 +94,38 @@ class VerificationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInputField({required String label, required String initialValue}) {
+  Widget _buildInputField({
+    required BuildContext context,
+    required String label,
+    required String initialValue,
+  }) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: AppTheme.darkTextSecondary,
+            color: textSecondary,
             letterSpacing: 0.5,
           ),
         ),
         const SizedBox(height: 6),
-        Neumorphic(
-          style: NeumorphicStyle(
-            depth: -3,
-            intensity: 0.6,
-            color: AppTheme.darkCardBackground,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: SizedBox(
-              width: double.infinity,
-              child: Text(
-                initialValue,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.darkTextPrimary,
-                ),
+        NeumorphicInputFieldWidget(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: SizedBox(
+            width: double.infinity,
+            child: Text(
+              initialValue,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: textPrimary,
               ),
             ),
           ),
@@ -132,3 +134,4 @@ class VerificationScreen extends StatelessWidget {
     );
   }
 }
+

@@ -7,8 +7,12 @@ class AnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
+
     return NeumorphicBackground(
-      backendColor: AppTheme.darkBackground,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
@@ -20,87 +24,73 @@ class AnalyticsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "Spending Analytics",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.darkTextPrimary,
+                          color: textPrimary,
                         ),
                       ),
                       const SizedBox(height: 20),
 
                       // Weekly Overview Card
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 4,
-                          color: AppTheme.darkCardBackground,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Weekly Overview",
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.darkTextPrimary,
-                                ),
+                      NeumorphicCardWidget(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Weekly Overview",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
                               ),
-                              const SizedBox(height: 20),
-                              // Bar chart representation
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  _buildBar("Mon", 40, false),
-                                  _buildBar("Tue", 70, false),
-                                  _buildBar("Wed", 30, false),
-                                  _buildBar("Thu", 110, true), // Peak
-                                  _buildBar("Fri", 55, false),
-                                  _buildBar("Sat", 85, false),
-                                  _buildBar("Sun", 45, false),
-                                ],
-                              ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 20),
+                            // Bar chart representation
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                _buildBar(context, "Mon", 40, false),
+                                _buildBar(context, "Tue", 70, false),
+                                _buildBar(context, "Wed", 30, false),
+                                _buildBar(context, "Thu", 110, true), // Peak
+                                _buildBar(context, "Fri", 55, false),
+                                _buildBar(context, "Sat", 85, false),
+                                _buildBar(context, "Sun", 45, false),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 24),
 
                       // Category Breakdown Card
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 4,
-                          color: AppTheme.darkCardBackground,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
-                                "Top Categories",
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.darkTextPrimary,
-                                ),
+                      NeumorphicCardWidget(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Top Categories",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
                               ),
-                              SizedBox(height: 16),
-                              _CategoryRow(label: "🛒 Groceries", amount: "\$480.00", percentage: "40%"),
-                              SizedBox(height: 12),
-                              _CategoryRow(label: "🍔 Dining", amount: "\$300.00", percentage: "25%"),
-                              SizedBox(height: 12),
-                              _CategoryRow(label: "🚗 Transport", amount: "\$240.00", percentage: "20%"),
-                              SizedBox(height: 12),
-                              _CategoryRow(label: "🛍️ Shopping", amount: "\$180.00", percentage: "15%"),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 16),
+                            _CategoryRow(label: "🛒 Groceries", amount: "\$480.00", percentage: "40%", textPrimary: textPrimary, accent: accent),
+                            const SizedBox(height: 12),
+                            _CategoryRow(label: "🍔 Dining", amount: "\$300.00", percentage: "25%", textPrimary: textPrimary, accent: accent),
+                            const SizedBox(height: 12),
+                            _CategoryRow(label: "🚗 Transport", amount: "\$240.00", percentage: "20%", textPrimary: textPrimary, accent: accent),
+                            const SizedBox(height: 12),
+                            _CategoryRow(label: "🛍️ Shopping", amount: "\$180.00", percentage: "15%", textPrimary: textPrimary, accent: accent),
+                          ],
                         ),
                       ),
                     ],
@@ -115,23 +105,27 @@ class AnalyticsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBar(String day, double height, bool isHighlighted) {
+  Widget _buildBar(BuildContext context, String day, double height, bool isHighlighted) {
+    final isDark = NeumorphicTheme.isUsingDark(context);
+    final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
+    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     return Column(
       children: [
         Container(
           width: 24,
           height: height,
           decoration: BoxDecoration(
-            color: isHighlighted ? AppTheme.darkAccentPinkishRed : AppTheme.darkAccentPinkishRed.withValues(alpha: 0.3),
+            color: isHighlighted ? accent : accent.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(6),
           ),
         ),
         const SizedBox(height: 8),
         Text(
           day,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: AppTheme.darkTextSecondary,
+            color: textSecondary,
           ),
         ),
       ],
@@ -143,11 +137,15 @@ class _CategoryRow extends StatelessWidget {
   final String label;
   final String amount;
   final String percentage;
+  final Color textPrimary;
+  final Color accent;
 
   const _CategoryRow({
     required this.label,
     required this.amount,
     required this.percentage,
+    required this.textPrimary,
+    required this.accent,
   });
 
   @override
@@ -157,13 +155,14 @@ class _CategoryRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 13, color: AppTheme.darkTextPrimary),
+          style: TextStyle(fontSize: 13, color: textPrimary),
         ),
         Text(
           "$amount ($percentage)",
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.darkAccentPinkishRed),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: accent),
         ),
       ],
     );
   }
 }
+

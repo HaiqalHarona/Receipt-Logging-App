@@ -6,8 +6,9 @@ plugins {
 
 android {
     namespace = "com.example.reciept_logging"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

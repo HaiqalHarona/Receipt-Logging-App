@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/dashboard/views/dashboard_screen.dart';
@@ -9,40 +10,62 @@ import '../../features/auth/views/auth_screen.dart';
 import '../../features/ai_assistant/views/ai_assistant_screen.dart';
 import '../../features/settings/views/settings_screen.dart';
 
+Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widget child}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 220),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
+      return FadeTransition(
+        opacity: curvedAnimation,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.98, end: 1.0).animate(curvedAnimation),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/dashboard',
   routes: [
     GoRoute(
       path: '/dashboard',
-      builder: (context, state) => const DashboardScreen(),
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const DashboardScreen()),
     ),
     GoRoute(
       path: '/verification',
-      builder: (context, state) => const VerificationScreen(),
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const VerificationScreen()),
     ),
     GoRoute(
       path: '/history',
-      builder: (context, state) => const HistoryScreen(),
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const HistoryScreen()),
     ),
     GoRoute(
       path: '/analytics',
-      builder: (context, state) => const AnalyticsScreen(),
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const AnalyticsScreen()),
     ),
     GoRoute(
       path: '/paywall',
-      builder: (context, state) => const PaywallScreen(),
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const PaywallScreen()),
     ),
     GoRoute(
       path: '/auth',
-      builder: (context, state) => const AuthScreen(),
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const AuthScreen()),
     ),
     GoRoute(
       path: '/ai-assistant',
-      builder: (context, state) => const AiAssistantScreen(),
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const AiAssistantScreen()),
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const SettingsScreen(),
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const SettingsScreen()),
     ),
   ],
 );
