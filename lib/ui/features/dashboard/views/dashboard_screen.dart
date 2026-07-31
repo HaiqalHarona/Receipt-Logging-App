@@ -1,6 +1,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/bottom_nav_bar.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -8,22 +9,23 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final bg = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        final controller = AppThemeController.instance;
+        final textPrimary = controller.textColor;
+        final textSecondary = controller.secondaryTextColor;
 
     return NeumorphicBackground(
       child: Scaffold(
-
         backgroundColor: Colors.transparent,
+        extendBody: true,
+        bottomNavigationBar: const AppBottomNavBar(currentPath: '/dashboard'),
         body: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Column(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 120),
+            child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Header Row
@@ -34,7 +36,7 @@ class DashboardScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Hello, Nino 👋",
+                                "Hello, Nino",
                                 style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -92,15 +94,24 @@ class DashboardScreen extends StatelessWidget {
                                   context.push('/scanner');
                                 },
                                 padding: const EdgeInsets.symmetric(vertical: 12),
-                                child: const Center(
-                                  child: Text(
-                                    "📷 Quick Scan Receipt",
-                                    style: TextStyle(
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.camera_alt_rounded,
                                       color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
+                                      size: 18,
                                     ),
-                                  ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Quick Scan Receipt",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -146,14 +157,12 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
               ),
-              const AppBottomNavBar(currentPath: '/dashboard'),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
+        );
+  },
+);
   }
 
   Widget _buildReceiptItem({
@@ -163,9 +172,9 @@ class DashboardScreen extends StatelessWidget {
     required String amount,
     required IconData icon,
   }) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final controller = AppThemeController.instance;
+    final textPrimary = controller.textColor;
+    final textSecondary = controller.secondaryTextColor;
 
     return NeumorphicCardWidget(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

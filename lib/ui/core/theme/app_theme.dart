@@ -1,4 +1,5 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'theme_controller.dart';
 
 /// App Theme & Design Tokens for Receipt Logger
 /// Features Neumorphic design system for Light & Dark mode.
@@ -29,9 +30,10 @@ class AppTheme {
       variantColor: darkCardBackground,
       lightSource: LightSource.topLeft,
       depth: 6,
-      intensity: 0.9,
-      shadowDarkColor: const Color(0xFF0D0D14),
-      shadowLightColor: const Color(0xFF4A4A60), // Brighter crisp top-left highlight
+      intensity: 0.85,
+      // Reduced highlight to prevent harsh bright edge cut in dark mode
+      shadowDarkColor: const Color(0xFF080810),
+      shadowLightColor: const Color(0xFF303048),
       textTheme: const TextTheme(
         bodyLarge: TextStyle(color: darkTextPrimary),
         bodyMedium: TextStyle(color: darkTextSecondary),
@@ -80,16 +82,17 @@ class NeumorphicCardWidget extends StatelessWidget {
     this.padding,
     this.margin,
     this.borderRadius = 16,
-    this.depth = 4,
-    this.intensity = 0.6,
+    this.depth = 6,
+    this.intensity = 0.85,
     this.color,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final cardColor = color ?? (isDark ? AppTheme.darkCardBackground : AppTheme.lightCardBackground);
+    final controller = AppThemeController.instance;
+    final isDark = controller.themeMode == ThemeMode.dark;
+    final cardColor = color ?? controller.currentBaseColor;
 
     final card = Neumorphic(
       margin: margin ?? EdgeInsets.zero,
@@ -99,6 +102,10 @@ class NeumorphicCardWidget extends StatelessWidget {
         intensity: intensity,
         color: cardColor,
         boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
+        border: NeumorphicBorder(
+          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+          width: 0.8,
+        ),
       ),
       child: child,
     );
@@ -128,16 +135,16 @@ class NeumorphicButtonWidget extends StatelessWidget {
     required this.child,
     this.onPressed,
     this.color,
-    this.borderRadius = 12,
-    this.depth = 4,
+    this.borderRadius = 14,
+    this.depth = 6,
     this.padding,
     this.margin,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final btnColor = color ?? (isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal);
+    final controller = AppThemeController.instance;
+    final btnColor = color ?? controller.accentColor;
 
     return Container(
       margin: margin,
@@ -146,10 +153,14 @@ class NeumorphicButtonWidget extends StatelessWidget {
         style: NeumorphicStyle(
           color: btnColor,
           depth: depth,
-          intensity: 0.7,
+          intensity: 0.9,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
+          border: NeumorphicBorder(
+            color: Colors.white.withValues(alpha: 0.25),
+            width: 1.0,
+          ),
         ),
-        padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: padding ?? const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: child,
       ),
     );
@@ -167,28 +178,32 @@ class NeumorphicInputFieldWidget extends StatelessWidget {
     super.key,
     required this.child,
     this.padding,
-    this.borderRadius = 12,
-    this.depth = -3,
+    this.borderRadius = 14,
+    this.depth = -4,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final bg = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final controller = AppThemeController.instance;
+    final isDark = controller.themeMode == ThemeMode.dark;
+    final bg = controller.currentBaseColor;
 
     return Neumorphic(
       padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       style: NeumorphicStyle(
         depth: depth,
-        intensity: 0.8,
+        intensity: 0.9,
         color: bg,
         boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
+        border: NeumorphicBorder(
+          color: isDark ? Colors.black.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.05),
+          width: 1.0,
+        ),
       ),
       child: child,
     );
   }
 }
-
 
 /// Circular Neumorphic Icon Badge Wrapper
 class NeumorphicIconBadge extends StatelessWidget {
@@ -204,23 +219,28 @@ class NeumorphicIconBadge extends StatelessWidget {
     required this.icon,
     this.iconColor,
     this.iconSize = 20,
-    this.depth = 3,
+    this.depth = 5,
     this.isInset = false,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
-    final base = isDark ? AppTheme.darkBackground : AppTheme.lightBackground;
+    final controller = AppThemeController.instance;
+    final isDark = controller.themeMode == ThemeMode.dark;
+    final accent = controller.accentColor;
+    final base = controller.currentBaseColor;
 
     final widget = Neumorphic(
       style: NeumorphicStyle(
         depth: isInset ? -depth : depth,
-        boxShape: NeumorphicBoxShape.circle(),
-
+        intensity: 0.85,
+        boxShape: const NeumorphicBoxShape.circle(),
         color: base,
+        border: NeumorphicBorder(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.6),
+          width: 0.8,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -241,4 +261,5 @@ class NeumorphicIconBadge extends StatelessWidget {
     return widget;
   }
 }
+
 

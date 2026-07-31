@@ -50,3 +50,7 @@ app.*.map.json
 .fvm/
 
 .env
+.codeagentswarm/
+AGENTS.md
+test/
+artifacts/

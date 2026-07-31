@@ -1,5 +1,6 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/bottom_nav_bar.dart';
 
 class HistoryScreen extends StatelessWidget {
@@ -7,9 +8,12 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        final controller = AppThemeController.instance;
+        final textPrimary = controller.textColor;
+        final textSecondary = controller.secondaryTextColor;
 
     final historyItems = [
       {"name": "Target Superstore", "date": "Jul 29", "cat": "Shopping", "price": "-\$84.20", "icon": Icons.shopping_cart_rounded},
@@ -22,13 +26,13 @@ class HistoryScreen extends StatelessWidget {
     return NeumorphicBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        extendBody: true,
+        bottomNavigationBar: const AppBottomNavBar(currentPath: '/history'),
         body: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Column(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 120),
+            child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -117,14 +121,12 @@ class HistoryScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
               ),
-              const AppBottomNavBar(currentPath: '/history'),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
+        );
+  },
+);
   }
 }
 

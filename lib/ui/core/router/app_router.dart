@@ -9,6 +9,8 @@ import '../../features/paywall/views/paywall_screen.dart';
 import '../../features/auth/views/auth_screen.dart';
 import '../../features/ai_assistant/views/ai_assistant_screen.dart';
 import '../../features/settings/views/settings_screen.dart';
+import '../../features/settings/views/customization_screen.dart';
+import '../../features/scanner/views/scanner_screen.dart';
 
 Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widget child}) {
   return CustomTransitionPage<void>(
@@ -66,6 +68,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/settings',
       pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const SettingsScreen()),
+    ),
+    GoRoute(
+      path: '/customization',
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const CustomizationScreen()),
+    ),
+    GoRoute(
+      path: '/scanner',
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ScannerScreen()),
     ),
   ],
 );

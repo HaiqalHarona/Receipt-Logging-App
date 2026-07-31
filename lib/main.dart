@@ -1,11 +1,14 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ui/core/router/app_router.dart';
 import 'ui/core/theme/app_theme.dart';
 import 'ui/core/theme/theme_controller.dart';
+import 'services/isar_service.dart';
 
-
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  await IsarService.init(schemas: []);
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     bool isDebug = false;
@@ -45,35 +48,34 @@ class ReceiptLoggerApp extends StatelessWidget {
           animation: AppThemeController.instance,
           builder: (context, _) {
             final controller = AppThemeController.instance;
-            final currentPreset = controller.currentPreset;
 
             final customDarkTheme = NeumorphicThemeData(
-              baseColor: currentPreset.baseColor,
+              baseColor: controller.currentBaseColor,
               accentColor: controller.accentColor,
-              variantColor: currentPreset.baseColor,
+              variantColor: controller.currentBaseColor,
               lightSource: LightSource.topLeft,
-              depth: 6,
-              intensity: 0.9,
-              shadowDarkColor: const Color(0xFF0D0D14),
-              shadowLightColor: const Color(0xFF4A4A60),
+              depth: 5,
+              intensity: 0.88,
+              shadowDarkColor: controller.shadowDarkColor,
+              shadowLightColor: controller.shadowLightColor,
               textTheme: TextTheme(
                 bodyLarge: TextStyle(color: controller.textColor),
-                bodyMedium: TextStyle(color: currentPreset.secondaryTextColor),
+                bodyMedium: TextStyle(color: controller.secondaryTextColor),
               ),
             );
 
             final customLightTheme = NeumorphicThemeData(
-              baseColor: AppTheme.lightBackground,
+              baseColor: controller.currentBaseColor,
               accentColor: controller.accentColor,
-              variantColor: AppTheme.lightCardBackground,
+              variantColor: controller.currentBaseColor,
               lightSource: LightSource.topLeft,
-              depth: 5,
-              intensity: 0.7,
-              shadowDarkColor: const Color(0xFFA3B1C6),
-              shadowLightColor: const Color(0xFFFFFFFF),
+              depth: 6,
+              intensity: 0.80,
+              shadowDarkColor: controller.shadowDarkColor,
+              shadowLightColor: controller.shadowLightColor,
               textTheme: TextTheme(
                 bodyLarge: TextStyle(color: controller.textColor),
-                bodyMedium: const TextStyle(color: AppTheme.lightTextSecondary),
+                bodyMedium: TextStyle(color: controller.secondaryTextColor),
               ),
             );
 

@@ -1,5 +1,6 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/bottom_nav_bar.dart';
 
 class AnalyticsScreen extends StatelessWidget {
@@ -7,21 +8,23 @@ class AnalyticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
-    final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        final controller = AppThemeController.instance;
+        final textPrimary = controller.textColor;
+        final accent = controller.accentColor;
 
     return NeumorphicBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        extendBody: true,
+        bottomNavigationBar: const AppBottomNavBar(currentPath: '/analytics'),
         body: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Column(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 120),
+            child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -95,20 +98,18 @@ class AnalyticsScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
               ),
-              const AppBottomNavBar(currentPath: '/history'),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
+        );
+  },
+);
   }
 
   Widget _buildBar(BuildContext context, String day, double height, bool isHighlighted) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final controller = AppThemeController.instance;
+    final accent = controller.accentColor;
+    final textSecondary = controller.secondaryTextColor;
 
     return Column(
       children: [

@@ -13,10 +13,10 @@ class PaywallScreen extends StatelessWidget {
     final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
 
     final features = [
-      "⚡ Unlimited Vision AI Receipt Parsing",
-      "☁️ Automatic Cloud Sync & Offsite Backup",
-      "📊 Advanced Analytics & CSV Export",
-      "🤖 Priority AI Assistant Queries",
+      (icon: Icons.bolt_rounded, title: "Unlimited Vision AI Receipt Parsing"),
+      (icon: Icons.cloud_done_rounded, title: "Automatic Cloud Sync & Offsite Backup"),
+      (icon: Icons.bar_chart_rounded, title: "Advanced Analytics & CSV Export"),
+      (icon: Icons.auto_awesome_rounded, title: "Priority AI Assistant Queries"),
     ];
 
     return NeumorphicBackground(
@@ -43,7 +43,7 @@ class PaywallScreen extends StatelessWidget {
               children: [
                 Center(
                   child: Text(
-                    "👑 PRO MEMBERSHIP",
+                    "PRO MEMBERSHIP",
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -75,9 +75,15 @@ class PaywallScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(14),
                         child: Row(
                           children: [
+                            Icon(
+                              feature.icon,
+                              color: accent,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                feature,
+                                feature.title,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: textPrimary,
