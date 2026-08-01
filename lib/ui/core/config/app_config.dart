@@ -16,11 +16,11 @@ class AppConfig {
   static String get supabaseAnonKey => dotenv.get('SUPABASE_KEY', fallback: '');
 
   // ── API ENDPOINT PATHS ─────────────────────────────────────────────────────
-  static String get receiptsEndpoint => '$baseUrl/v1/receipts';
-  static String get ocrProcessEndpoint => '$baseUrl/v1/ocr/process';
-  static String get aiAssistantEndpoint => '$baseUrl/v1/ai/chat';
-  static String get authEndpoint => '$baseUrl/v1/auth';
-  static String get analyticsEndpoint => '$baseUrl/v1/analytics';
+  static String get receiptsEndpoint => '$baseUrl/receipts';
+  static String get ocrProcessEndpoint => '$baseUrl/ocr/process';
+  static String get aiAssistantEndpoint => '$baseUrl/ai/chat';
+  static String get authEndpoint => '$baseUrl/auth';
+  static String get analyticsEndpoint => '$baseUrl/analytics';
 
   // ── TIMEOUTS & NETWORK SETTINGS ───────────────────────────────────────────
   static const Duration connectTimeout = Duration(seconds: 15);

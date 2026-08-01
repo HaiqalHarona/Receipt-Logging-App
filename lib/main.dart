@@ -4,11 +4,18 @@ import 'ui/core/router/app_router.dart';
 import 'ui/core/theme/app_theme.dart';
 import 'ui/core/theme/theme_controller.dart';
 import 'services/isar_service.dart';
+import 'data/models/receipt_isar.dart';
+import 'data/repositories/receipt_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  await IsarService.init(schemas: []);
+
+  // Initialize database & repository asynchronously without blocking first-frame render
+  Future.microtask(() async {
+    await IsarService.init(schemas: [ReceiptIsarModelSchema]);
+    await ReceiptRepository.instance.init();
+  });
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     bool isDebug = false;

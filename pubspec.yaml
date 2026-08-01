@@ -42,6 +42,7 @@ dependencies:
 
   # ── HTTP / API Client ────────────────────────────────────────────────────────
   http: ^1.2.2
+  http_parser: ^4.1.0
   dio: ^5.7.0
 
   # ── Connectivity / Offline-First ─────────────────────────────────────────────
@@ -62,6 +63,8 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  isar_generator: ^3.1.0+1
+  build_runner: ^2.4.13
   # NOTE: isar_generator, riverpod_generator, build_runner are intentionally
   # omitted — they all transitively conflict through source_gen ^1.x vs ^2.x
   # when combined with isar_generator 3.1.0+1. The generated receipt.g.dart

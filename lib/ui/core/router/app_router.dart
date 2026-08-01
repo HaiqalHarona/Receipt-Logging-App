@@ -10,6 +10,7 @@ import '../../features/auth/views/auth_screen.dart';
 import '../../features/ai_assistant/views/ai_assistant_screen.dart';
 import '../../features/settings/views/settings_screen.dart';
 import '../../features/settings/views/customization_screen.dart';
+import '../../features/settings/views/db_viewer_screen.dart';
 import '../../features/scanner/views/scanner_screen.dart';
 
 Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widget child}) {
@@ -72,6 +73,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/customization',
       pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const CustomizationScreen()),
+    ),
+    GoRoute(
+      path: '/settings/db-viewer',
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const DbViewerScreen()),
     ),
     GoRoute(
       path: '/scanner',

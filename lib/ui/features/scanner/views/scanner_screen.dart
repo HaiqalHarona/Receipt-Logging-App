@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../../domain/models/receipt.dart';
+import '../../../../services/ocr_service.dart';
 
 /// Vision Receipt Scanner Screen
 /// Supports single scan vs. bulk mode (capped at 10 receipts max),
@@ -18,7 +20,7 @@ class ScannerScreen extends StatefulWidget {
 }
 
 class _ScannerScreenState extends State<ScannerScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _scanAnimationController;
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
@@ -35,12 +37,30 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scanAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2200),
     )..repeat(reverse: true);
 
     _initCamera();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = _cameraController;
+
+    // App state changed before we got the chance to initialize.
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      cameraController.dispose();
+      _isCameraInitialized = false;
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
   }
 
   Future<void> _initCamera() async {
@@ -66,6 +86,7 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scanAnimationController.dispose();
     _cameraController?.dispose();
     super.dispose();
@@ -97,18 +118,25 @@ class _ScannerScreenState extends State<ScannerScreen>
     if (_cameraController != null && _isCameraInitialized) {
       try {
         capturedFile = await _cameraController!.takePicture();
-      } catch (_) {}
+      } catch (e) {
+        _showToast("Failed to capture photo. Please try again.");
+        return;
+      }
+    } else {
+      _showToast("Camera unavailable. Please choose an image from Gallery or pick a file.");
+      return;
     }
 
-    capturedFile ??= XFile('');
+    if (capturedFile.path.isEmpty) return;
+    final file = capturedFile;
 
     if (_isBulkMode) {
       setState(() {
-        _queuedImages.add(capturedFile!);
+        _queuedImages.add(file);
       });
     } else {
       _queuedImages.clear();
-      _queuedImages.add(capturedFile);
+      _queuedImages.add(file);
       await _processQueueAndNavigate();
     }
   }
@@ -155,30 +183,61 @@ class _ScannerScreenState extends State<ScannerScreen>
       _processingStep = 1;
     });
 
-    for (int i = 0; i < _queuedImages.length; i++) {
+    final List<Receipt> parsedReceipts = [];
+    try {
+      for (int i = 0; i < _queuedImages.length; i++) {
+        setState(() {
+          _processingStep = i + 1;
+        });
+        final results = await OcrService.instance.processImages([_queuedImages[i].path]);
+        if (results.isNotEmpty) {
+          parsedReceipts.add(results.first);
+        }
+      }
+
+      if (!mounted) return;
+
       setState(() {
-        _processingStep = i + 1;
+        _isProcessing = false;
       });
-      await Future.delayed(const Duration(milliseconds: 600));
+
+      if (parsedReceipts.isNotEmpty) {
+        context.push('/verification', extra: parsedReceipts);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isProcessing = false;
+      });
+
+      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
     }
+  }
 
-    if (!mounted) return;
-
-    final parsedReceipts = _queuedImages.map((file) {
-      return {
-        "merchant": "Whole Foods Market",
-        "date": "Aug 01, 2026",
-        "amount": "\$42.80",
-        "category": "Groceries 🛒",
-        "imagePath": file.path,
-      };
-    }).toList();
-
-    setState(() {
-      _isProcessing = false;
-    });
-
-    context.push('/verification', extra: parsedReceipts);
+  void _showErrorDialog(String errorMessage) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('Scan Failure', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Failed to scan receipt image:\n\n$errorMessage',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showToast(String message) {

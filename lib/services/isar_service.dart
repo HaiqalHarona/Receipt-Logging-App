@@ -7,6 +7,10 @@ class IsarService {
   IsarService._();
 
   static late Isar _isar;
+  static bool _isInitialized = false;
+
+  /// Returns whether the Isar instance has been initialized.
+  static bool get isInitialized => _isInitialized;
 
   /// Returns the active Isar instance.
   static Isar get isar => _isar;
@@ -19,6 +23,7 @@ class IsarService {
   }) async {
     if (Isar.instanceNames.contains('default')) {
       _isar = Isar.getInstance('default')!;
+      _isInitialized = true;
       return _isar;
     }
 
@@ -29,6 +34,7 @@ class IsarService {
       directory: dir.path,
       inspector: kDebugMode, // Ensures Isar Inspector is active in debug builds
     );
+    _isInitialized = true;
 
     if (kDebugMode) {
       debugPrint('🚀 [Isar] Database opened at: ${dir.path}');

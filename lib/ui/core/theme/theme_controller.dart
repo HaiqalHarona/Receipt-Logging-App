@@ -227,6 +227,11 @@ class AppThemeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
+    notifyListeners();
+  }
+
   void selectPreset(int index) {
     if (_themeMode == ThemeMode.dark) {
       _selectedDarkPresetIndex = index;

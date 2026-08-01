@@ -21,6 +21,7 @@ library;
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'api_config.dart';
 import 'api_models.dart';
 
@@ -31,7 +32,7 @@ class ApiException implements Exception {
   final int? statusCode;
 
   @override
-  String toString() => 'ApiException(${statusCode ?? '?'}): $message';
+  String toString() => 'ApiException(${statusCode ?? '?'}) : $message';
 }
 
 class BackendApiClient {
@@ -82,40 +83,83 @@ class BackendApiClient {
   /// [imageBytes]  — raw image bytes (from `image_picker` or `camera`).
   /// [filename]    — e.g. `"receipt.jpg"` — used as the multipart filename.
   /// [deviceId]    — hardware device ID.
+  /// [deviceToken] — hardware device auth token.
   /// [userId]      — optional; only pass when the user is signed in.
   Future<ReceiptDto?> parseReceiptImage({
     required List<int> imageBytes,
     required String filename,
     required String deviceId,
+    required String deviceToken,
     String? userId,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/scan/parse');
 
-    final request = http.MultipartRequest('POST', uri)
-      ..fields['device_id'] = deviceId;
+    final request = http.MultipartRequest('POST', uri);
 
-    if (userId != null && userId.isNotEmpty) {
-      request.fields['user_id'] = userId;
+    final cleanDeviceId = deviceId.trim();
+    final cleanDeviceToken = deviceToken.trim();
+
+    if (cleanDeviceId.isNotEmpty) {
+      request.headers['X-Device-ID'] = cleanDeviceId;
     }
+    if (cleanDeviceToken.isNotEmpty) {
+      request.headers['X-Device-Token'] = cleanDeviceToken;
+    }
+
+    if (userId != null && userId.trim().isNotEmpty) {
+      request.headers['X-User-ID'] = userId.trim();
+    }
+
+    final extension = filename.split('.').last.toLowerCase();
+    final mimeType = (extension == 'png') ? 'image/png' : 'image/jpeg';
 
     request.files.add(
       http.MultipartFile.fromBytes(
         'image',
         imageBytes,
         filename: filename,
+        contentType: MediaType.parse(mimeType),
       ),
     );
 
-    final streamed = await request.send().timeout(ApiConfig.timeout);
-    final response = await http.Response.fromStream(streamed);
+    var streamed = await _http.send(request).timeout(ApiConfig.timeout);
+    var response = await http.Response.fromStream(streamed);
 
     _assertStatus(response, 200);
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final dto = ScanResponseDto.fromJson(body);
+    var body = jsonDecode(response.body) as Map<String, dynamic>;
+    print("RAW BACKEND API RESPONSE BODY:\n${const JsonEncoder.withIndent('  ').convert(body)}");
+    var dto = ScanResponseDto.fromJson(body);
+
+    // If Gemini rate-limited or transient failure, retry once after 1.5 seconds delay
+    if (!dto.success || dto.data == null) {
+      print("First parse attempt returned success=false (${dto.error}). Retrying in 1.5s...");
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      final retryRequest = http.MultipartRequest('POST', uri);
+      if (cleanDeviceId.isNotEmpty) retryRequest.headers['X-Device-ID'] = cleanDeviceId;
+      if (cleanDeviceToken.isNotEmpty) retryRequest.headers['X-Device-Token'] = cleanDeviceToken;
+      if (userId != null && userId.trim().isNotEmpty) retryRequest.headers['X-User-ID'] = userId.trim();
+
+      retryRequest.files.add(
+        http.MultipartFile.fromBytes(
+          'image',
+          imageBytes,
+          filename: filename,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+
+      streamed = await _http.send(retryRequest).timeout(ApiConfig.timeout);
+      response = await http.Response.fromStream(streamed);
+      _assertStatus(response, 200);
+
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+      dto = ScanResponseDto.fromJson(body);
+    }
 
     if (!dto.success || dto.data == null) {
-      return null;
+      throw ApiException(dto.error ?? 'Backend vision model could not parse image.', statusCode: response.statusCode);
     }
     return dto.data;
   }

@@ -22,6 +22,12 @@ class ApiConfig {
   /// Gemini API Key read dynamically from .env
   static String get geminiApiKey => dotenv.get('GEMINI_API_KEY', fallback: '');
 
+  /// Stable device ID read from .env (set once on first boot in production).
+  static String get deviceId => dotenv.get('DEVICE_ID', fallback: 'flutter-client-uuid');
+
+  /// Device auth token read from .env (stored in secure storage in production).
+  static String get deviceToken => dotenv.get('DEVICE_TOKEN', fallback: '');
+
   /// Default request timeout — Gemini vision can take ~3s.
   static const Duration timeout = Duration(seconds: 30);
 

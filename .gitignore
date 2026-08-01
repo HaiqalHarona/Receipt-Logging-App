@@ -52,5 +52,5 @@ app.*.map.json
 .env
 .codeagentswarm/
 AGENTS.md
-test/
 artifacts/
+test/

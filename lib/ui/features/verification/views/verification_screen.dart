@@ -1,12 +1,16 @@
 // File: lib/ui/features/verification/views/verification_screen.dart
+
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../../domain/models/receipt.dart';
+import '../view_models/verification_view_model.dart';
+import 'widgets/verification_card_widget.dart';
 
 /// Data Verification & Review Screen
 /// Supports single receipt review or multi-receipt bulk review carousel
-/// before committing extracted transactions to the Isar local DB & backend.
+/// before committing extracted transactions to the local Isar database.
 class VerificationScreen extends StatefulWidget {
   const VerificationScreen({super.key});
 
@@ -15,73 +19,70 @@ class VerificationScreen extends StatefulWidget {
 }
 
 class _VerificationScreenState extends State<VerificationScreen> {
-  int _currentIndex = 0;
-  List<Map<String, dynamic>> _receipts = [];
+  final VerificationViewModel _viewModel = VerificationViewModel();
   bool _isInitialized = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_isInitialized) {
-      final extra = GoRouterState.of(context).extra;
-      if (extra is List<Map<String, dynamic>> && extra.isNotEmpty) {
-        _receipts = List.from(extra);
-      } else if (extra is Map<String, dynamic>) {
-        _receipts = [extra];
-      } else {
-        _receipts = [
-          {
-            "merchant": "Whole Foods Market",
-            "date": "Aug 01, 2026",
-            "amount": "\$42.80",
-            "category": "Groceries 🛒",
-          },
-        ];
+      Object? extra;
+      try {
+        extra = GoRouterState.of(context).extra;
+      } catch (_) {
+        extra = null;
       }
+      List<Receipt> initialList = [];
+
+      if (extra is List<Receipt> && extra.isNotEmpty) {
+        initialList = extra;
+      } else if (extra is List && extra.isNotEmpty) {
+        // Backwards compatibility with Map payloads
+        initialList = extra.map((item) {
+          if (item is Receipt) return item;
+          if (item is Map) return Receipt.fromJson(item.cast<String, dynamic>());
+          return null;
+        }).whereType<Receipt>().toList();
+      } else if (extra is Receipt) {
+        initialList = [extra];
+      } else {
+        initialList = [];
+      }
+
+      _viewModel.setReceipts(initialList);
       _isInitialized = true;
     }
   }
 
-  void _nextReceipt() {
-    if (_currentIndex < _receipts.length - 1) {
-      setState(() {
-        _currentIndex++;
-      });
-    }
-  }
-
-  void _previousReceipt() {
-    if (_currentIndex > 0) {
-      setState(() {
-        _currentIndex--;
-      });
-    }
-  }
-
-  void _saveAllReceipts() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "Successfully saved ${_receipts.length} receipt${_receipts.length > 1 ? 's' : ''} to ledger!",
+  void _saveAll() {
+    if (_viewModel.receipts.isEmpty) return;
+    _viewModel.saveAllReceipts(() {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Successfully saved ${_viewModel.receipts.length} receipt${_viewModel.receipts.length > 1 ? 's' : ''} to ledger!",
+          ),
+          backgroundColor: AppThemeController.instance.accentColor,
         ),
-        backgroundColor: AppThemeController.instance.accentColor,
-      ),
-    );
-    context.go('/dashboard');
+      );
+      context.go('/dashboard');
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: AppThemeController.instance,
+      animation: Listenable.merge([AppThemeController.instance, _viewModel]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;
 
-        final currentReceipt = _receipts[_currentIndex];
-        final totalCount = _receipts.length;
+        final currentReceipt = _viewModel.currentReceipt;
+        final totalCount = _viewModel.receipts.length;
+        final currentIndex = _viewModel.currentIndex;
 
         return NeumorphicBackground(
           child: Scaffold(
@@ -98,7 +99,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
               ),
               title: Text(
                 totalCount > 1
-                    ? "Review Receipt (${_currentIndex + 1} of $totalCount)"
+                    ? "Review Receipt (${currentIndex + 1} of $totalCount)"
                     : "Review Receipt",
                 style: TextStyle(
                   fontSize: 18,
@@ -110,67 +111,83 @@ class _VerificationScreenState extends State<VerificationScreen> {
             ),
             body: SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (totalCount > 1)
                       _VerificationCarouselHeader(
-                        currentIndex: _currentIndex,
+                        currentIndex: currentIndex,
                         totalCount: totalCount,
                         accent: accent,
                         textPrimary: textPrimary,
                         textSecondary: textSecondary,
-                        onPrevious: _previousReceipt,
-                        onNext: _nextReceipt,
+                        onPrevious: _viewModel.previousReceipt,
+                        onNext: _viewModel.nextReceipt,
                       ),
-                    _VerificationInputField(
-                      label: "MERCHANT NAME",
-                      initialValue: currentReceipt["merchant"] ?? "Unknown Merchant",
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                    ),
-                    const SizedBox(height: 18),
-                    _VerificationInputField(
-                      label: "DATE",
-                      initialValue: currentReceipt["date"] ?? "Aug 01, 2026",
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                    ),
-                    const SizedBox(height: 18),
-                    _VerificationInputField(
-                      label: "TOTAL AMOUNT",
-                      initialValue: currentReceipt["amount"] ?? "\$0.00",
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                    ),
-                    const SizedBox(height: 18),
-                    _VerificationInputField(
-                      label: "CATEGORY",
-                      initialValue: currentReceipt["category"] ?? "General 🧾",
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                    ),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: NeumorphicButtonWidget(
-                        onPressed: _saveAllReceipts,
+
+                    if (totalCount == 0)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 48),
                         child: Center(
                           child: Text(
-                            totalCount > 1
-                                ? "Save All $totalCount Receipts"
-                                : "Save Receipt",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                            "No receipt data received.\nPlease scan a receipt or select an image to verify.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: textSecondary,
                             ),
                           ),
                         ),
+                      )
+                    else ...[
+                      // Editable Receipt Card
+                      VerificationCardWidget(
+                        receipt: currentReceipt!,
+                        onChanged: (updated) {
+                          _viewModel.updateCurrentReceipt(
+                            merchant: updated.merchant,
+                            date: updated.date,
+                            amount: updated.amount,
+                            currency: updated.currency,
+                            category: updated.category,
+                          );
+                        },
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        accent: accent,
                       ),
-                    ),
+                      const SizedBox(height: 32),
+
+                      // Save Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: NeumorphicButtonWidget(
+                          onPressed: _viewModel.isSaving ? null : _saveAll,
+                          child: Center(
+                            child: _viewModel.isSaving
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    totalCount > 1
+                                        ? "Save All $totalCount Receipts"
+                                        : "Save Receipt",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     Center(
                       child: TextButton(
@@ -253,54 +270,6 @@ class _VerificationCarouselHeader extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Extracted Neumorphic Field Display Component
-class _VerificationInputField extends StatelessWidget {
-  final String label;
-  final String initialValue;
-  final Color textPrimary;
-  final Color textSecondary;
-
-  const _VerificationInputField({
-    required this.label,
-    required this.initialValue,
-    required this.textPrimary,
-    required this.textSecondary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: textSecondary,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 6),
-        NeumorphicInputFieldWidget(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: SizedBox(
-            width: double.infinity,
-            child: Text(
-              initialValue,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: textPrimary,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
