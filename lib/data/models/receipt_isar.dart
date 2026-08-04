@@ -1,5 +1,28 @@
-// File: lib/data/models/receipt_isar.dart
+// lib/data/models/receipt_isar.dart
+//
+// Isar collection model for receipts — mirrors the Supabase `receipts` table
+// and the nested `receipt` JSONB object 1-to-1.
+//
+// Column alignment:
+//   receipts.id                     → receiptId  (@Index unique+replace)
+//   receipts.receipt.merchant_name  → merchant   (@Index value)
+//   receipts.receipt.date           → date       (@Index value)
+//   receipts.receipt.total_amount   → totalAmount
+//   receipts.receipt.subtotal       → subtotal   (nullable)
+//   receipts.receipt.tax_amount     → taxAmount  (nullable)
+//   receipts.receipt.currency       → currency
+//   receipts.receipt.category       → category   (@Index value)
+//   receipts.receipt.raw_text       → rawText    (nullable)
+//   receipts.receipt.confidence_score → confidenceScore (nullable)
+//   receipts.receipt.line_items     → lineItems  (@embedded LineItemIsarModel list)
+//   receipts.created_at             → createdAt  (@Index DateTime)
+//   receipts.deleted_at             → deletedAt  (@Index DateTime? — null = active)
+//
+// Legacy flat `items` list is retained for backward-compatibility with
+// any existing local data written before this schema migration.
+
 import 'package:isar/isar.dart';
+import 'line_item_isar.dart';
 import '../../domain/models/receipt.dart';
 
 part 'receipt_isar.g.dart';
@@ -21,7 +44,9 @@ class ReceiptIsarModel {
   @Index(type: IndexType.value)
   late String date;
 
-  late double amount;
+  late double totalAmount;
+  double? subtotal;
+  double? taxAmount;
   late String currency;
 
   /// Secondary value index — enables fast per-category filtering.
@@ -29,7 +54,22 @@ class ReceiptIsarModel {
   late String category;
 
   String? imagePath;
+  String? rawText;
+  double? confidenceScore;
+
+  /// Embedded line-items list — mirrors receipt.line_items JSONB array.
+  List<LineItemIsarModel> lineItems = [];
+
+  /// Legacy flat string items list retained for backward-compatibility.
   List<String> items = [];
+
+  /// Native DateTime index for sorting and date range queries.
+  @Index()
+  DateTime createdAt = DateTime.now();
+
+  /// Soft-delete timestamp — null means the record is active.
+  @Index()
+  DateTime? deletedAt;
 
   ReceiptIsarModel();
 
@@ -38,7 +78,7 @@ class ReceiptIsarModel {
       ..receiptId = receipt.id
       ..merchant = receipt.merchant
       ..date = receipt.date
-      ..amount = receipt.amount
+      ..totalAmount = receipt.amount
       ..currency = receipt.currency
       ..category = receipt.category
       ..imagePath = receipt.imagePath
@@ -50,7 +90,7 @@ class ReceiptIsarModel {
       id: receiptId,
       merchant: merchant,
       date: date,
-      amount: amount,
+      amount: totalAmount,
       currency: currency,
       category: category,
       imagePath: imagePath,
@@ -84,4 +124,8 @@ extension ReceiptIsarQueryFilters
   /// Filter receipts for a specific display-date string (e.g. "Aug 01, 2026").
   QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterFilterCondition>
       byDate(String displayDate) => dateEqualTo(displayDate);
+
+  /// Filter active (non-deleted) receipts only.
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterFilterCondition>
+      activeOnly() => deletedAtIsNull();
 }
