@@ -1,5 +1,6 @@
 // File: lib/ui/features/verification/views/widgets/verification_card_widget.dart
 
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../../domain/models/receipt.dart';
 import '../../../../../services/currency_service.dart';
@@ -31,7 +32,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   late TextEditingController _dateController;
   late TextEditingController _amountController;
   late String _selectedCurrency;
-  late String _selectedCategory;
+  late List<String> _selectedCategories;
 
   final List<String> _categories = [
     'Groceries 🛒',
@@ -51,7 +52,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   @override
   void didUpdateWidget(covariant VerificationCardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.receipt != widget.receipt || oldWidget.receipt.id != widget.receipt.id) {
+    if (oldWidget.receipt.id != widget.receipt.id) {
       _initControllers();
     }
   }
@@ -61,7 +62,12 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
     _dateController = TextEditingController(text: widget.receipt.date);
     _amountController = TextEditingController(text: widget.receipt.amount.toStringAsFixed(2));
     _selectedCurrency = widget.receipt.currency;
-    _selectedCategory = widget.receipt.category;
+    // Parse comma-separated categories from the stored field
+    _selectedCategories = widget.receipt.category
+        .split(', ')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 
   @override
@@ -73,16 +79,58 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   }
 
   void _notifyChange() {
-    final double amt = double.tryParse(_amountController.text) ?? widget.receipt.amount;
+    final String rawAmt = _amountController.text;
+    final double amt = (rawAmt.isEmpty || double.tryParse(rawAmt) == null)
+        ? widget.receipt.amount
+        : double.parse(rawAmt);
     widget.onChanged(
       widget.receipt.copyWith(
         merchant: _merchantController.text.trim(),
         date: _dateController.text.trim(),
         amount: amt,
         currency: _selectedCurrency,
-        category: _selectedCategory,
+        category: _selectedCategories.join(', '),
       ),
     );
+  }
+
+  Future<void> _pickDate() async {
+    DateTime initial;
+    try {
+      // Try to parse existing date text (e.g. "Aug 01, 2026")
+      final parts = _dateController.text.split(' ');
+      final months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      if (parts.length == 3) {
+        final month = months.indexOf(parts[0]) + 1;
+        final day = int.parse(parts[1].replaceAll(',', ''));
+        final year = int.parse(parts[2]);
+        initial = DateTime(year, month, day);
+      } else {
+        initial = DateTime.now();
+      }
+    } catch (_) {
+      initial = DateTime.now();
+    }
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      final formatted = '${months[picked.month - 1]} ${picked.day.toString().padLeft(2, '0')}, ${picked.year}';
+      setState(() {
+        _dateController.text = formatted;
+      });
+      _notifyChange();
+    }
   }
 
   @override
@@ -133,12 +181,14 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                       ),
                       child: TextField(
                         controller: _dateController,
+                        readOnly: true,
+                        onTap: _pickDate,
                         style: TextStyle(color: widget.textPrimary, fontSize: 15),
-                        decoration: const InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                           border: InputBorder.none,
+                          suffixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: widget.textSecondary),
                         ),
-                        onChanged: (_) => _notifyChange(),
                       ),
                     ),
                   ],
@@ -200,6 +250,9 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
             child: TextField(
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+              ],
               style: TextStyle(color: widget.accent, fontSize: 22, fontWeight: FontWeight.bold),
               decoration: const InputDecoration(
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -217,10 +270,16 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
             spacing: 8,
             runSpacing: 8,
             children: _categories.map((cat) {
-              final isSelected = cat == _selectedCategory;
+              final isSelected = _selectedCategories.contains(cat);
               return NeumorphicButton(
                 onPressed: () {
-                  setState(() => _selectedCategory = cat);
+                  setState(() {
+                    if (isSelected) {
+                      _selectedCategories.remove(cat);
+                    } else {
+                      _selectedCategories.add(cat);
+                    }
+                  });
                   _notifyChange();
                 },
                 style: NeumorphicStyle(
