@@ -108,6 +108,30 @@ class ReceiptRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Soft-deletes a receipt by setting [deletedAt] on the local Isar record.
+  ///
+  /// The receipt is hidden from active queries immediately via [notifyListeners],
+  /// but the local Isar record is retained for sync audit purposes.
+  Future<void> softDeleteReceipt(String id) async {
+    if (IsarService.isInitialized) {
+      final isar = IsarService.isar;
+      await isar.writeTxn(() async {
+        final existing = await isar.receiptIsarModels
+            .where()
+            .receiptIdEqualTo(id)
+            .findFirst();
+        if (existing != null) {
+          existing.deletedAt = DateTime.now();
+          await isar.receiptIsarModels.put(existing);
+        }
+      });
+      await _loadFromIsar();
+    } else {
+      _receipts.removeWhere((r) => r.id == id);
+    }
+    notifyListeners();
+  }
+
   /// Deletes a receipt by ID.
   Future<void> deleteReceipt(String id) async {
     if (IsarService.isInitialized) {
