@@ -70,6 +70,7 @@ class OcrService {
     final bytes = await file.readAsBytes();
     final filename = file.uri.pathSegments.last;
 
+    String? backendErrorDetails;
     try {
       final deviceId = ApiConfig.deviceId;
       final deviceToken = ApiConfig.deviceToken;
@@ -87,14 +88,22 @@ class OcrService {
         return _dtoToReceipt(dto, imagePath: imagePath);
       }
     } catch (e) {
+      if (e is ApiException) {
+        backendErrorDetails = e.message;
+      } else {
+        backendErrorDetails = e.toString();
+      }
       debugPrint('⚠️ [OcrService] Backend Vision API error ($e). Attempting on-device MLKit OCR fallback...');
     }
 
     // Fall back to On-Device Google MLKit Text Recognition if backend fails
     final mlKitReceipt = await _parseWithMlKit(imagePath);
     if (mlKitReceipt != null) {
+      final errorPrefix = backendErrorDetails != null && backendErrorDetails.isNotEmpty
+          ? 'Backend Error: $backendErrorDetails. '
+          : 'Backend parse failed. ';
       onFallbackMessage?.call(
-        'Backend parse failed. Used on-device OCR as fallback — results may be less accurate.',
+        '${errorPrefix}Used on-device OCR as fallback — results may be less accurate.',
       );
       return mlKitReceipt;
     }

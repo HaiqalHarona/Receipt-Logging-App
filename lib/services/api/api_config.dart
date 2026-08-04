@@ -1,7 +1,6 @@
 /// API configuration for Receipt Logger backend (FastAPI @ port 8085).
 library;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../device_identity_service.dart';
 
