@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import '../../services/isar_service.dart';
 import '../models/chat_message_isar.dart';
+import '../mappers/chat_message_mapper.dart';
 import '../../domain/models/chat_message.dart';
 import 'conversation_repository.dart';
 
@@ -55,7 +56,7 @@ class ChatMessageRepository extends ChangeNotifier {
 
       // Apply pagination offset & limit in Dart if specified
       final paginated = isarModels.skip(offset).take(limit).toList();
-      final messages = paginated.map(ChatMessage.fromIsar).toList();
+      final messages = paginated.map((m) => m.toDomain()).toList();
 
       // Update in-memory cache when loading the same conversation
       if (_activeConversationId == conversationId || offset == 0) {
@@ -101,7 +102,7 @@ class ChatMessageRepository extends ChangeNotifier {
       });
     }
 
-    final message = ChatMessage.fromIsar(model);
+    final message = model.toDomain();
 
     // Set active conversation ID if null or matches
     if (_activeConversationId == null || _activeConversationId == conversationId) {

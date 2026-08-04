@@ -1,8 +1,8 @@
-// File: lib/domain/models/receipt.dart
+// lib/domain/models/receipt.dart
 
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
-/// Immutable Domain Model representing a parsed or saved receipt.
+@immutable
 class Receipt {
   final String id;
   final String merchant;
@@ -59,21 +59,19 @@ class Receipt {
     };
   }
 
-  static int _idCounter = 0;
-
   factory Receipt.fromJson(Map<String, dynamic> json) {
-    final defaultId = 'rcpt_${DateTime.now().millisecondsSinceEpoch}_${_idCounter++}';
     return Receipt(
-      id: json['id']?.toString() ?? defaultId,
-      merchant: json['merchant']?.toString() ?? 'Unknown Merchant',
-      date: json['date']?.toString() ?? 'Aug 01, 2026',
-      amount: _parseAmount(json['amount']),
-      currency: json['currency']?.toString() ?? 'USD',
-      category: json['category']?.toString() ?? 'General 🧾',
-      imagePath: json['imagePath']?.toString(),
-      items: (json['items'] is List)
-          ? (json['items'] as List).map((e) => e.toString()).toList()
-          : const [],
+      id: json['id'] as String? ?? 'receipt_${DateTime.now().millisecondsSinceEpoch}',
+      merchant: json['merchant'] as String? ?? 'Unknown Merchant',
+      date: json['date'] as String? ?? '',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      currency: json['currency'] as String? ?? 'USD',
+      category: json['category'] as String? ?? 'Other 📦',
+      imagePath: json['imagePath'] as String?,
+      items: (json['items'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 
@@ -87,7 +85,9 @@ class Receipt {
           date == other.date &&
           amount == other.amount &&
           currency == other.currency &&
-          category == other.category;
+          category == other.category &&
+          imagePath == other.imagePath &&
+          listEquals(items, other.items);
 
   @override
   int get hashCode =>
@@ -96,20 +96,12 @@ class Receipt {
       date.hashCode ^
       amount.hashCode ^
       currency.hashCode ^
-      category.hashCode;
+      category.hashCode ^
+      imagePath.hashCode ^
+      Object.hashAll(items);
 
-  static double _parseAmount(dynamic val) {
-    if (val == null) return 0.0;
-    if (val is num) return val.toDouble();
-    if (val is String) {
-      final clean = val.replaceAll(RegExp(r'[^0-9.]'), '');
-      return double.tryParse(clean) ?? 0.0;
-    }
-    return 0.0;
+  @override
+  String toString() {
+    return 'Receipt(id: $id, merchant: $merchant, amount: $amount $currency, date: $date)';
   }
-
-  String toJsonString() => jsonEncode(toJson());
-
-  factory Receipt.fromJsonString(String str) =>
-      Receipt.fromJson(jsonDecode(str) as Map<String, dynamic>);
 }

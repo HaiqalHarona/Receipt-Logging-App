@@ -19,6 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import '../../services/isar_service.dart';
 import '../models/conversation_isar.dart';
+import '../mappers/conversation_mapper.dart';
 import '../../domain/models/conversation.dart';
 
 class ConversationRepository extends ChangeNotifier {
@@ -76,12 +77,12 @@ class ConversationRepository extends ChangeNotifier {
       });
       await _loadFromIsar();
     } else {
-      final conversation = Conversation.fromIsar(model);
+      final conversation = model.toDomain();
       _conversations.insert(0, conversation);
     }
 
     notifyListeners();
-    return Conversation.fromIsar(model);
+    return model.toDomain();
   }
 
   /// Updates the title of a conversation and bumps [updatedAt].
@@ -130,7 +131,7 @@ class ConversationRepository extends ChangeNotifier {
       // Filter active (non-deleted), sort by updatedAt descending in Dart
       final active = all.where((m) => m.deletedAt == null).toList()
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      _conversations = active.map(Conversation.fromIsar).toList();
+      _conversations = active.map((m) => m.toDomain()).toList();
     } catch (e) {
       debugPrint('⚠️ [ConversationRepository] Load error: $e');
       _conversations = [];
@@ -159,7 +160,7 @@ class ConversationRepository extends ChangeNotifier {
       if (index >= 0) {
         final model = _conversations[index].toIsar();
         mutator(model);
-        _conversations[index] = Conversation.fromIsar(model);
+        _conversations[index] = model.toDomain();
       }
     }
     notifyListeners();

@@ -1,11 +1,9 @@
 // lib/domain/models/chat_message.dart
 //
-// Immutable domain model representing a single AI chat message.
-// Used by ViewModels and UI screens — carries no Isar annotations.
+// Pure immutable domain model representing a single AI chat message.
+// Carries zero database or network dependencies.
 
 import 'package:flutter/foundation.dart';
-import '../../data/models/chat_message_isar.dart';
-import '../../services/api/api_models.dart';
 
 @immutable
 class ChatMessage {
@@ -41,49 +39,6 @@ class ChatMessage {
     );
   }
 
-  // ── ISAR CONVERTERS ──────────────────────────────────────────────────────────
-
-  factory ChatMessage.fromIsar(ChatMessageIsarModel model) {
-    return ChatMessage(
-      id: model.messageId,
-      conversationId: model.conversationId,
-      sender: model.sender,
-      content: model.content,
-      createdAt: model.createdAt,
-    );
-  }
-
-  ChatMessageIsarModel toIsar() {
-    return ChatMessageIsarModel()
-      ..messageId = id
-      ..conversationId = conversationId
-      ..sender = sender
-      ..content = content
-      ..createdAt = createdAt;
-  }
-
-  // ── DTO CONVERTERS ───────────────────────────────────────────────────────────
-
-  factory ChatMessage.fromDto(ChatMessageDto dto) {
-    return ChatMessage(
-      id: dto.id,
-      conversationId: dto.conversationId,
-      sender: dto.sender,
-      content: dto.content,
-      createdAt: DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now(),
-    );
-  }
-
-  ChatMessageDto toDto() {
-    return ChatMessageDto(
-      id: id,
-      conversationId: conversationId,
-      sender: sender,
-      content: content,
-      createdAt: createdAt.toUtc().toIso8601String(),
-    );
-  }
-
   // ── EQUALITY ─────────────────────────────────────────────────────────────────
 
   @override
@@ -92,10 +47,18 @@ class ChatMessage {
       other is ChatMessage &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          conversationId == other.conversationId;
+          conversationId == other.conversationId &&
+          sender == other.sender &&
+          content == other.content &&
+          createdAt == other.createdAt;
 
   @override
-  int get hashCode => id.hashCode ^ conversationId.hashCode;
+  int get hashCode =>
+      id.hashCode ^
+      conversationId.hashCode ^
+      sender.hashCode ^
+      content.hashCode ^
+      createdAt.hashCode;
 
   @override
   String toString() =>

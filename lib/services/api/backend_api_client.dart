@@ -67,6 +67,19 @@ class BackendApiClient {
 
   final http.Client _http;
 
+  // ── HEALTH (DEV ONLY) ─────────────────────────────────────────────────────────
+
+  /// Calls GET /api/v1/health/ to verify backend service connectivity.
+  /// Does not require identity headers.
+  Future<Map<String, dynamic>> getHealth() async {
+    final response = await _http.get(
+      Uri.parse('${ApiConfig.baseUrl}/health/'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    _assertStatus(response, 200);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   // ── DEVICE MANAGEMENT ───────────────────────────────────────────────────────
 
   /// Registers (or refreshes) a hardware device with the backend.
