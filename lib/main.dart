@@ -9,19 +9,21 @@ import 'data/models/conversation_isar.dart';
 import 'data/models/chat_message_isar.dart';
 import 'data/repositories/receipt_repository.dart';
 
+import 'services/device_identity_service.dart';
+import 'services/api/backend_api_client.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
-  // Initialize database & repository asynchronously without blocking first-frame render
-  Future.microtask(() async {
-    await IsarService.init(schemas: [
-      ReceiptIsarModelSchema,
-      ConversationIsarModelSchema,
-      ChatMessageIsarModelSchema,
-    ]);
-    await ReceiptRepository.instance.init();
-  });
+  // Initialize database, repositories, and persistent device identity
+  await IsarService.init(schemas: [
+    ReceiptIsarModelSchema,
+    ConversationIsarModelSchema,
+    ChatMessageIsarModelSchema,
+  ]);
+  await ReceiptRepository.instance.init();
+  await DeviceIdentityService.instance.init(BackendApiClient.instance);
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     bool isDebug = false;

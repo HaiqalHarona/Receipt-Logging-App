@@ -62,6 +62,8 @@ class RateLimitException extends ApiException {
 }
 
 class BackendApiClient {
+  static final BackendApiClient instance = BackendApiClient();
+
   BackendApiClient({http.Client? httpClient})
       : _http = httpClient ?? http.Client();
 

@@ -1,6 +1,7 @@
 // File: lib/services/ocr_service.dart
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../domain/models/receipt.dart';
 import 'api/api_config.dart';
@@ -70,18 +71,23 @@ class OcrService {
     final filename = file.uri.pathSegments.last;
 
     try {
+      final deviceId = ApiConfig.deviceId;
+      final deviceToken = ApiConfig.deviceToken;
+      debugPrint('📷 [OcrService] Sending vision parse request to ${ApiConfig.baseUrl}/scan/parse (device_id: $deviceId)');
+
       final dto = await _api.parseReceiptImage(
         imageBytes: bytes,
         filename: filename,
-        deviceId: ApiConfig.deviceId,
-        deviceToken: ApiConfig.deviceToken,
+        deviceId: deviceId,
+        deviceToken: deviceToken,
       );
 
       if (dto != null) {
+        debugPrint('✅ [OcrService] Backend Vision API parsed receipt successfully');
         return _dtoToReceipt(dto, imagePath: imagePath);
       }
     } catch (e) {
-      print("[OcrService] Backend Vision API error ($e). Attempting on-device MLKit OCR fallback...");
+      debugPrint('⚠️ [OcrService] Backend Vision API error ($e). Attempting on-device MLKit OCR fallback...');
     }
 
     // Fall back to On-Device Google MLKit Text Recognition if backend fails
@@ -150,7 +156,7 @@ class OcrService {
         items: lines.take(8).toList(),
       );
     } catch (e) {
-      print("[OcrService] MLKit fallback error: $e");
+      debugPrint("[OcrService] MLKit fallback error: $e");
       return null;
     }
   }
