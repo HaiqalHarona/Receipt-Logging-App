@@ -1,16 +1,16 @@
 # Receipt Logger — Project Structure & Architecture
 
 ## Overview
-The **Receipt Logger** codebase follows Flutter architecture best practices, leveraging a **Feature-First / Layered Architecture** with **Riverpod 2.x** for state management, **Isar 3.x** for offline-first local storage, **flutter_neumorphic_plus** for the design system, **http / dio** for Vision AI backend integration, and **GoRouter** for declarative navigation.
+The **Receipt Logger** codebase follows Flutter architecture best practices, leveraging a **Feature-First / Layered Architecture** with **Riverpod 2.x** for state management, **Isar 3.x** for offline-first local storage, **flutter_neumorphic_plus** for the design system, **http** for Vision AI backend integration, and **GoRouter** for declarative navigation.
 
-For the full 9-screen scope breakdown, see [PROJECT_SCOPE.md](file:///C:/mobile-development/receipt_logging_app/PROJECT_SCOPE.md).
+For the full 9-screen scope breakdown and 20-endpoint backend matrix, see [PROJECT_SCOPE.md](file:///C:/mobile-development/receipt_logging_app/PROJECT_SCOPE.md).
 
 ---
 
 ## Complete Directory Breakdown
 
 ```
-reciept_logging/
+receipt_logging_app/
 ├── .agents/                    # Custom agentic skills & engineering standards
 │   └── skills/                 # Specialized Flutter/Dart skills & guidelines
 ├── android/                    # Android native platform code & permissions config
@@ -20,7 +20,13 @@ reciept_logging/
 │   │   ├── models/             # Isar collection data schemas (receipt.dart, receipt_item.dart)
 │   │   └── repositories/       # Data access repositories (receipt_repository.dart)
 │   ├── services/               # External network & background services
-│   │   ├── receipt_api_service.dart # Vision AI Backend REST API client
+│   │   ├── api/                # FastAPI Backend REST Client Package
+│   │   │   ├── api_config.dart # Base URL, device headers & timeout configuration
+│   │   │   ├── api_models.dart # DTO schemas (Receipt, LineItem, User, Device, Chat DTOs)
+│   │   │   └── backend_api_client.dart # BackendApiClient & RateLimitException
+│   │   ├── currency_service.dart # Currency formatting & symbol helpers
+│   │   ├── isar_service.dart   # Isar database initialization & singleton management
+│   │   ├── ocr_service.dart    # Vision OCR scanning orchestration
 │   │   └── sync_service.dart   # Connectivity detection & offline sync queue
 │   ├── ui/                     # UI Presentation layer
 │   │   ├── core/               # Shared cross-cutting UI modules

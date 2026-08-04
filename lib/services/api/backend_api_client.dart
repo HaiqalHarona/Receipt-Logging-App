@@ -2,21 +2,32 @@
 ///
 /// Covers every endpoint the Flutter frontend needs:
 ///
-///   Device Auth:
-///     [registerDevice]  — POST /api/v1/devices/register (unauthenticated bootstrap)
+///   Device Auth & Management:
+///     [registerDevice]      — POST /api/v1/devices/register (unauthenticated bootstrap)
+///     [fetchDeviceProfile]  — GET  /api/v1/devices/me
+///     [linkDevice]          — POST /api/v1/devices/link
+///     [deleteDeviceProfile] — DELETE /api/v1/devices/me
+///
+///   User Auth & Account:
+///     [createUser]          — POST /api/v1/user/create (public registration)
+///     [loginUser]           — POST /api/v1/user/login (public authentication)
+///     [fetchUserProfile]    — GET  /api/v1/user/me
+///     [deleteUserProfile]   — DELETE /api/v1/user/me
 ///
 ///   Receipt Scanning (AI OCR):
-///     [parseReceiptImage] — POST /api/v1/scan/parse (multipart image upload)
+///     [parseReceiptImage]   — POST /api/v1/scan/parse (multipart image upload)
 ///
 ///   Receipt CRUD:
-///     [saveReceipt]     — POST   /api/v1/receipts/
-///     [fetchReceipts]   — GET    /api/v1/receipts/
-///     [deleteReceipt]   — DELETE /api/v1/receipts/{id}
+///     [saveReceipt]         — POST   /api/v1/receipts/create
+///     [fetchReceipts]       — GET    /api/v1/receipts/
+///     [deleteReceipt]       — DELETE /api/v1/receipts/{id}
 ///
 ///   AI Chat:
-///     [createConversation]  — POST /api/v1/chat/create
-///     [sendChatQuery]       — POST /api/v1/chat/query
-///     [fetchChatHistory]    — GET  /api/v1/chat/history
+///     [createConversation]  — POST   /api/v1/chat/create
+///     [fetchConversations]  — GET    /api/v1/chat/list
+///     [sendChatQuery]       — POST   /api/v1/chat/query
+///     [fetchChatHistory]    — GET    /api/v1/chat/history
+///     [deleteConversation]  — DELETE /api/v1/chat/{id}
 library;
 
 import 'dart:convert';
@@ -35,22 +46,33 @@ class ApiException implements Exception {
   String toString() => 'ApiException(${statusCode ?? '?'}) : $message';
 }
 
+/// Specialized exception thrown when the backend returns HTTP 429 Too Many Requests.
+class RateLimitException extends ApiException {
+  const RateLimitException(
+    super.message, {
+    required this.retryAfterSeconds,
+    super.statusCode,
+  });
+
+  final int retryAfterSeconds;
+
+  @override
+  String toString() =>
+      'RateLimitException($statusCode) : $message (Retry after ${retryAfterSeconds}s)';
+}
+
 class BackendApiClient {
   BackendApiClient({http.Client? httpClient})
       : _http = httpClient ?? http.Client();
 
   final http.Client _http;
 
-  // ── DEVICE AUTH ─────────────────────────────────────────────────────────────
+  // ── DEVICE MANAGEMENT ───────────────────────────────────────────────────────
 
   /// Registers (or refreshes) a hardware device with the backend.
   ///
   /// This is an **unauthenticated bootstrap** endpoint — call it once on first
   /// app launch before any other request.
-  ///
-  /// [deviceId]    — stable hardware ID (e.g. from `device_info_plus`).
-  /// [deviceToken] — secret token generated on first boot & stored in
-  ///                 `flutter_secure_storage`.
   Future<DeviceRecordDto> registerDevice({
     required String deviceId,
     required String deviceToken,
@@ -73,18 +95,167 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Fetches current hardware device registration details.
+  Future<DeviceRecordDto> fetchDeviceProfile({
+    required String deviceId,
+    required String deviceToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/devices/me');
+    final headers = ApiConfig.buildHeaders(
+      deviceId: deviceId,
+      deviceToken: deviceToken,
+    );
+
+    final response =
+        await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    return DeviceRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Links a device to a user account, or unlinks (pass [userId] = null for guest mode).
+  Future<DeviceRecordDto> linkDevice({
+    required String deviceId,
+    required String deviceToken,
+    String? userId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/devices/link');
+    final headers = ApiConfig.buildHeaders(
+      deviceId: deviceId,
+      deviceToken: deviceToken,
+      userId: userId,
+    );
+
+    final response = await _http
+        .post(
+          uri,
+          headers: headers,
+          body: jsonEncode({
+            'device_id': deviceId,
+            'device_token': deviceToken,
+            'user_id': userId,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    return DeviceRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Soft-deletes calling device registration record.
+  Future<bool> deleteDeviceProfile({
+    required String deviceId,
+    required String deviceToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/devices/me');
+    final headers = ApiConfig.buildHeaders(
+      deviceId: deviceId,
+      deviceToken: deviceToken,
+    );
+
+    final response =
+        await _http.delete(uri, headers: headers).timeout(ApiConfig.timeout);
+
+    return response.statusCode == 200;
+  }
+
+  // ── USER AUTHENTICATION & PROFILE ───────────────────────────────────────────
+
+  /// Registers a new user account. Rejects duplicate usernames (HTTP 409).
+  Future<UserRecordDto> createUser({
+    required String username,
+    required String password,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/create');
+
+    final response = await _http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'username': username,
+            'password': password,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 201);
+    return UserRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Authenticates user credentials and returns sanitized profile.
+  Future<UserLoginResponseDto> loginUser({
+    required String username,
+    required String password,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/login');
+
+    final response = await _http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'username': username,
+            'password': password,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    return UserLoginResponseDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Retrieves current authenticated user profile.
+  Future<UserRecordDto> fetchUserProfile({
+    required String deviceId,
+    required String deviceToken,
+    required String userId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
+    final headers = ApiConfig.buildHeaders(
+      deviceId: deviceId,
+      deviceToken: deviceToken,
+      userId: userId,
+    );
+
+    final response =
+        await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    return UserRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Soft-deletes user profile and unlinks active devices.
+  Future<bool> deleteUserProfile({
+    required String deviceId,
+    required String deviceToken,
+    required String userId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
+    final headers = ApiConfig.buildHeaders(
+      deviceId: deviceId,
+      deviceToken: deviceToken,
+      userId: userId,
+    );
+
+    final response =
+        await _http.delete(uri, headers: headers).timeout(ApiConfig.timeout);
+
+    return response.statusCode == 200;
+  }
+
   // ── RECEIPT SCANNING (AI OCR) ────────────────────────────────────────────────
 
   /// Sends a receipt image to Gemini 3.6 Flash Vision API via the backend.
   ///
-  /// Returns the AI-extracted [ReceiptDto] on success, or `null` when the
-  /// backend returns `success=false` (e.g. unreadable image).
-  ///
-  /// [imageBytes]  — raw image bytes (from `image_picker` or `camera`).
-  /// [filename]    — e.g. `"receipt.jpg"` — used as the multipart filename.
-  /// [deviceId]    — hardware device ID.
-  /// [deviceToken] — hardware device auth token.
-  /// [userId]      — optional; only pass when the user is signed in.
+  /// Returns the AI-extracted [ReceiptDto] on success.
+  /// Skips retries if the backend explicitly rejects the document for low confidence
+  /// (<0.8 threshold for non-receipts).
   Future<ReceiptDto?> parseReceiptImage({
     required List<int> imageBytes,
     required String filename,
@@ -93,7 +264,6 @@ class BackendApiClient {
     String? userId,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/scan/parse');
-
     final request = http.MultipartRequest('POST', uri);
 
     final cleanDeviceId = deviceId.trim();
@@ -105,7 +275,6 @@ class BackendApiClient {
     if (cleanDeviceToken.isNotEmpty) {
       request.headers['X-Device-Token'] = cleanDeviceToken;
     }
-
     if (userId != null && userId.trim().isNotEmpty) {
       request.headers['X-User-ID'] = userId.trim();
     }
@@ -128,38 +297,53 @@ class BackendApiClient {
     _assertStatus(response, 200);
 
     var body = jsonDecode(response.body) as Map<String, dynamic>;
-    print("RAW BACKEND API RESPONSE BODY:\n${const JsonEncoder.withIndent('  ').convert(body)}");
     var dto = ScanResponseDto.fromJson(body);
 
-    // If Gemini rate-limited or transient failure, retry once after 1.5 seconds delay
+    // If Gemini rate-limited or transient error (and NOT an explicit invalid document error), retry once
     if (!dto.success || dto.data == null) {
-      print("First parse attempt returned success=false (${dto.error}). Retrying in 1.5s...");
-      await Future.delayed(const Duration(milliseconds: 1500));
+      final errorMsg = dto.error ?? '';
+      final isInvalidDocumentType = errorMsg.contains('Invalid document type') ||
+          errorMsg.contains('confidence score');
 
-      final retryRequest = http.MultipartRequest('POST', uri);
-      if (cleanDeviceId.isNotEmpty) retryRequest.headers['X-Device-ID'] = cleanDeviceId;
-      if (cleanDeviceToken.isNotEmpty) retryRequest.headers['X-Device-Token'] = cleanDeviceToken;
-      if (userId != null && userId.trim().isNotEmpty) retryRequest.headers['X-User-ID'] = userId.trim();
+      // Do not retry if the backend explicitly rejected a non-receipt image
+      if (!isInvalidDocumentType) {
+        print("Transient parse error: '$errorMsg'. Retrying once in 1.5s...");
+        await Future.delayed(const Duration(milliseconds: 1500));
 
-      retryRequest.files.add(
-        http.MultipartFile.fromBytes(
-          'image',
-          imageBytes,
-          filename: filename,
-          contentType: MediaType.parse(mimeType),
-        ),
-      );
+        final retryRequest = http.MultipartRequest('POST', uri);
+        if (cleanDeviceId.isNotEmpty) {
+          retryRequest.headers['X-Device-ID'] = cleanDeviceId;
+        }
+        if (cleanDeviceToken.isNotEmpty) {
+          retryRequest.headers['X-Device-Token'] = cleanDeviceToken;
+        }
+        if (userId != null && userId.trim().isNotEmpty) {
+          retryRequest.headers['X-User-ID'] = userId.trim();
+        }
 
-      streamed = await _http.send(retryRequest).timeout(ApiConfig.timeout);
-      response = await http.Response.fromStream(streamed);
-      _assertStatus(response, 200);
+        retryRequest.files.add(
+          http.MultipartFile.fromBytes(
+            'image',
+            imageBytes,
+            filename: filename,
+            contentType: MediaType.parse(mimeType),
+          ),
+        );
 
-      body = jsonDecode(response.body) as Map<String, dynamic>;
-      dto = ScanResponseDto.fromJson(body);
+        streamed = await _http.send(retryRequest).timeout(ApiConfig.timeout);
+        response = await http.Response.fromStream(streamed);
+        _assertStatus(response, 200);
+
+        body = jsonDecode(response.body) as Map<String, dynamic>;
+        dto = ScanResponseDto.fromJson(body);
+      }
     }
 
     if (!dto.success || dto.data == null) {
-      throw ApiException(dto.error ?? 'Backend vision model could not parse image.', statusCode: response.statusCode);
+      throw ApiException(
+        dto.error ?? 'Backend vision model could not parse image.',
+        statusCode: response.statusCode,
+      );
     }
     return dto.data;
   }
@@ -167,15 +351,13 @@ class BackendApiClient {
   // ── RECEIPT CRUD ─────────────────────────────────────────────────────────────
 
   /// Persists a parsed [ReceiptDto] in the backend Supabase database.
-  ///
-  /// Returns a [ReceiptRecordDto] with the generated UUID and timestamp.
   Future<ReceiptRecordDto> saveReceipt({
     required ReceiptDto receipt,
     required String deviceId,
     required String deviceToken,
     String? userId,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/create');
     final headers = ApiConfig.buildHeaders(
       deviceId: deviceId,
       deviceToken: deviceToken,
@@ -240,9 +422,7 @@ class BackendApiClient {
 
   // ── AI CHAT ──────────────────────────────────────────────────────────────────
 
-  /// Creates a new AI conversation.
-  ///
-  /// Backend enforces a max of 10 active conversations per identity.
+  /// Creates a new AI conversation (max 10 limit per identity).
   Future<ConversationDto> createConversation({
     required String deviceId,
     required String deviceToken,
@@ -269,13 +449,34 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Lists all conversations owned by the caller's session identity, newest first.
+  Future<List<ConversationDto>> fetchConversations({
+    required String deviceId,
+    required String deviceToken,
+    String? userId,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/chat/list?limit=$limit&offset=$offset',
+    );
+    final headers = ApiConfig.buildHeaders(
+      deviceId: deviceId,
+      deviceToken: deviceToken,
+      userId: userId,
+    );
+
+    final response =
+        await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => ConversationDto.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Sends a user message to Gemini 3.6 Flash via the backend.
-  ///
-  /// [conversationId] — UUID of the conversation created by [createConversation].
-  /// [message]        — user's text message (1–2000 chars).
-  ///
-  /// Returns a [ChatQueryResponseDto] with both the persisted user message
-  /// and the AI assistant's response message.
   Future<ChatQueryResponseDto> sendChatQuery({
     required String conversationId,
     required String message,
@@ -307,9 +508,6 @@ class BackendApiClient {
   }
 
   /// Fetches paginated message history for a conversation.
-  ///
-  /// [limit]  — 1–50 messages per page (default 20).
-  /// [offset] — pagination offset.
   Future<List<ChatMessageDto>> fetchChatHistory({
     required String conversationId,
     required String deviceId,
@@ -332,17 +530,51 @@ class BackendApiClient {
         await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
 
     _assertStatus(response, 200);
-    final body =
-        jsonDecode(response.body) as Map<String, dynamic>;
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
     final messages = (body['messages'] as List<dynamic>)
         .map((e) => ChatMessageDto.fromJson(e as Map<String, dynamic>))
         .toList();
     return messages;
   }
 
+  /// Soft-deletes a conversation by UUID. Returns `true` on success.
+  Future<bool> deleteConversation({
+    required String conversationId,
+    required String deviceId,
+    required String deviceToken,
+    String? userId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/chat/$conversationId');
+    final headers = ApiConfig.buildHeaders(
+      deviceId: deviceId,
+      deviceToken: deviceToken,
+      userId: userId,
+    );
+
+    final response =
+        await _http.delete(uri, headers: headers).timeout(ApiConfig.timeout);
+
+    return response.statusCode == 200;
+  }
+
   // ── INTERNAL ──────────────────────────────────────────────────────────────────
 
   void _assertStatus(http.Response response, int expected) {
+    if (response.statusCode == 429) {
+      final retryHeader = response.headers['retry-after'];
+      final retryAfter = int.tryParse(retryHeader ?? '') ?? 60;
+      String detail = 'Rate limit exceeded. Please wait.';
+      try {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        detail = decoded['detail']?.toString() ?? detail;
+      } catch (_) {}
+      throw RateLimitException(
+        detail,
+        retryAfterSeconds: retryAfter,
+        statusCode: 429,
+      );
+    }
+
     if (response.statusCode != expected) {
       String detail = response.body;
       try {

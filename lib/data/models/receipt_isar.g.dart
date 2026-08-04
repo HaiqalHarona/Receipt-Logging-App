@@ -15,7 +15,7 @@ extension GetReceiptIsarModelCollection on Isar {
 
 const ReceiptIsarModelSchema = CollectionSchema(
   name: r'ReceiptIsarModel',
-  id: -1045533101924125192,
+  id: -1045533101924125184,
   properties: {
     r'amount': PropertySchema(
       id: 0,
@@ -65,7 +65,7 @@ const ReceiptIsarModelSchema = CollectionSchema(
   idName: r'id',
   indexes: {
     r'receiptId': IndexSchema(
-      id: 5666094434830883054,
+      id: 5666094434830882816,
       name: r'receiptId',
       unique: true,
       replace: true,
@@ -78,7 +78,7 @@ const ReceiptIsarModelSchema = CollectionSchema(
       ],
     ),
     r'merchant': IndexSchema(
-      id: 6264094425997380025,
+      id: 6264094425997379584,
       name: r'merchant',
       unique: false,
       replace: false,
@@ -91,7 +91,7 @@ const ReceiptIsarModelSchema = CollectionSchema(
       ],
     ),
     r'date': IndexSchema(
-      id: -7552997827385218417,
+      id: -7552997827385218048,
       name: r'date',
       unique: false,
       replace: false,
@@ -104,7 +104,7 @@ const ReceiptIsarModelSchema = CollectionSchema(
       ],
     ),
     r'category': IndexSchema(
-      id: -7560358558326323820,
+      id: -7560358558326324224,
       name: r'category',
       unique: false,
       replace: false,
