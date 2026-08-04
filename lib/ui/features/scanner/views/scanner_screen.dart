@@ -189,7 +189,27 @@ class _ScannerScreenState extends State<ScannerScreen>
         setState(() {
           _processingStep = i + 1;
         });
-        final results = await OcrService.instance.processImages([_queuedImages[i].path]);
+        final results = await OcrService.instance.processImages(
+          [_queuedImages[i].path],
+          onFallbackMessage: (msg) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(msg)),
+                    ],
+                  ),
+                  backgroundColor: Colors.orange.shade700,
+                  duration: const Duration(seconds: 5),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        );
         if (results.isNotEmpty) {
           parsedReceipts.add(results.first);
         }

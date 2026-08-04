@@ -20,20 +20,47 @@ class OcrService {
   final BackendApiClient _api = BackendApiClient();
 
   /// Processes a list of image files and returns parsed [Receipt] domain models.
-  /// Throws an exception on API or network failure (no fallback dummy data).
-  Future<List<Receipt>> processImages(List<String> imagePaths) async {
+  /// [onFallbackMessage] is triggered if the backend Vision API fails and the
+  /// app falls back to on-device MLKit OCR.
+  Future<List<Receipt>> processImages(
+    List<String> imagePaths, {
+    void Function(String)? onFallbackMessage,
+  }) async {
     final List<Receipt> results = [];
     for (int i = 0; i < imagePaths.length; i++) {
       if (i > 0) {
         // Pause 1.5 seconds between batch images to respect Gemini API rate limits
         await Future.delayed(const Duration(milliseconds: 1500));
       }
-      results.add(await _processSingleImage(imagePaths[i], index: i));
+      results.add(await _processSingleImage(
+        imagePaths[i],
+        index: i,
+        onFallbackMessage: onFallbackMessage,
+      ));
     }
     return results;
   }
 
-  Future<Receipt> _processSingleImage(String imagePath, {int index = 0}) async {
+  Future<Receipt> _processSingleImage(
+    String imagePath, {
+    int index = 0,
+    void Function(String)? onFallbackMessage,
+  }) async {
+    // Manual entry: empty path means the user wants to enter details manually.
+    // Return a blank receipt immediately without calling any APIs.
+    if (imagePath.isEmpty) {
+      return Receipt(
+        id: 'manual-${DateTime.now().millisecondsSinceEpoch}',
+        merchant: '',
+        date: '',
+        amount: 0.0,
+        currency: 'USD',
+        category: 'General 🧾',
+        imagePath: null,
+        items: [],
+      );
+    }
+
     final file = File(imagePath);
     if (!file.existsSync()) {
       throw Exception('Selected image file does not exist at path: $imagePath');
@@ -60,6 +87,9 @@ class OcrService {
     // Fall back to On-Device Google MLKit Text Recognition if backend fails
     final mlKitReceipt = await _parseWithMlKit(imagePath);
     if (mlKitReceipt != null) {
+      onFallbackMessage?.call(
+        'Backend parse failed. Used on-device OCR as fallback — results may be less accurate.',
+      );
       return mlKitReceipt;
     }
 
