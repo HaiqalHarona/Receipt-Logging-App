@@ -36,6 +36,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   late String _selectedCurrency;
   late List<String> _selectedCategories;
   late List<LineItem> _lineItems;
+  bool _isAutoCalculate = true;
 
   final List<String> _categories = [
     'Groceries 🛒',
@@ -72,6 +73,16 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
         .where((s) => s.isNotEmpty)
         .toList();
     _lineItems = List.from(widget.receipt.lineItems);
+    _isAutoCalculate = _lineItems.isNotEmpty;
+    if (_isAutoCalculate) {
+      _recalculateTotalFromLineItems();
+    }
+  }
+
+  void _recalculateTotalFromLineItems() {
+    if (!_isAutoCalculate) return;
+    final double total = _lineItems.fold(0.0, (sum, item) => sum + item.lineTotal);
+    _amountController.text = total.toStringAsFixed(2);
   }
 
   @override
@@ -254,6 +265,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
             ),
             child: TextField(
               controller: _amountController,
+              readOnly: _isAutoCalculate,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
@@ -266,45 +278,102 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
               onChanged: (_) => _notifyChange(),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Category Selector
-          _buildLabel("Category"),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _categories.map((cat) {
-              final isSelected = _selectedCategories.contains(cat);
-              return NeumorphicButton(
-                onPressed: () {
+
+          // Auto-calculate Total Amount Switch Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    _isAutoCalculate ? Icons.auto_awesome_rounded : Icons.edit_note_rounded,
+                    size: 16,
+                    color: _isAutoCalculate ? widget.accent : widget.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Auto-calculate total',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _isAutoCalculate ? widget.accent : widget.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              NeumorphicSwitch(
+                value: _isAutoCalculate,
+                style: NeumorphicSwitchStyle(
+                  activeTrackColor: widget.accent.withValues(alpha: 0.3),
+                  activeThumbColor: widget.accent,
+                  inactiveThumbColor: widget.textSecondary.withValues(alpha: 0.5),
+                ),
+                onChanged: (val) {
                   setState(() {
-                    if (isSelected) {
-                      _selectedCategories.remove(cat);
-                    } else {
-                      _selectedCategories.add(cat);
+                    _isAutoCalculate = val;
+                    if (_isAutoCalculate) {
+                      _recalculateTotalFromLineItems();
                     }
                   });
                   _notifyChange();
                 },
-                style: NeumorphicStyle(
-                  depth: isSelected ? -2 : 3,
-                  color: isSelected
-                      ? widget.accent.withValues(alpha: 0.2)
-                      : NeumorphicTheme.baseColor(context),
-                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: Text(
-                  cat,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? widget.accent : widget.textPrimary,
-                  ),
-                ),
-              );
-            }).toList(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Indented Horizontal Scrollable Category Track
+          _buildLabel("Category"),
+          const SizedBox(height: 8),
+          Neumorphic(
+            style: NeumorphicStyle(
+              depth: -3,
+              intensity: 0.85,
+              color: NeumorphicTheme.baseColor(context),
+              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _categories.map((cat) {
+                  final isSelected = _selectedCategories.contains(cat);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: NeumorphicButton(
+                      onPressed: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedCategories.remove(cat);
+                          } else {
+                            _selectedCategories.add(cat);
+                          }
+                        });
+                        _notifyChange();
+                      },
+                      style: NeumorphicStyle(
+                        depth: isSelected ? -2 : 3,
+                        intensity: 0.85,
+                        color: isSelected
+                            ? widget.accent.withValues(alpha: 0.2)
+                            : NeumorphicTheme.baseColor(context),
+                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? widget.accent : widget.textPrimary,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
 
           // Line Items table (structured from backend Vision AI or empty)
@@ -316,7 +385,12 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
             textSecondary: widget.textSecondary,
             accent: widget.accent,
             onChanged: (updatedItems) {
-              setState(() => _lineItems = updatedItems);
+              setState(() {
+                _lineItems = updatedItems;
+                if (_isAutoCalculate) {
+                  _recalculateTotalFromLineItems();
+                }
+              });
               _notifyChange();
             },
           ),

@@ -217,15 +217,13 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
   }
 
   Widget _buildRow(LineItem item, int index) {
-    final price = item.totalPrice ?? (item.unitPrice != null && item.quantity != null
-        ? item.unitPrice! * item.quantity!
-        : item.unitPrice);
+    final basePrice = item.effectiveUnitPrice;
     final qtyStr = item.quantity != null
         ? (item.quantity! % 1 == 0
             ? item.quantity!.toInt().toString()
             : item.quantity!.toStringAsFixed(1))
         : '—';
-    final amtStr = price != null ? price.toStringAsFixed(2) : '—';
+    final amtStr = basePrice > 0 ? basePrice.toStringAsFixed(2) : '—';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -255,7 +253,7 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
               maxLines: 2,
             ),
           ),
-          // Amt column
+          // Amt column (Base price for 1 quantity)
           SizedBox(
             width: 76,
             child: Text(
@@ -324,12 +322,9 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
     _qtyController = TextEditingController(
       text: widget.item.quantity?.toString() ?? '',
     );
-    final price = widget.item.totalPrice ??
-        (widget.item.unitPrice != null && widget.item.quantity != null
-            ? widget.item.unitPrice! * widget.item.quantity!
-            : widget.item.unitPrice);
+    final basePrice = widget.item.effectiveUnitPrice;
     _amtController = TextEditingController(
-      text: price != null ? price.toStringAsFixed(2) : '',
+      text: basePrice > 0 ? basePrice.toStringAsFixed(2) : '',
     );
   }
 
@@ -343,12 +338,13 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
 
   void _save() {
     final qty = double.tryParse(_qtyController.text.trim());
-    final amt = double.tryParse(_amtController.text.trim());
+    final unitPrice = double.tryParse(_amtController.text.trim());
+    final totalPrice = (unitPrice != null && qty != null) ? unitPrice * qty : unitPrice;
     final updated = LineItem(
       description: _descController.text.trim(),
       quantity: qty,
-      totalPrice: amt,
-      unitPrice: widget.item.unitPrice,
+      unitPrice: unitPrice,
+      totalPrice: totalPrice,
     );
     widget.onSave(updated);
     Navigator.of(context).pop();

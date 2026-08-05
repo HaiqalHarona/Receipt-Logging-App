@@ -34,12 +34,20 @@ class LineItem {
     );
   }
 
-  /// Returns the best available price for this line item.
-  double get effectivePrice {
-    if (totalPrice != null) return totalPrice!;
-    if (unitPrice != null && quantity != null) return unitPrice! * quantity!;
+  /// Returns the base price for a single quantity.
+  double get effectiveUnitPrice {
     if (unitPrice != null) return unitPrice!;
+    if (totalPrice != null && quantity != null && quantity! > 0) {
+      return totalPrice! / quantity!;
+    }
+    if (totalPrice != null) return totalPrice!;
     return 0.0;
+  }
+
+  /// Returns the total price for this line item (quantity * base price).
+  double get lineTotal {
+    final qty = (quantity != null && quantity! > 0) ? quantity! : 1.0;
+    return effectiveUnitPrice * qty;
   }
 
   @override
