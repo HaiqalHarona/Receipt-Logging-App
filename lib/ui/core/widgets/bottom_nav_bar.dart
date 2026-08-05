@@ -21,19 +21,14 @@ class AppBottomNavBar extends StatelessWidget {
         final inactiveColor = controller.secondaryTextColor;
         final navBg = controller.currentBaseColor;
 
-        final bottomInset = MediaQuery.of(context).padding.bottom;
-        final effectiveBottomMargin = bottomInset > 0 ? bottomInset + 10 : 20.0;
-
-        const double cornerRadius = 28.0;
-        const double notchRadius = 34.0;
-        const double notchMargin = 6.0;
-        const double smoothRadius = 12.0;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final margin5Percent = screenWidth * 0.05;
 
         return Padding(
           padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            bottom: effectiveBottomMargin,
+            left: margin5Percent,
+            right: margin5Percent,
+            bottom: margin5Percent,
             top: 18,
           ),
           child: SizedBox(
@@ -42,88 +37,63 @@ class AppBottomNavBar extends StatelessWidget {
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
-                // Navbar Base Card with Transparent Notch Cutout & Full Glowing Neon Outline
-                CustomPaint(
-                  foregroundPainter: NotchedPillBorderPainter(
-                    accentColor: accent,
-                    cornerRadius: cornerRadius,
-                    notchRadius: notchRadius,
-                    notchMargin: notchMargin,
-                    smoothRadius: smoothRadius,
-                  ),
-                  child: ClipPath(
-                    clipper: const NotchedPillClipper(
-                      cornerRadius: cornerRadius,
-                      notchRadius: notchRadius,
-                      notchMargin: notchMargin,
-                      smoothRadius: smoothRadius,
+                // Floating Rectangular Base Card (5% gap on sides and bottom)
+                Neumorphic(
+                  style: NeumorphicStyle(
+                    depth: 6,
+                    intensity: 0.85,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(16),
                     ),
-                    child: Neumorphic(
-                      style: NeumorphicStyle(
-                        depth: 10,
-                        intensity: 0.9,
-                        boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(cornerRadius),
+                    color: navBg,
+                  ),
+                  child: Container(
+                    height: 70,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _NavItem(
+                          icon: Icons.home_rounded,
+                          label: 'Home',
+                          path: '/dashboard',
+                          isActive: currentPath == '/dashboard',
+                          accent: accent,
+                          inactiveColor: inactiveColor,
                         ),
-                        color: navBg,
-                      ),
-                      child: Container(
-                        height: 70,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            _NavItem(
-                              icon: Icons.home_rounded,
-                              label: 'Home',
-                              path: '/dashboard',
-                              isActive: currentPath == '/dashboard',
-                              accent: accent,
-                              inactiveColor: inactiveColor,
-                              navBg: navBg,
-                              isDark: isDark,
-                            ),
-                            _NavItem(
-                              icon: Icons.receipt_long_rounded,
-                              label: 'History',
-                              path: '/history',
-                              isActive: currentPath == '/history',
-                              accent: accent,
-                              inactiveColor: inactiveColor,
-                              navBg: navBg,
-                              isDark: isDark,
-                            ),
-                            // Middle space for floating camera FAB with smaller cutout
-                            const SizedBox(width: 58),
-                            _NavItem(
-                              icon: Icons.auto_awesome_rounded,
-                              label: 'AI Chat',
-                              path: '/ai-assistant',
-                              isActive: currentPath == '/ai-assistant',
-                              accent: accent,
-                              inactiveColor: inactiveColor,
-                              navBg: navBg,
-                              isDark: isDark,
-                            ),
-                            _NavItem(
-                              icon: Icons.settings_rounded,
-                              label: 'Settings',
-                              path: '/settings',
-                              isActive: currentPath == '/settings',
-                              accent: accent,
-                              inactiveColor: inactiveColor,
-                              navBg: navBg,
-                              isDark: isDark,
-                            ),
-                          ],
+                        _NavItem(
+                          icon: Icons.receipt_long_rounded,
+                          label: 'History',
+                          path: '/history',
+                          isActive: currentPath == '/history',
+                          accent: accent,
+                          inactiveColor: inactiveColor,
                         ),
-                      ),
+                        // Middle space for floating camera FAB
+                        const SizedBox(width: 58),
+                        _NavItem(
+                          icon: Icons.auto_awesome_rounded,
+                          label: 'AI Chat',
+                          path: '/ai-assistant',
+                          isActive: currentPath == '/ai-assistant',
+                          accent: accent,
+                          inactiveColor: inactiveColor,
+                        ),
+                        _NavItem(
+                          icon: Icons.settings_rounded,
+                          label: 'Settings',
+                          path: '/settings',
+                          isActive: currentPath == '/settings',
+                          accent: accent,
+                          inactiveColor: inactiveColor,
+                        ),
+                      ],
                     ),
                   ),
                 ),
 
-                // Separate Floating Action Button in the Middle
+                // Camera Action Button Layered Above App Bar
                 Positioned(
                   top: -18,
                   child: _CenterScanFAB(
@@ -213,8 +183,6 @@ class _NavItem extends StatelessWidget {
   final bool isActive;
   final Color accent;
   final Color inactiveColor;
-  final Color navBg;
-  final bool isDark;
 
   const _NavItem({
     required this.icon,
@@ -223,8 +191,6 @@ class _NavItem extends StatelessWidget {
     required this.isActive,
     required this.accent,
     required this.inactiveColor,
-    required this.navBg,
-    required this.isDark,
   });
 
   @override
@@ -239,34 +205,10 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              child: isActive
-                  ? Neumorphic(
-                      style: NeumorphicStyle(
-                        depth: -4,
-                        intensity: 0.9,
-                        color: navBg,
-                        boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(20),
-                        ),
-                        border: NeumorphicBorder(
-                          color: accent.withValues(alpha: 0.3),
-                          width: 1.0,
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        child: Icon(icon, color: accent, size: 20),
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      child: Icon(icon, color: inactiveColor, size: 20),
-                    ),
+            Icon(
+              icon,
+              color: isActive ? accent : inactiveColor,
+              size: 22,
             ),
             const SizedBox(height: 3),
             Text(
