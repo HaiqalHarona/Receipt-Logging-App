@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
+import '../../../core/utils/category_utils.dart';
 
 enum HistorySortField { none, name, amount, date }
 
@@ -49,9 +50,9 @@ class HistoryViewModel extends ChangeNotifier {
     for (final r in _repository.receipts) {
       if (r.category.isNotEmpty) {
         for (final cat in r.category.split(', ')) {
-          final trimmed = cat.trim();
-          if (trimmed.isNotEmpty) {
-            categories.add(trimmed);
+          final clean = CategoryUtils.sanitize(cat);
+          if (clean.isNotEmpty) {
+            categories.add(clean);
           }
         }
       }

@@ -227,7 +227,7 @@ class ReceiptRepository extends ChangeNotifier {
         date: 'Aug 01, 2026',
         amount: 89.45,
         currency: 'USD',
-        category: 'Groceries 🛒',
+        category: 'Groceries',
         items: [
           'Organic Milk 1 Gal - \$4.99',
           'Avocados Bag 5ct - \$5.49',
@@ -249,7 +249,7 @@ class ReceiptRepository extends ChangeNotifier {
         date: 'Jul 31, 2026',
         amount: 54.20,
         currency: 'USD',
-        category: 'Transport 🚗',
+        category: 'Transport',
         items: [
           'Regular Unleaded Fuel (14.25 Gal) - \$54.20',
         ],
@@ -263,7 +263,7 @@ class ReceiptRepository extends ChangeNotifier {
         date: 'Jul 28, 2026',
         amount: 129.00,
         currency: 'USD',
-        category: 'Electronics 💻',
+        category: 'Electronics',
         items: [
           'Apple Pencil Pro - \$129.00',
         ],
@@ -277,7 +277,7 @@ class ReceiptRepository extends ChangeNotifier {
         date: 'Jul 25, 2026',
         amount: 12.50,
         currency: 'USD',
-        category: 'Dining ☕',
+        category: 'Dining',
         items: [
           'Iced New Orleans Style Coffee - \$6.25',
         ],
@@ -291,7 +291,7 @@ class ReceiptRepository extends ChangeNotifier {
         date: 'Jul 22, 2026',
         amount: 142.80,
         currency: 'USD',
-        category: 'Groceries 🛒',
+        category: 'Groceries',
         items: [
           'Wild Caught Salmon Fillets - \$28.50',
           'Organic Baby Spinach - \$3.99',

@@ -39,12 +39,12 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   bool _isAutoCalculate = true;
 
   final List<String> _categories = [
-    'Groceries 🛒',
-    'Dining 🍔',
-    'Transport 🚗',
-    'Shopping 🛍️',
-    'Electronics 📱',
-    'General 🧾',
+    'Groceries',
+    'Dining',
+    'Transport',
+    'Shopping',
+    'Electronics',
+    'General',
   ];
 
   @override
