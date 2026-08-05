@@ -3,6 +3,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import '../data/mappers/line_item_mapper.dart';
 import '../domain/models/receipt.dart';
 import 'api/api_config.dart';
 import 'api/api_models.dart';
@@ -174,7 +175,10 @@ class OcrService {
   Receipt _dtoToReceipt(ReceiptDto dto, {String? imagePath}) {
     final id = 'res-${DateTime.now().millisecondsSinceEpoch}';
 
-    // Format line items as human-readable strings for the Verification Card.
+    // Build structured domain LineItems from DTO.
+    final lineItems = dto.lineItems.map((li) => li.toDomain()).toList();
+
+    // Also build legacy flat items list for backward-compatibility display.
     final items = dto.lineItems.map((li) {
       final parts = <String>[li.description];
       if (li.totalPrice != null) {
@@ -196,6 +200,7 @@ class OcrService {
       category: _normaliseCategory(dto.category),
       imagePath: imagePath,
       items: items,
+      lineItems: lineItems,
     );
   }
 

@@ -1,6 +1,7 @@
 // lib/domain/models/receipt.dart
 
 import 'package:flutter/foundation.dart';
+import 'line_item.dart';
 
 @immutable
 class Receipt {
@@ -11,7 +12,13 @@ class Receipt {
   final String currency;
   final String category;
   final String? imagePath;
+
+  /// Legacy flat string items retained for backward-compatibility.
   final List<String> items;
+
+  /// Structured line items from the backend Vision AI extraction.
+  /// Preferred over [items] when non-empty.
+  final List<LineItem> lineItems;
 
   const Receipt({
     required this.id,
@@ -22,6 +29,7 @@ class Receipt {
     required this.category,
     this.imagePath,
     this.items = const [],
+    this.lineItems = const [],
   });
 
   Receipt copyWith({
@@ -33,6 +41,7 @@ class Receipt {
     String? category,
     String? imagePath,
     List<String>? items,
+    List<LineItem>? lineItems,
   }) {
     return Receipt(
       id: id ?? this.id,
@@ -43,6 +52,7 @@ class Receipt {
       category: category ?? this.category,
       imagePath: imagePath ?? this.imagePath,
       items: items ?? this.items,
+      lineItems: lineItems ?? this.lineItems,
     );
   }
 
@@ -72,6 +82,7 @@ class Receipt {
               ?.map((e) => e.toString())
               .toList() ??
           const [],
+      lineItems: const [],
     );
   }
 
@@ -87,7 +98,8 @@ class Receipt {
           currency == other.currency &&
           category == other.category &&
           imagePath == other.imagePath &&
-          listEquals(items, other.items);
+          listEquals(items, other.items) &&
+          listEquals(lineItems, other.lineItems);
 
   @override
   int get hashCode =>
@@ -98,10 +110,11 @@ class Receipt {
       currency.hashCode ^
       category.hashCode ^
       imagePath.hashCode ^
-      Object.hashAll(items);
+      Object.hashAll(items) ^
+      Object.hashAll(lineItems);
 
   @override
   String toString() {
-    return 'Receipt(id: $id, merchant: $merchant, amount: $amount $currency, date: $date)';
+    return 'Receipt(id: $id, merchant: $merchant, amount: $amount $currency, date: $date, lineItems: ${lineItems.length})';
   }
 }

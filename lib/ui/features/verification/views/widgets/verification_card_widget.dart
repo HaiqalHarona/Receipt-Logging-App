@@ -2,9 +2,11 @@
 
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../../../../domain/models/line_item.dart';
 import '../../../../../domain/models/receipt.dart';
 import '../../../../../services/currency_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import 'line_items_table_widget.dart';
 
 /// Modular Neumorphic Card Widget allowing inline editing of receipt details.
 class VerificationCardWidget extends StatefulWidget {
@@ -33,6 +35,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   late TextEditingController _amountController;
   late String _selectedCurrency;
   late List<String> _selectedCategories;
+  late List<LineItem> _lineItems;
 
   final List<String> _categories = [
     'Groceries 🛒',
@@ -68,6 +71,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
+    _lineItems = List.from(widget.receipt.lineItems);
   }
 
   @override
@@ -90,6 +94,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
         amount: amt,
         currency: _selectedCurrency,
         category: _selectedCategories.join(', '),
+        lineItems: _lineItems,
       ),
     );
   }
@@ -302,39 +307,19 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
             }).toList(),
           ),
 
-          // Line Items list (if available)
-          if (widget.receipt.items.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            _buildLabel("Extracted Items (${widget.receipt.items.length})"),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: widget.textSecondary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: widget.receipt.items.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle_outline, size: 16, color: widget.accent),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            item,
-                            style: TextStyle(fontSize: 13, color: widget.textPrimary),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
+          // Line Items table (structured from backend Vision AI or empty)
+          const SizedBox(height: 20),
+          LineItemsTableWidget(
+            lineItems: _lineItems,
+            currency: _selectedCurrency,
+            textPrimary: widget.textPrimary,
+            textSecondary: widget.textSecondary,
+            accent: widget.accent,
+            onChanged: (updatedItems) {
+              setState(() => _lineItems = updatedItems);
+              _notifyChange();
+            },
+          ),
         ],
       ),
     );

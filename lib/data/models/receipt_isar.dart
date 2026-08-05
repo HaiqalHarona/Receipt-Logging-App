@@ -24,6 +24,7 @@
 import 'package:isar/isar.dart';
 import 'line_item_isar.dart';
 import '../../domain/models/receipt.dart';
+import '../../data/mappers/line_item_mapper.dart';
 
 part 'receipt_isar.g.dart';
 
@@ -82,7 +83,8 @@ class ReceiptIsarModel {
       ..currency = receipt.currency
       ..category = receipt.category
       ..imagePath = receipt.imagePath
-      ..items = receipt.items;
+      ..items = receipt.items
+      ..lineItems = receipt.lineItems.map((li) => li.toIsar()).toList();
   }
 
   Receipt toDomain() {
@@ -95,6 +97,7 @@ class ReceiptIsarModel {
       category: category,
       imagePath: imagePath,
       items: items,
+      lineItems: lineItems.map((li) => li.toDomain()).toList(),
     );
   }
 }
