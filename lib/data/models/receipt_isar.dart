@@ -88,6 +88,11 @@ class ReceiptIsarModel {
   }
 
   Receipt toDomain() {
+    var domainLineItems = lineItems.map((li) => li.toDomain()).toList();
+    if (domainLineItems.isEmpty && items.isNotEmpty) {
+      domainLineItems = Receipt.parseLegacyItemsToLineItems(items);
+    }
+
     return Receipt(
       id: receiptId,
       merchant: merchant,
@@ -97,7 +102,7 @@ class ReceiptIsarModel {
       category: category,
       imagePath: imagePath,
       items: items,
-      lineItems: lineItems.map((li) => li.toDomain()).toList(),
+      lineItems: domainLineItems,
     );
   }
 }

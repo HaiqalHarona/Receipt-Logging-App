@@ -1,6 +1,7 @@
 // File: lib/ui/features/history/views/history_screen.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/bottom_nav_bar.dart';
 import '../view_models/history_view_model.dart';
@@ -88,7 +89,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           return ReceiptListItemWidget(
                             receipt: receipt,
                             formattedPrice: formattedPrice,
-                            onDelete: () => _viewModel.deleteReceipt(receipt.id),
+                            onTap: () => context.push('/receipt-detail', extra: receipt),
                             textPrimary: textPrimary,
                             textSecondary: textSecondary,
                             accent: accent,

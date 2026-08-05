@@ -31,6 +31,13 @@ class VerificationViewModel extends ChangeNotifier {
     }
   }
 
+  /// Updates the currently selected receipt in the review carousel with a new domain model.
+  void updateReceipt(Receipt updated) {
+    if (_receipts.isEmpty) return;
+    _receipts[_currentIndex] = updated;
+    notifyListeners();
+  }
+
   /// Updates fields of the currently selected receipt in the review carousel.
   void updateCurrentReceipt({
     String? merchant,

@@ -73,10 +73,16 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
         .where((s) => s.isNotEmpty)
         .toList();
     _lineItems = List.from(widget.receipt.lineItems);
+    if (_lineItems.isEmpty && widget.receipt.items.isNotEmpty) {
+      _lineItems = Receipt.parseLegacyItemsToLineItems(widget.receipt.items);
+    }
     _isAutoCalculate = _lineItems.isNotEmpty;
     if (_isAutoCalculate) {
       _recalculateTotalFromLineItems();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _notifyChange();
+    });
   }
 
   void _recalculateTotalFromLineItems() {
@@ -98,6 +104,14 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
     final double amt = (rawAmt.isEmpty || double.tryParse(rawAmt) == null)
         ? widget.receipt.amount
         : double.parse(rawAmt);
+
+    // Format legacy string items list to stay synchronized with lineItems
+    final List<String> legacyItems = _lineItems.map((li) {
+      final baseP = li.effectiveUnitPrice;
+      final priceStr = baseP > 0 ? ' - $_selectedCurrency ${baseP.toStringAsFixed(2)}' : '';
+      return '${li.description}$priceStr';
+    }).toList();
+
     widget.onChanged(
       widget.receipt.copyWith(
         merchant: _merchantController.text.trim(),
@@ -106,6 +120,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
         currency: _selectedCurrency,
         category: _selectedCategories.join(', '),
         lineItems: _lineItems,
+        items: legacyItems,
       ),
     );
   }

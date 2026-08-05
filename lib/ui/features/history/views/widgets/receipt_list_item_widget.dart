@@ -4,11 +4,11 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../../domain/models/receipt.dart';
 import '../../../../core/theme/app_theme.dart';
 
-/// Clean Receipt List Item Widget for [HistoryScreen] supporting swipe-or-tap deletion.
+/// Clean Receipt List Item Widget for [HistoryScreen] supporting tap navigation to details.
 class ReceiptListItemWidget extends StatelessWidget {
   final Receipt receipt;
   final String formattedPrice;
-  final VoidCallback onDelete;
+  final VoidCallback? onTap;
   final Color textPrimary;
   final Color textSecondary;
   final Color accent;
@@ -17,7 +17,7 @@ class ReceiptListItemWidget extends StatelessWidget {
     super.key,
     required this.receipt,
     required this.formattedPrice,
-    required this.onDelete,
+    this.onTap,
     required this.textPrimary,
     required this.textSecondary,
     required this.accent,
@@ -25,71 +25,61 @@ class ReceiptListItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicCardWidget(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: -2,
-              intensity: 0.8,
-              color: NeumorphicTheme.baseColor(context),
-              boxShape: const NeumorphicBoxShape.circle(),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Icon(
-              _getIcon(receipt.category),
-              color: accent,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  receipt.merchant,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  "${receipt.category} • ${receipt.date}",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                formattedPrice,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: textPrimary,
-                ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: NeumorphicCardWidget(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: -2,
+                intensity: 0.8,
+                color: NeumorphicTheme.baseColor(context),
+                boxShape: const NeumorphicBoxShape.circle(),
               ),
-              const SizedBox(height: 4),
-              GestureDetector(
-                onTap: onDelete,
-                child: Icon(
-                  Icons.delete_outline_rounded,
-                  size: 18,
-                  color: textSecondary.withValues(alpha: 0.6),
-                ),
+              padding: const EdgeInsets.all(12),
+              child: Icon(
+                _getIcon(receipt.category),
+                color: accent,
+                size: 22,
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    receipt.merchant,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    "${receipt.category} • ${receipt.date}",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              formattedPrice,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -66,10 +66,31 @@ class Receipt {
       'category': category,
       'imagePath': imagePath,
       'items': items,
+      'lineItems': lineItems.map((li) => li.toJson()).toList(),
     };
   }
 
   factory Receipt.fromJson(Map<String, dynamic> json) {
+    final parsedItems = (json['items'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const <String>[];
+
+    List<LineItem> parsedLineItems = [];
+    if (json['lineItems'] is List) {
+      parsedLineItems = (json['lineItems'] as List<dynamic>)
+          .map((e) => LineItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } else if (json['line_items'] is List) {
+      parsedLineItems = (json['line_items'] as List<dynamic>)
+          .map((e) => LineItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+
+    if (parsedLineItems.isEmpty && parsedItems.isNotEmpty) {
+      parsedLineItems = parseLegacyItemsToLineItems(parsedItems);
+    }
+
     return Receipt(
       id: json['id'] as String? ?? 'receipt_${DateTime.now().millisecondsSinceEpoch}',
       merchant: json['merchant'] as String? ?? 'Unknown Merchant',
@@ -78,12 +99,35 @@ class Receipt {
       currency: json['currency'] as String? ?? 'USD',
       category: json['category'] as String? ?? 'Other 📦',
       imagePath: json['imagePath'] as String?,
-      items: (json['items'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
-      lineItems: const [],
+      items: parsedItems,
+      lineItems: parsedLineItems,
     );
+  }
+
+  /// Parses legacy flat string items (e.g. "Organic Milk 1 Gal - $4.99") into [LineItem] domain objects.
+  static List<LineItem> parseLegacyItemsToLineItems(List<String> rawItems) {
+    return rawItems.map((raw) {
+      String desc = raw.trim();
+      double? price;
+
+      // Match price pattern like "- $4.99" or "$4.99" or "4.99" at end of string
+      final priceMatch = RegExp(r'[-–—]?\s*\$?\s*(\d+(?:\.\d{1,2})?)\s*$').firstMatch(desc);
+      if (priceMatch != null) {
+        price = double.tryParse(priceMatch.group(1) ?? '');
+        desc = desc.substring(0, priceMatch.start).trim();
+        // Remove trailing dash if present
+        if (desc.endsWith('-') || desc.endsWith('–') || desc.endsWith('—')) {
+          desc = desc.substring(0, desc.length - 1).trim();
+        }
+      }
+
+      return LineItem(
+        description: desc.isNotEmpty ? desc : raw,
+        quantity: 1.0,
+        unitPrice: price,
+        totalPrice: price,
+      );
+    }).toList();
   }
 
   @override

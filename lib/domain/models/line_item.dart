@@ -34,6 +34,25 @@ class LineItem {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+        'description': description,
+        if (quantity != null) 'quantity': quantity,
+        if (unitPrice != null) 'unit_price': unitPrice,
+        if (totalPrice != null) 'total_price': totalPrice,
+      };
+
+  factory LineItem.fromJson(Map<String, dynamic> json) {
+    final qty = (json['quantity'] as num?)?.toDouble();
+    final unitP = (json['unit_price'] as num?)?.toDouble() ?? (json['unitPrice'] as num?)?.toDouble();
+    final totalP = (json['total_price'] as num?)?.toDouble() ?? (json['totalPrice'] as num?)?.toDouble();
+    return LineItem(
+      description: (json['description'] as String?) ?? '',
+      quantity: qty,
+      unitPrice: unitP,
+      totalPrice: totalP,
+    );
+  }
+
   /// Returns the base price for a single quantity.
   double get effectiveUnitPrice {
     if (unitPrice != null) return unitPrice!;

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../domain/models/line_item.dart';
 import '../../domain/models/receipt.dart';
 import '../../services/currency_service.dart';
 import '../../services/isar_service.dart';
@@ -219,8 +220,8 @@ class ReceiptRepository extends ChangeNotifier {
   }
 
   List<Receipt> _getTestSampleReceipts() {
-    return [
-      const Receipt(
+    return const [
+      Receipt(
         id: 'sample-1',
         merchant: 'Target Superstore',
         date: 'Aug 01, 2026',
@@ -234,8 +235,15 @@ class ReceiptRepository extends ChangeNotifier {
           'Greek Yogurt 32oz - \$6.29',
           'Paper Towels 6pk - \$14.99',
         ],
+        lineItems: [
+          LineItem(description: 'Organic Milk 1 Gal', quantity: 1, unitPrice: 4.99, totalPrice: 4.99),
+          LineItem(description: 'Avocados Bag 5ct', quantity: 1, unitPrice: 5.49, totalPrice: 5.49),
+          LineItem(description: 'Almond Butter 16oz', quantity: 1, unitPrice: 7.99, totalPrice: 7.99),
+          LineItem(description: 'Greek Yogurt 32oz', quantity: 1, unitPrice: 6.29, totalPrice: 6.29),
+          LineItem(description: 'Paper Towels 6pk', quantity: 1, unitPrice: 14.99, totalPrice: 14.99),
+        ],
       ),
-      const Receipt(
+      Receipt(
         id: 'sample-2',
         merchant: 'Shell Gas Station',
         date: 'Jul 31, 2026',
@@ -245,8 +253,11 @@ class ReceiptRepository extends ChangeNotifier {
         items: [
           'Regular Unleaded Fuel (14.25 Gal) - \$54.20',
         ],
+        lineItems: [
+          LineItem(description: 'Regular Unleaded Fuel (14.25 Gal)', quantity: 1, unitPrice: 54.20, totalPrice: 54.20),
+        ],
       ),
-      const Receipt(
+      Receipt(
         id: 'sample-3',
         merchant: 'Apple Store NYC',
         date: 'Jul 28, 2026',
@@ -256,8 +267,11 @@ class ReceiptRepository extends ChangeNotifier {
         items: [
           'Apple Pencil Pro - \$129.00',
         ],
+        lineItems: [
+          LineItem(description: 'Apple Pencil Pro', quantity: 1, unitPrice: 129.00, totalPrice: 129.00),
+        ],
       ),
-      const Receipt(
+      Receipt(
         id: 'sample-4',
         merchant: 'Blue Bottle Coffee',
         date: 'Jul 25, 2026',
@@ -267,8 +281,11 @@ class ReceiptRepository extends ChangeNotifier {
         items: [
           'Iced New Orleans Style Coffee - \$6.25',
         ],
+        lineItems: [
+          LineItem(description: 'Iced New Orleans Style Coffee', quantity: 2, unitPrice: 6.25, totalPrice: 12.50),
+        ],
       ),
-      const Receipt(
+      Receipt(
         id: 'sample-5',
         merchant: 'Whole Foods Market',
         date: 'Jul 22, 2026',
@@ -280,6 +297,12 @@ class ReceiptRepository extends ChangeNotifier {
           'Organic Baby Spinach - \$3.99',
           'Free Range Large Eggs Dozen - \$7.49',
           'Artisanal Sourdough Loaf - \$6.99',
+        ],
+        lineItems: [
+          LineItem(description: 'Wild Caught Salmon Fillets', quantity: 1, unitPrice: 28.50, totalPrice: 28.50),
+          LineItem(description: 'Organic Baby Spinach', quantity: 1, unitPrice: 3.99, totalPrice: 3.99),
+          LineItem(description: 'Free Range Large Eggs Dozen', quantity: 1, unitPrice: 7.49, totalPrice: 7.49),
+          LineItem(description: 'Artisanal Sourdough Loaf', quantity: 1, unitPrice: 6.99, totalPrice: 6.99),
         ],
       ),
     ];

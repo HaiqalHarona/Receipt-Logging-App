@@ -1,6 +1,7 @@
 // File: lib/ui/features/dashboard/views/widgets/recent_transactions_list.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../view_models/dashboard_view_model.dart';
 
@@ -44,57 +45,61 @@ class RecentTransactionsList extends StatelessWidget {
         final receipt = list[index];
         final formattedPrice = viewModel.formatReceiptPrice(receipt);
 
-        return NeumorphicCardWidget(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Neumorphic(
-                style: NeumorphicStyle(
-                  depth: -2,
-                  intensity: 0.8,
-                  color: NeumorphicTheme.baseColor(context),
-                  boxShape: const NeumorphicBoxShape.circle(),
+        return GestureDetector(
+          onTap: () => context.push('/receipt-detail', extra: receipt),
+          behavior: HitTestBehavior.opaque,
+          child: NeumorphicCardWidget(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Neumorphic(
+                  style: NeumorphicStyle(
+                    depth: -2,
+                    intensity: 0.8,
+                    color: NeumorphicTheme.baseColor(context),
+                    boxShape: const NeumorphicBoxShape.circle(),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Icon(
+                    _getCategoryIcon(receipt.category),
+                    color: accent,
+                    size: 22,
+                  ),
                 ),
-                padding: const EdgeInsets.all(12),
-                child: Icon(
-                  _getCategoryIcon(receipt.category),
-                  color: accent,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      receipt.merchant,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: textPrimary,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        receipt.merchant,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      "${receipt.category} • ${receipt.date}",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: textSecondary,
+                      const SizedBox(height: 3),
+                      Text(
+                        "${receipt.category} • ${receipt.date}",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Text(
-                formattedPrice,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: textPrimary,
+                Text(
+                  formattedPrice,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: textPrimary,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

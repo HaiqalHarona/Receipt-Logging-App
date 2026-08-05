@@ -144,13 +144,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       VerificationCardWidget(
                         receipt: currentReceipt!,
                         onChanged: (updated) {
-                          _viewModel.updateCurrentReceipt(
-                            merchant: updated.merchant,
-                            date: updated.date,
-                            amount: updated.amount,
-                            currency: updated.currency,
-                            category: updated.category,
-                          );
+                          _viewModel.updateReceipt(updated);
                         },
                         textPrimary: textPrimary,
                         textSecondary: textSecondary,
