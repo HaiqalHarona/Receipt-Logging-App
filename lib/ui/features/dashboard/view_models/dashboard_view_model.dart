@@ -5,7 +5,7 @@ import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
 
-// ── Monthly Spending Data Point & Timeline Filter ─────────────────────────────
+// ── Spending Summary & Monthly Graph Models ──────────────────────────────────
 
 /// Timeline options for the dashboard spending graph.
 enum TimelineFilter {
@@ -16,11 +16,36 @@ enum TimelineFilter {
   allTime,      // All (since first receipt)
 }
 
+/// Period options for the Spending Summary Carousel (6 elements).
+enum SpendingSummaryPeriod {
+  oneMonth,     // 1m
+  threeMonths,  // 3m
+  sixMonths,    // 6m
+  twelveMonths, // 12m
+  ytd,          // YTD
+  allTime,      // All
+}
+
+/// Data payload for a single slide in the Spending Summary Carousel.
+class SpendingSummaryData {
+  final SpendingSummaryPeriod period;
+  final double totalAmount;
+  final String formattedTotal;
+  final int transactionCount;
+  final String title;
+  final String subtitle;
+
+  const SpendingSummaryData({
+    required this.period,
+    required this.totalAmount,
+    required this.formattedTotal,
+    required this.transactionCount,
+    required this.title,
+    required this.subtitle,
+  });
+}
+
 /// A single point in the monthly spending line graph.
-///
-/// [month] is the first day of that calendar month (for ordering/sorting).
-/// [label] is the display string formatted as `MM/YY`.
-/// [amount] is the total spent in that month converted to the active currency.
 class MonthlySpendingPoint {
   final DateTime month;
   final String label;
@@ -37,13 +62,14 @@ class MonthlySpendingPoint {
 ///
 /// Reactively aggregates spending totals and recent transactions from
 /// [ReceiptRepository], applying live currency conversion via [CurrencyService]
-/// and caching timeline aggregations.
+/// and caching timeline & summary aggregations.
 class DashboardViewModel extends ChangeNotifier {
   final ReceiptRepository _repository;
   final CurrencyService _currencyService;
 
   TimelineFilter _selectedTimeline = TimelineFilter.allTime;
   final Map<TimelineFilter, List<MonthlySpendingPoint>> _timelineCache = {};
+  final Map<SpendingSummaryPeriod, SpendingSummaryData> _summaryCache = {};
 
   DashboardViewModel({
     ReceiptRepository? repository,
@@ -57,6 +83,7 @@ class DashboardViewModel extends ChangeNotifier {
 
   void _onDataChanged() {
     _timelineCache.clear();
+    _summaryCache.clear();
     notifyListeners();
   }
 
@@ -99,6 +126,95 @@ class DashboardViewModel extends ChangeNotifier {
     return '-${_currencyService.format(receipt.amount, fromCurrencyCode: receipt.currency)}';
   }
 
+  // ── Spending Summary Carousel Aggregation & Caching ─────────────────────────
+
+  /// Calculates or retrieves cached spending summary data for a given [SpendingSummaryPeriod].
+  SpendingSummaryData getSpendingSummary(SpendingSummaryPeriod period) {
+    if (_summaryCache.containsKey(period)) {
+      return _summaryCache[period]!;
+    }
+
+    final computed = _calculateSpendingSummary(period);
+    _summaryCache[period] = computed;
+    return computed;
+  }
+
+  SpendingSummaryData _calculateSpendingSummary(SpendingSummaryPeriod period) {
+    final now = DateTime.now();
+    double total = 0.0;
+    int count = 0;
+
+    for (final r in _repository.receipts) {
+      final parsed = _parseDateString(r.date);
+      if (parsed == null) continue;
+
+      bool include = false;
+      switch (period) {
+        case SpendingSummaryPeriod.oneMonth:
+          include = parsed.year == now.year && parsed.month == now.month;
+          break;
+        case SpendingSummaryPeriod.threeMonths:
+          final limit = DateTime(now.year, now.month - 2, 1);
+          include = !parsed.isBefore(limit);
+          break;
+        case SpendingSummaryPeriod.sixMonths:
+          final limit = DateTime(now.year, now.month - 5, 1);
+          include = !parsed.isBefore(limit);
+          break;
+        case SpendingSummaryPeriod.twelveMonths:
+          final limit = DateTime(now.year, now.month - 11, 1);
+          include = !parsed.isBefore(limit);
+          break;
+        case SpendingSummaryPeriod.ytd:
+          final limit = DateTime(now.year, 1, 1);
+          include = !parsed.isBefore(limit);
+          break;
+        case SpendingSummaryPeriod.allTime:
+          include = true;
+          break;
+      }
+
+      if (include) {
+        total += _currencyService.convert(r.amount, r.currency);
+        count++;
+      }
+    }
+
+    String title;
+    switch (period) {
+      case SpendingSummaryPeriod.oneMonth:
+        title = "TOTAL SPENT THIS MONTH";
+        break;
+      case SpendingSummaryPeriod.threeMonths:
+        title = "TOTAL SPENT LAST 3 MONTHS";
+        break;
+      case SpendingSummaryPeriod.sixMonths:
+        title = "TOTAL SPENT LAST 6 MONTHS";
+        break;
+      case SpendingSummaryPeriod.twelveMonths:
+        title = "TOTAL SPENT LAST 12 MONTHS";
+        break;
+      case SpendingSummaryPeriod.ytd:
+        title = "TOTAL SPENT YEAR TO DATE";
+        break;
+      case SpendingSummaryPeriod.allTime:
+        title = "TOTAL SPENT ALL TIME";
+        break;
+    }
+
+    final formatted = _currencyService.format(total, fromCurrencyCode: _currencyService.currentCurrency);
+    final subtitle = "Tally from ledger ($count transactions)";
+
+    return SpendingSummaryData(
+      period: period,
+      totalAmount: total,
+      formattedTotal: formatted,
+      transactionCount: count,
+      title: title,
+      subtitle: subtitle,
+    );
+  }
+
   // ── Monthly Spending Aggregation & Caching ─────────────────────────────────
 
   /// Legacy month count constant (for backward compatibility).
@@ -110,8 +226,6 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   /// Calculates monthly spending points for a given [TimelineFilter] and caches the result.
-  ///
-  /// Reuses cached results on subsequent calls until [_onDataChanged] clears [_timelineCache].
   List<MonthlySpendingPoint> getMonthlySpendingHistory([TimelineFilter? filter]) {
     final target = filter ?? _selectedTimeline;
     if (_timelineCache.containsKey(target)) {
@@ -136,7 +250,7 @@ class DashboardViewModel extends ChangeNotifier {
         months.addAll(_buildMonthRange(now, 6));
         break;
       case TimelineFilter.ytd:
-        final ytdMonthCount = now.month; // 1 to 12
+        final ytdMonthCount = now.month;
         months.addAll(_buildMonthRange(now, ytdMonthCount));
         break;
       case TimelineFilter.twelveMonths:
@@ -153,9 +267,8 @@ class DashboardViewModel extends ChangeNotifier {
             }
           }
         }
-        // Compute total months from earliest to now
         int diffMonths = ((now.year - earliest.year) * 12) + (now.month - earliest.month) + 1;
-        if (diffMonths < 3) diffMonths = 3; // Ensure at least 3 months for graph
+        if (diffMonths < 3) diffMonths = 3;
         months.addAll(_buildMonthRange(now, diffMonths));
         break;
     }
@@ -165,7 +278,6 @@ class DashboardViewModel extends ChangeNotifier {
       buckets[_bucketKey(d)] = 0.0;
     }
 
-    // Accumulate receipts into buckets
     for (final receipt in _repository.receipts) {
       final parsed = _parseDateString(receipt.date);
       if (parsed == null) continue;
