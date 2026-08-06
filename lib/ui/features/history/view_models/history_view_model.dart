@@ -142,9 +142,18 @@ class HistoryViewModel extends ChangeNotifier {
 
     // 2. Multi-Category Filter
     if (_selectedCategories.isNotEmpty) {
+      final normalizedSelected = _selectedCategories
+          .map((c) => CategoryUtils.sanitize(c).trim().toLowerCase())
+          .toSet();
+
       result = result.where((r) {
-        final rCats = r.category.split(', ').map((c) => c.trim()).toSet();
-        return _selectedCategories.any((selected) => rCats.contains(selected));
+        final rCats = r.category
+            .split(',')
+            .map((c) => CategoryUtils.sanitize(c).trim().toLowerCase())
+            .where((c) => c.isNotEmpty)
+            .toSet();
+
+        return normalizedSelected.any((selected) => rCats.contains(selected));
       }).toList();
     }
 

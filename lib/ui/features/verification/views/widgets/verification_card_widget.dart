@@ -6,6 +6,7 @@ import '../../../../../domain/models/line_item.dart';
 import '../../../../../domain/models/receipt.dart';
 import '../../../../../services/currency_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/category_utils.dart';
 import 'line_items_table_widget.dart';
 
 /// Modular Neumorphic Card Widget allowing inline editing of receipt details.
@@ -66,12 +67,16 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
     _dateController = TextEditingController(text: widget.receipt.date);
     _amountController = TextEditingController(text: widget.receipt.amount.toStringAsFixed(2));
     _selectedCurrency = widget.receipt.currency;
-    // Parse comma-separated categories from the stored field
+    // Parse comma-separated categories from the stored field and sanitize each token
     _selectedCategories = widget.receipt.category
-        .split(', ')
-        .map((s) => s.trim())
+        .split(',')
+        .map((s) => CategoryUtils.sanitize(s).trim())
         .where((s) => s.isNotEmpty)
+        .toSet()
         .toList();
+    if (_selectedCategories.isEmpty) {
+      _selectedCategories = ['General'];
+    }
     _lineItems = List.from(widget.receipt.lineItems);
     if (_lineItems.isEmpty && widget.receipt.items.isNotEmpty) {
       _lineItems = Receipt.parseLegacyItemsToLineItems(widget.receipt.items);
@@ -112,13 +117,15 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
       return '${li.description}$priceStr';
     }).toList();
 
+    final catsToSave = _selectedCategories.isEmpty ? ['General'] : _selectedCategories.toSet().toList();
+
     widget.onChanged(
       widget.receipt.copyWith(
         merchant: _merchantController.text.trim(),
         date: _dateController.text.trim(),
         amount: amt,
         currency: _selectedCurrency,
-        category: _selectedCategories.join(', '),
+        category: catsToSave.join(', '),
         lineItems: _lineItems,
         items: legacyItems,
       ),

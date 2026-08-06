@@ -299,6 +299,13 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
         final categoryColor = CategoryUtils.getCategoryColor(r.category);
         final formattedPrice = CurrencyService.instance.format(r.amount, fromCurrencyCode: r.currency);
         final convertedItems = _getConvertedLineItems(r);
+        final allDetailTags = r.category
+            .split(',')
+            .map((c) => CategoryUtils.sanitize(c).trim())
+            .where((c) => c.isNotEmpty)
+            .toSet()
+            .toList();
+        if (allDetailTags.isEmpty) allDetailTags.add('General');
 
         return NeumorphicBackground(
           child: Scaffold(
@@ -464,35 +471,44 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                           ),
                           const SizedBox(height: 14),
 
-                          // 4. Categories (Last in header, centre)
+                          // 4. Categories (Last in header, centre, multi-row wrapped)
                           Center(
-                            child: Neumorphic(
-                              style: NeumorphicStyle(
-                                depth: -2,
-                                intensity: 0.8,
-                                color: categoryColor.withValues(alpha: 0.2),
-                                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    CategoryUtils.getCategoryIcon(r.category),
-                                    size: 14,
-                                    color: categoryColor,
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: allDetailTags.map((tag) {
+                                final tagColor = CategoryUtils.getCategoryColor(tag);
+                                return Neumorphic(
+                                  style: NeumorphicStyle(
+                                    depth: -2,
+                                    intensity: 0.8,
+                                    color: tagColor.withValues(alpha: 0.2),
+                                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    CategoryUtils.sanitize(r.category),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: categoryColor,
-                                    ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        CategoryUtils.getCategoryIcon(tag),
+                                        size: 14,
+                                        color: tagColor,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        tag,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: tagColor,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                );
+                              }).toList(),
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -550,7 +566,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'ITEMIZED BREAKDOWN',
+                                'ITEMS',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,

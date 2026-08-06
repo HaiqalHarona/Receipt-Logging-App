@@ -5,6 +5,11 @@ import '../../../../../domain/models/receipt.dart';
 import '../../../../core/utils/category_utils.dart';
 
 /// Clean, uniform Receipt List Item Widget for [HistoryScreen] supporting tap navigation to details.
+///
+/// Layout:
+/// - Left: Uniquely colour-coded category icon badge
+/// - Center: Merchant title (top) & max 2 category pill tags + neutral +X overflow badge (bottom)
+/// - Right: Amount spent (top right) & transaction date (bottom right)
 class ReceiptListItemWidget extends StatelessWidget {
   final Receipt receipt;
   final String formattedPrice;
@@ -25,9 +30,20 @@ class ReceiptListItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cleanCategory = CategoryUtils.sanitize(receipt.category);
-    final categoryColor = CategoryUtils.getCategoryColor(cleanCategory);
-    final categoryIcon = CategoryUtils.getCategoryIcon(cleanCategory);
+    final allTags = receipt.category
+        .split(',')
+        .map((c) => CategoryUtils.sanitize(c).trim())
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList();
+    if (allTags.isEmpty) allTags.add('General');
+
+    final primaryTag = allTags.first;
+    final primaryColor = CategoryUtils.getCategoryColor(primaryTag);
+    final categoryIcon = CategoryUtils.getCategoryIcon(primaryTag);
+
+    final displayTags = allTags.take(2).toList();
+    final remainingCount = allTags.length - 2;
 
     return GestureDetector(
       onTap: onTap,
@@ -45,25 +61,25 @@ class ReceiptListItemWidget extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
               children: [
-                // Uniquely colour-coded category icon badge
+                // Uniquely colour-coded primary category icon badge (Left)
                 Neumorphic(
                   style: NeumorphicStyle(
                     depth: -2,
                     intensity: 0.8,
-                    color: categoryColor.withAlpha(25),
+                    color: primaryColor.withAlpha(25),
                     boxShape: const NeumorphicBoxShape.circle(),
                   ),
                   padding: const EdgeInsets.all(10),
                   child: Icon(
                     categoryIcon,
-                    color: categoryColor,
+                    color: primaryColor,
                     size: 20,
                   ),
                 ),
 
                 const SizedBox(width: 12),
 
-                // Merchant & Category Badge + Date
+                // Merchant Title & Category Badges (Center)
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -82,36 +98,47 @@ class ReceiptListItemWidget extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          // Colour-coded Category Pill Tag
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: categoryColor.withAlpha(30),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: categoryColor.withAlpha(120),
-                                width: 0.8,
+                          ...displayTags.map((tag) {
+                            final tagColor = CategoryUtils.getCategoryColor(tag);
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: tagColor.withAlpha(30),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: tagColor.withAlpha(120),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  tag,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: tagColor,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          if (remainingCount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '+$remainingCount',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: textSecondary,
+                                ),
                               ),
                             ),
-                            child: Text(
-                              cleanCategory,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: categoryColor,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            "• ${receipt.date}",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: textSecondary,
-                            ),
-                          ),
                         ],
                       ),
                     ],
@@ -120,14 +147,29 @@ class ReceiptListItemWidget extends StatelessWidget {
 
                 const SizedBox(width: 8),
 
-                // Formatted Amount
-                Text(
-                  formattedPrice,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: textPrimary,
-                  ),
+                // Amount Spent (Top Right) & Date (Bottom Right)
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      formattedPrice,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      receipt.date,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
