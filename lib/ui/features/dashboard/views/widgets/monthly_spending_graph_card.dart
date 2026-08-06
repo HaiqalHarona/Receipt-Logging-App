@@ -3,11 +3,13 @@
 import 'dart:math' as math;
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../view_models/dashboard_view_model.dart';
+import 'timeline_filter_bottom_sheet.dart';
 
 /// Protruded Neumorphic card displaying an interactive monthly spending line graph.
 ///
-/// Houses the section title, dynamic description, and a [CustomPaint] line
-/// graph plotting the last [DashboardViewModel.graphMonthCount] months of spending.
+/// Houses the section title, dynamic description, right-side fixed-size timeline
+/// selector button with modal pop-up, and a [CustomPaint] line graph plotting
+/// spending over the selected timeline.
 ///
 /// Clicking a data point displays a floating tooltip with amount and date
 /// (e.g. `110.02 - 03/26`).
@@ -85,11 +87,60 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
     }
   }
 
+  String _getSubtitleText(TimelineFilter filter, String symbol) {
+    switch (filter) {
+      case TimelineFilter.threeMonths:
+        return '$symbol spent (3 months)';
+      case TimelineFilter.sixMonths:
+        return '$symbol spent (6 months)';
+      case TimelineFilter.ytd:
+        return '$symbol spent (Year to Date)';
+      case TimelineFilter.twelveMonths:
+        return '$symbol spent (12 months)';
+      case TimelineFilter.allTime:
+        return '$symbol spent (All-time)';
+    }
+  }
+
+  String _getTimelineLabel(TimelineFilter filter) {
+    switch (filter) {
+      case TimelineFilter.threeMonths:
+        return '3mo';
+      case TimelineFilter.sixMonths:
+        return '6mo';
+      case TimelineFilter.ytd:
+        return 'YTD';
+      case TimelineFilter.twelveMonths:
+        return '12mo';
+      case TimelineFilter.allTime:
+        return 'All';
+    }
+  }
+
+  void _openTimelineModal(TimelineFilter activeTimeline) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => TimelineFilterBottomSheet(
+        activeFilter: activeTimeline,
+        onSelect: (filter) {
+          setState(() {
+            _selectedIndex = null; // Clear graph point tooltip on filter switch
+          });
+          widget.viewModel.setTimeline(filter);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final activeTimeline = widget.viewModel.selectedTimeline;
     final points = widget.viewModel.monthlySpendingHistory;
     final symbol = widget.viewModel.currentSymbol;
-    final n = DashboardViewModel.graphMonthCount;
+    final subtitleText = _getSubtitleText(activeTimeline, symbol);
+    final activeLabel = _getTimelineLabel(activeTimeline);
 
     return Neumorphic(
       style: NeumorphicStyle(
@@ -102,25 +153,77 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ────────────────────────────────────────────────────────
+            // ── Header Row with Right-Side Fixed-Size Timeline Trigger Button ──
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  'Spending Trend',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: widget.textPrimary,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Spending Trend',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: widget.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitleText,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: widget.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  '$symbol spent the last $n months',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: widget.textSecondary,
+
+                // Right-Side Fixed Size Neumorphic Trigger Button
+                GestureDetector(
+                  onTap: () => _openTimelineModal(activeTimeline),
+                  child: Neumorphic(
+                    style: NeumorphicStyle(
+                      depth: 3,
+                      intensity: 0.8,
+                      color: NeumorphicTheme.baseColor(context),
+                      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: SizedBox(
+                      width: 84,
+                      height: 24,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 12,
+                            color: widget.accent,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              activeLabel,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: widget.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 14,
+                            color: widget.textSecondary,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],

@@ -5,7 +5,16 @@ import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
 
-// ── Monthly Spending Data Point ────────────────────────────────────────────────
+// ── Monthly Spending Data Point & Timeline Filter ─────────────────────────────
+
+/// Timeline options for the dashboard spending graph.
+enum TimelineFilter {
+  threeMonths,  // 3mo
+  sixMonths,    // 6mo
+  ytd,          // YTD (Year-to-date)
+  twelveMonths, // 12mo
+  allTime,      // All (since first receipt)
+}
 
 /// A single point in the monthly spending line graph.
 ///
@@ -27,10 +36,14 @@ class MonthlySpendingPoint {
 /// ViewModel for [DashboardScreen].
 ///
 /// Reactively aggregates spending totals and recent transactions from
-/// [ReceiptRepository], applying live currency conversion via [CurrencyService].
+/// [ReceiptRepository], applying live currency conversion via [CurrencyService]
+/// and caching timeline aggregations.
 class DashboardViewModel extends ChangeNotifier {
   final ReceiptRepository _repository;
   final CurrencyService _currencyService;
+
+  TimelineFilter _selectedTimeline = TimelineFilter.allTime;
+  final Map<TimelineFilter, List<MonthlySpendingPoint>> _timelineCache = {};
 
   DashboardViewModel({
     ReceiptRepository? repository,
@@ -43,7 +56,19 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   void _onDataChanged() {
+    _timelineCache.clear();
     notifyListeners();
+  }
+
+  /// Currently active timeline filter option (defaults to [TimelineFilter.allTime]).
+  TimelineFilter get selectedTimeline => _selectedTimeline;
+
+  /// Updates active timeline option and triggers UI refresh.
+  void setTimeline(TimelineFilter filter) {
+    if (_selectedTimeline != filter) {
+      _selectedTimeline = filter;
+      notifyListeners();
+    }
   }
 
   /// Active target currency symbol (e.g. '$', '€', '£', '¥').
@@ -74,44 +99,79 @@ class DashboardViewModel extends ChangeNotifier {
     return '-${_currencyService.format(receipt.amount, fromCurrencyCode: receipt.currency)}';
   }
 
-  // ── Monthly Spending Aggregation ───────────────────────────────────────────
+  // ── Monthly Spending Aggregation & Caching ─────────────────────────────────
 
-  /// The number of months shown in the spending history graph.
+  /// Legacy month count constant (for backward compatibility).
   static const int graphMonthCount = 6;
 
-  /// Returns the last [graphMonthCount] calendar months as ordered data points.
-  ///
-  /// Each point aggregates all receipts whose [Receipt.date] falls within that
-  /// calendar month, converting amounts to the active display currency.
-  /// Months with no receipts are included with amount 0.0 so the x-axis is
-  /// always fully populated.
+  /// Gets cached or computes monthly spending points for the active timeline.
   List<MonthlySpendingPoint> get monthlySpendingHistory {
-    final now = DateTime.now();
-    final Map<String, double> buckets = {};
+    return getMonthlySpendingHistory(_selectedTimeline);
+  }
 
-    // Build ordered bucket keys for the last N months oldest-to-newest.
-    final List<DateTime> months = [];
-    for (int i = graphMonthCount - 1; i >= 0; i--) {
-      int y = now.year;
-      int m = now.month - i;
-      while (m <= 0) {
-        m += 12;
-        y -= 1;
-      }
-      months.add(DateTime(y, m, 1));
+  /// Calculates monthly spending points for a given [TimelineFilter] and caches the result.
+  ///
+  /// Reuses cached results on subsequent calls until [_onDataChanged] clears [_timelineCache].
+  List<MonthlySpendingPoint> getMonthlySpendingHistory([TimelineFilter? filter]) {
+    final target = filter ?? _selectedTimeline;
+    if (_timelineCache.containsKey(target)) {
+      return _timelineCache[target]!;
     }
 
-    // Initialise each bucket to 0.0.
+    final computed = _calculateTimelinePoints(target);
+    _timelineCache[target] = computed;
+    return computed;
+  }
+
+  /// Computes monthly spending points for a specified [TimelineFilter].
+  List<MonthlySpendingPoint> _calculateTimelinePoints(TimelineFilter filter) {
+    final now = DateTime.now();
+    final List<DateTime> months = [];
+
+    switch (filter) {
+      case TimelineFilter.threeMonths:
+        months.addAll(_buildMonthRange(now, 3));
+        break;
+      case TimelineFilter.sixMonths:
+        months.addAll(_buildMonthRange(now, 6));
+        break;
+      case TimelineFilter.ytd:
+        final ytdMonthCount = now.month; // 1 to 12
+        months.addAll(_buildMonthRange(now, ytdMonthCount));
+        break;
+      case TimelineFilter.twelveMonths:
+        months.addAll(_buildMonthRange(now, 12));
+        break;
+      case TimelineFilter.allTime:
+        DateTime earliest = DateTime(now.year, now.month, 1);
+        for (final r in _repository.receipts) {
+          final parsed = _parseDateString(r.date);
+          if (parsed != null) {
+            final monthStart = DateTime(parsed.year, parsed.month, 1);
+            if (monthStart.isBefore(earliest)) {
+              earliest = monthStart;
+            }
+          }
+        }
+        // Compute total months from earliest to now
+        int diffMonths = ((now.year - earliest.year) * 12) + (now.month - earliest.month) + 1;
+        if (diffMonths < 3) diffMonths = 3; // Ensure at least 3 months for graph
+        months.addAll(_buildMonthRange(now, diffMonths));
+        break;
+    }
+
+    final Map<String, double> buckets = {};
     for (final d in months) {
       buckets[_bucketKey(d)] = 0.0;
     }
 
-    // Accumulate receipts into buckets.
+    // Accumulate receipts into buckets
     for (final receipt in _repository.receipts) {
       final parsed = _parseDateString(receipt.date);
       if (parsed == null) continue;
       final key = _bucketKey(DateTime(parsed.year, parsed.month, 1));
       if (!buckets.containsKey(key)) continue;
+
       final converted = _currencyService.convert(
         receipt.amount,
         receipt.currency,
@@ -119,7 +179,6 @@ class DashboardViewModel extends ChangeNotifier {
       buckets[key] = (buckets[key] ?? 0.0) + converted;
     }
 
-    // Produce ordered list.
     return months.map((d) {
       final mm = d.month.toString().padLeft(2, '0');
       final yy = (d.year % 100).toString().padLeft(2, '0');
@@ -129,6 +188,21 @@ class DashboardViewModel extends ChangeNotifier {
         amount: buckets[_bucketKey(d)] ?? 0.0,
       );
     }).toList();
+  }
+
+  /// Builds an ordered list of [count] consecutive months ending at [endMonth].
+  List<DateTime> _buildMonthRange(DateTime endMonth, int count) {
+    final List<DateTime> months = [];
+    for (int i = count - 1; i >= 0; i--) {
+      int y = endMonth.year;
+      int m = endMonth.month - i;
+      while (m <= 0) {
+        m += 12;
+        y -= 1;
+      }
+      months.add(DateTime(y, m, 1));
+    }
+    return months;
   }
 
   /// Creates a consistent map key from a [DateTime] (YYYY-MM).
