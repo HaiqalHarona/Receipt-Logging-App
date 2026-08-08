@@ -1,14 +1,13 @@
 // File: lib/ui/features/dashboard/views/widgets/spending_summary_card.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../view_models/dashboard_view_model.dart';
 
-/// Neumorphic 6-element looping manual carousel displaying aggregated spending
-/// totals across 6 periods (1m, 3m, 6m, 12m, YTD, All).
+/// Neumorphic spending summary card bound to active graph timeline option.
 ///
-/// Features fixed uniform dimensions, calculation caching, infinite manual sliding,
-/// and 6 embedded dot indicators at the bottom.
+/// Features fixed uniform dimensions, calculation caching, read-only dot indicators,
+/// and programmatically slides to match the selected graph timeline option.
+/// Manual swiping is disabled.
 class SpendingSummaryCard extends StatefulWidget {
   final DashboardViewModel viewModel;
   final Color textPrimary;
@@ -39,11 +38,29 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
   ];
 
   late final PageController _pageController;
-  int _currentPage = 1000 * _periodCount; // Start at 0 mod 6 (1m)
+  int _currentPage = 0;
+
+  int _targetIndexForTimeline(TimelineFilter filter) {
+    switch (filter) {
+      case TimelineFilter.thisMonth:
+        return 0;
+      case TimelineFilter.threeMonths:
+        return 1;
+      case TimelineFilter.sixMonths:
+        return 2;
+      case TimelineFilter.twelveMonths:
+        return 3;
+      case TimelineFilter.ytd:
+        return 4;
+      case TimelineFilter.allTime:
+        return 5;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _currentPage = _targetIndexForTimeline(widget.viewModel.selectedTimeline);
     _pageController = PageController(initialPage: _currentPage);
   }
 
@@ -53,38 +70,45 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
     super.dispose();
   }
 
-  void _onDotTapped(int index) {
-    final currentReal = _currentPage % _periodCount;
-    final targetPage = _currentPage + (index - currentReal);
-    _pageController.animateToPage(
-      targetPage,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final activeIndex = _currentPage % _periodCount;
+    final activeIndex = _targetIndexForTimeline(widget.viewModel.selectedTimeline);
 
-    return NeumorphicCardWidget(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    if (_currentPage != activeIndex) {
+      _currentPage = activeIndex;
+      if (_pageController.hasClients) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _pageController.hasClients) {
+            _pageController.animateToPage(
+              activeIndex,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOut,
+            );
+          }
+        });
+      }
+    }
+
+    return Neumorphic(
+      style: NeumorphicStyle(
+        depth: -3, // Indented recessed container
+        intensity: 0.8,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
+        color: NeumorphicTheme.baseColor(context),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: SizedBox(
-        height: 128,
+        height: 120,
         width: double.infinity,
         child: Column(
           children: [
-            // Carousel Viewport
+            // Carousel Viewport (Manual scrolling disabled)
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                onPageChanged: (page) {
-                  setState(() {
-                    _currentPage = page;
-                  });
-                },
-                itemBuilder: (context, virtualIndex) {
-                  final realIndex = virtualIndex % _periodCount;
+                physics: const NeverScrollableScrollPhysics(), // Disabled manual swiping
+                itemCount: _periodCount,
+                itemBuilder: (context, realIndex) {
                   final period = _periods[realIndex];
                   final summary = widget.viewModel.getSpendingSummary(period);
 
@@ -123,22 +147,18 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                       const SizedBox(height: 6),
                       Text(
                         summary.formattedTotal,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                          color: widget.accent,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: -0.5,
+                          color: widget.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         summary.subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: widget.textSecondary,
                         ),
                       ),
@@ -148,24 +168,22 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
               ),
             ),
 
-            const SizedBox(height: 8),
-
-            // 6 Dot Indicators embedded inside bottom of Neumorphic card
+            // Read-only Carousel Dot Indicators (6 elements)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_periodCount, (i) {
-                final isActive = i == activeIndex;
-                return GestureDetector(
-                  onTap: () => _onDotTapped(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: isActive ? 16.0 : 6.0,
-                    height: 6.0,
-                    decoration: BoxDecoration(
-                      color: isActive ? widget.accent : widget.textSecondary.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
+              children: List.generate(_periodCount, (index) {
+                final isSelected = index == activeIndex;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: isSelected ? 16 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? widget.accent
+                        : widget.textSecondary.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 );
               }),

@@ -7,7 +7,6 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/bottom_nav_bar.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';
-import 'widgets/spending_summary_card.dart';
 import 'widgets/recent_transactions_list.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -83,17 +82,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Monthly Spending Line Graph
+                    // Monthly Spending Line Graph (encompasses indented summary carousel)
                     MonthlySpendingGraphCard(
-                      viewModel: _viewModel,
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                      accent: accent,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Total Spent This Month Card (Live DB + Currency)
-                    SpendingSummaryCard(
                       viewModel: _viewModel,
                       textPrimary: textPrimary,
                       textSecondary: textSecondary,

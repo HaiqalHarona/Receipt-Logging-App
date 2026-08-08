@@ -3,6 +3,7 @@
 import 'dart:math' as math;
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../view_models/dashboard_view_model.dart';
+import 'spending_summary_card.dart';
 import 'timeline_filter_bottom_sheet.dart';
 
 /// Protruded Neumorphic card displaying an interactive monthly spending line graph.
@@ -89,6 +90,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
 
   String _getSubtitleText(TimelineFilter filter, String symbol) {
     switch (filter) {
+      case TimelineFilter.thisMonth:
+        return '$symbol spent (This Month)';
       case TimelineFilter.threeMonths:
         return '$symbol spent (3 months)';
       case TimelineFilter.sixMonths:
@@ -104,6 +107,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
 
   String _getTimelineLabel(TimelineFilter filter) {
     switch (filter) {
+      case TimelineFilter.thisMonth:
+        return '1m';
       case TimelineFilter.threeMonths:
         return '3mo';
       case TimelineFilter.sixMonths:
@@ -254,6 +259,15 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
                   );
                 },
               ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Encompassed Indented Spending Summary Carousel ──
+            SpendingSummaryCard(
+              viewModel: widget.viewModel,
+              textPrimary: widget.textPrimary,
+              textSecondary: widget.textSecondary,
+              accent: widget.accent,
             ),
           ],
         ),

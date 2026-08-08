@@ -16,10 +16,11 @@ class TimelineFilterBottomSheet extends StatelessWidget {
   });
 
   static const List<_TimelineOption> _options = [
+    _TimelineOption(filter: TimelineFilter.thisMonth, label: '1m', subtitle: 'This Month (Daily breakdown)'),
     _TimelineOption(filter: TimelineFilter.threeMonths, label: '3mo', subtitle: 'Last 3 Months'),
     _TimelineOption(filter: TimelineFilter.sixMonths, label: '6mo', subtitle: 'Last 6 Months'),
-    _TimelineOption(filter: TimelineFilter.ytd, label: 'YTD', subtitle: 'Year to Date'),
     _TimelineOption(filter: TimelineFilter.twelveMonths, label: '12mo', subtitle: 'Last 12 Months'),
+    _TimelineOption(filter: TimelineFilter.ytd, label: 'YTD', subtitle: 'Year to Date'),
     _TimelineOption(filter: TimelineFilter.allTime, label: 'All', subtitle: 'All-time (since first receipt)'),
   ];
 

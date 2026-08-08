@@ -9,10 +9,11 @@ import '../../../../services/currency_service.dart';
 
 /// Timeline options for the dashboard spending graph.
 enum TimelineFilter {
+  thisMonth,    // 1m (This Month daily breakdown)
   threeMonths,  // 3mo
   sixMonths,    // 6mo
-  ytd,          // YTD (Year-to-date)
   twelveMonths, // 12mo
+  ytd,          // YTD (Year-to-date)
   allTime,      // All (since first receipt)
 }
 
@@ -67,7 +68,7 @@ class DashboardViewModel extends ChangeNotifier {
   final ReceiptRepository _repository;
   final CurrencyService _currencyService;
 
-  TimelineFilter _selectedTimeline = TimelineFilter.allTime;
+  TimelineFilter _selectedTimeline = TimelineFilter.thisMonth;
   final Map<TimelineFilter, List<MonthlySpendingPoint>> _timelineCache = {};
   final Map<SpendingSummaryPeriod, SpendingSummaryData> _summaryCache = {};
 
@@ -237,12 +238,40 @@ class DashboardViewModel extends ChangeNotifier {
     return computed;
   }
 
-  /// Computes monthly spending points for a specified [TimelineFilter].
+  /// Computes monthly or daily spending points for a specified [TimelineFilter].
   List<MonthlySpendingPoint> _calculateTimelinePoints(TimelineFilter filter) {
     final now = DateTime.now();
+
+    if (filter == TimelineFilter.thisMonth) {
+      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+      final Map<int, double> dayBuckets = { for (int i = 1; i <= daysInMonth; i++) i: 0.0 };
+
+      for (final receipt in _repository.receipts) {
+        final parsed = _parseDateString(receipt.date);
+        if (parsed == null) continue;
+        if (parsed.year == now.year && parsed.month == now.month) {
+          final converted = _currencyService.convert(receipt.amount, receipt.currency);
+          dayBuckets[parsed.day] = (dayBuckets[parsed.day] ?? 0.0) + converted;
+        }
+      }
+
+      final mm = now.month.toString().padLeft(2, '0');
+      return List.generate(daysInMonth, (index) {
+        final day = index + 1;
+        final dd = day.toString().padLeft(2, '0');
+        return MonthlySpendingPoint(
+          month: DateTime(now.year, now.month, day),
+          label: '$dd/$mm',
+          amount: dayBuckets[day] ?? 0.0,
+        );
+      });
+    }
+
     final List<DateTime> months = [];
 
     switch (filter) {
+      case TimelineFilter.thisMonth:
+        break;
       case TimelineFilter.threeMonths:
         months.addAll(_buildMonthRange(now, 3));
         break;
