@@ -74,9 +74,6 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
         .where((s) => s.isNotEmpty)
         .toSet()
         .toList();
-    if (_selectedCategories.isEmpty) {
-      _selectedCategories = ['General'];
-    }
     _lineItems = List.from(widget.receipt.lineItems);
     if (_lineItems.isEmpty && widget.receipt.items.isNotEmpty) {
       _lineItems = Receipt.parseLegacyItemsToLineItems(widget.receipt.items);
@@ -117,7 +114,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
       return '${li.description}$priceStr';
     }).toList();
 
-    final catsToSave = _selectedCategories.isEmpty ? ['General'] : _selectedCategories.toSet().toList();
+    final catsToSave = _selectedCategories.toSet().toList();
 
     widget.onChanged(
       widget.receipt.copyWith(

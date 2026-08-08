@@ -305,7 +305,6 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
             .where((c) => c.isNotEmpty)
             .toSet()
             .toList();
-        if (allDetailTags.isEmpty) allDetailTags.add('General');
 
         return NeumorphicBackground(
           child: Scaffold(

@@ -25,6 +25,7 @@ import 'package:isar/isar.dart';
 import 'line_item_isar.dart';
 import '../../domain/models/receipt.dart';
 import '../../data/mappers/line_item_mapper.dart';
+import '../../ui/core/utils/category_utils.dart';
 
 part 'receipt_isar.g.dart';
 
@@ -81,7 +82,7 @@ class ReceiptIsarModel {
       ..date = receipt.date
       ..totalAmount = receipt.amount
       ..currency = receipt.currency
-      ..category = receipt.category
+      ..category = receipt.category.split(',').map((c) => CategoryUtils.sanitize(c)).where((c) => c.isNotEmpty).join(', ')
       ..imagePath = receipt.imagePath
       ..items = receipt.items
       ..lineItems = receipt.lineItems.map((li) => li.toIsar()).toList();
@@ -93,13 +94,19 @@ class ReceiptIsarModel {
       domainLineItems = Receipt.parseLegacyItemsToLineItems(items);
     }
 
+    final sanitizedCat = category
+        .split(',')
+        .map((c) => CategoryUtils.sanitize(c))
+        .where((c) => c.isNotEmpty)
+        .join(', ');
+
     return Receipt(
       id: receiptId,
       merchant: merchant,
       date: date,
       amount: totalAmount,
       currency: currency,
-      category: category,
+      category: sanitizedCat,
       imagePath: imagePath,
       items: items,
       lineItems: domainLineItems,

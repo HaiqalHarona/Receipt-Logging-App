@@ -36,14 +36,13 @@ class ReceiptListItemWidget extends StatelessWidget {
         .where((c) => c.isNotEmpty)
         .toSet()
         .toList();
-    if (allTags.isEmpty) allTags.add('General');
 
-    final primaryTag = allTags.first;
+    final primaryTag = allTags.isNotEmpty ? allTags.first : '';
     final primaryColor = CategoryUtils.getCategoryColor(primaryTag);
     final categoryIcon = CategoryUtils.getCategoryIcon(primaryTag);
 
     final displayTags = allTags.take(2).toList();
-    final remainingCount = allTags.length - 2;
+    final remainingCount = allTags.length > 2 ? allTags.length - 2 : 0;
 
     return GestureDetector(
       onTap: onTap,

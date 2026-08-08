@@ -1,7 +1,6 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/widgets/bottom_nav_bar.dart';
 
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
@@ -11,10 +10,13 @@ class AiAssistantScreen extends StatefulWidget {
 }
 
 class _AiAssistantScreenState extends State<AiAssistantScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _fadeAnimation;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -43,6 +45,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return AnimatedBuilder(
       animation: AppThemeController.instance,
       builder: (context, _) {
@@ -55,7 +58,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
-            bottomNavigationBar: const AppBottomNavBar(currentPath: '/ai-assistant'),
             body: SafeArea(
               bottom: false,
               child: Padding(

@@ -1,7 +1,6 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/widgets/bottom_nav_bar.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -19,7 +18,6 @@ class AnalyticsScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: true,
-        bottomNavigationBar: const AppBottomNavBar(currentPath: '/analytics'),
         body: SafeArea(
           bottom: false,
           child: SingleChildScrollView(

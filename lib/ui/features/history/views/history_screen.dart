@@ -3,7 +3,6 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/widgets/bottom_nav_bar.dart';
 import '../view_models/history_view_model.dart';
 import 'widgets/category_filter_bottom_sheet.dart';
 import 'widgets/receipt_list_item_widget.dart';
@@ -15,9 +14,12 @@ class HistoryScreen extends StatefulWidget {
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveClientMixin {
   final HistoryViewModel _viewModel = HistoryViewModel();
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void dispose() {
@@ -43,6 +45,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return AnimatedBuilder(
       animation: Listenable.merge([AppThemeController.instance, _viewModel]),
       builder: (context, _) {
@@ -60,7 +63,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
-            bottomNavigationBar: const AppBottomNavBar(currentPath: '/history'),
             body: SafeArea(
               bottom: false,
               child: Column(

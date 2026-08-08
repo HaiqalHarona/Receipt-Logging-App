@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 class CategoryUtils {
   /// Strips emojis and trailing whitespace from a category string.
   static String sanitize(String cat) {
-    if (cat.isEmpty) return 'General';
+    if (cat.isEmpty) return '';
     final cleaned = cat
         .replaceAll(RegExp(r'[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]', unicode: true), '')
         .trim();
-    return cleaned.isEmpty ? 'General' : cleaned;
+    return cleaned;
   }
 
   /// Returns a unique theme accent color for each category.

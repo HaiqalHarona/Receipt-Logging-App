@@ -4,7 +4,6 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/widgets/bottom_nav_bar.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';
 import 'widgets/recent_transactions_list.dart';
@@ -16,8 +15,11 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAliveClientMixin {
   final DashboardViewModel _viewModel = DashboardViewModel();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void dispose() {
@@ -27,6 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return AnimatedBuilder(
       animation: Listenable.merge([AppThemeController.instance, _viewModel]),
       builder: (context, _) {
@@ -39,7 +42,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
-            bottomNavigationBar: const AppBottomNavBar(currentPath: '/dashboard'),
             body: SafeArea(
               bottom: false,
               child: SingleChildScrollView(

@@ -57,7 +57,7 @@ class OcrService {
         date: '',
         amount: 0.0,
         currency: 'USD',
-        category: 'General 🧾',
+        category: '',
         imagePath: null,
         items: [],
       );
@@ -161,7 +161,7 @@ class OcrService {
         date: 'Today',
         amount: totalAmount,
         currency: 'USD',
-        category: 'General 🧾',
+        category: '',
         imagePath: imagePath,
         items: lines.take(8).toList(),
       );
@@ -220,13 +220,13 @@ class OcrService {
 
   /// Maps backend category strings to normalized category names.
   String _normaliseCategory(String? raw) {
-    if (raw == null || raw.isEmpty) return 'General';
+    if (raw == null || raw.isEmpty) return '';
     final lower = raw.toLowerCase();
     if (lower.contains('grocer') || lower.contains('supermarket')) return 'Groceries';
     if (lower.contains('dining') || lower.contains('restaurant') || lower.contains('food')) return 'Dining';
     if (lower.contains('transport') || lower.contains('fuel') || lower.contains('gas')) return 'Transport';
     if (lower.contains('shop') || lower.contains('retail') || lower.contains('clothe')) return 'Shopping';
     if (lower.contains('electron') || lower.contains('tech') || lower.contains('gadget')) return 'Electronics';
-    return 'General';
+    return '';
   }
 }

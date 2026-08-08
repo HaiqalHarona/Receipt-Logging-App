@@ -2,7 +2,6 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/widgets/bottom_nav_bar.dart';
 
 class CustomizationScreen extends StatelessWidget {
   const CustomizationScreen({super.key});
@@ -31,7 +30,6 @@ class CustomizationScreen extends StatelessWidget {
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
-            bottomNavigationBar: const AppBottomNavBar(currentPath: '/settings'),
             body: SafeArea(
               bottom: false,
               child: SingleChildScrollView(

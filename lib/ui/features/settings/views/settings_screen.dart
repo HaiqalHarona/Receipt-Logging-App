@@ -4,14 +4,22 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/widgets/bottom_nav_bar.dart';
 import '../../../../services/currency_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return AnimatedBuilder(
       animation: Listenable.merge([AppThemeController.instance, CurrencyService.instance]),
       builder: (context, _) {
@@ -27,7 +35,6 @@ class SettingsScreen extends StatelessWidget {
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
-            bottomNavigationBar: const AppBottomNavBar(currentPath: '/settings'),
             body: SafeArea(
               bottom: false,
               child: SingleChildScrollView(
