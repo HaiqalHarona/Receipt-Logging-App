@@ -96,9 +96,9 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
         boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
         color: NeumorphicTheme.baseColor(context),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       child: SizedBox(
-        height: 120,
+        height: 116,
         width: double.infinity,
         child: Column(
           children: [
@@ -114,7 +114,9 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
+                      // Row 1: Title (top-left) & Currency Badge (top-right)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -128,7 +130,7 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: widget.accent.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
@@ -144,21 +146,32 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 3),
+
+                      // Row 2: Total Spending Amount
                       Text(
                         summary.formattedTotal,
                         style: TextStyle(
-                          fontSize: 26,
+                          fontSize: 21,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.5,
                           color: widget.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
+
+                      // Row 3: Comparison Badge (Red if +%, Green if -%, Gray if 0%, Omitted for All-Time)
+                      if (summary.percentageChange != null && summary.comparisonLabel != null) ...[
+                        _buildComparisonBadge(summary),
+                        const SizedBox(height: 2),
+                      ],
+
+                      // Row 4: Record Count
                       Text(
-                        summary.subtitle,
+                        "${summary.transactionCount} record${summary.transactionCount == 1 ? '' : 's'}",
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
                           color: widget.textSecondary,
                         ),
                       ),
@@ -167,6 +180,7 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                 },
               ),
             ),
+            const SizedBox(height: 3),
 
             // Read-only Carousel Dot Indicators (6 elements)
             Row(
@@ -187,6 +201,60 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                   ),
                 );
               }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds the spending comparison badge with a tap-triggered Tooltip for Row 3.
+  Widget _buildComparisonBadge(SpendingSummaryData summary) {
+    if (summary.percentageChange == null || summary.comparisonLabel == null) {
+      return const SizedBox.shrink();
+    }
+
+    final change = summary.percentageChange!;
+    final isIncrease = change > 0.0;
+    final isDecrease = change < 0.0;
+
+    final Color badgeColor = isIncrease
+        ? Colors.red.shade400
+        : (isDecrease ? Colors.green.shade400 : widget.textSecondary);
+
+    final IconData badgeIcon = isIncrease
+        ? Icons.trending_up_rounded
+        : (isDecrease ? Icons.trending_down_rounded : Icons.trending_flat_rounded);
+
+    final String prefix = isIncrease ? '+' : '';
+    final String badgeText = '$prefix${change.toStringAsFixed(1)}%';
+
+    return Tooltip(
+      message: summary.comparisonLabel!,
+      triggerMode: TooltipTriggerMode.tap,
+      preferBelow: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: badgeColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: badgeColor.withValues(alpha: 0.4),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(badgeIcon, size: 12, color: badgeColor),
+            const SizedBox(width: 3),
+            Text(
+              badgeText,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: badgeColor,
+              ),
             ),
           ],
         ),

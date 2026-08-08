@@ -35,6 +35,9 @@ class SpendingSummaryData {
   final int transactionCount;
   final String title;
   final String subtitle;
+  final double? previousTotalAmount;
+  final double? percentageChange;
+  final String? comparisonLabel;
 
   const SpendingSummaryData({
     required this.period,
@@ -43,6 +46,9 @@ class SpendingSummaryData {
     required this.transactionCount,
     required this.title,
     required this.subtitle,
+    this.previousTotalAmount,
+    this.percentageChange,
+    this.comparisonLabel,
   });
 }
 
@@ -63,12 +69,13 @@ class MonthlySpendingPoint {
 ///
 /// Reactively aggregates spending totals and recent transactions from
 /// [ReceiptRepository], applying live currency conversion via [CurrencyService]
-/// and caching timeline & summary aggregations.
+/// and providing calculation caching for spending graphs and timeline selectors.
 class DashboardViewModel extends ChangeNotifier {
   final ReceiptRepository _repository;
   final CurrencyService _currencyService;
 
   TimelineFilter _selectedTimeline = TimelineFilter.thisMonth;
+
   final Map<TimelineFilter, List<MonthlySpendingPoint>> _timelineCache = {};
   final Map<SpendingSummaryPeriod, SpendingSummaryData> _summaryCache = {};
 
@@ -77,27 +84,36 @@ class DashboardViewModel extends ChangeNotifier {
     CurrencyService? currencyService,
   })  : _repository = repository ?? ReceiptRepository.instance,
         _currencyService = currencyService ?? CurrencyService.instance {
-    _repository.addListener(_onDataChanged);
-    _currencyService.addListener(_onDataChanged);
-    _repository.init();
+    _repository.addListener(_onRepositoryChanged);
+    _currencyService.addListener(_onRepositoryChanged);
   }
 
-  void _onDataChanged() {
+  void _onRepositoryChanged() {
     _timelineCache.clear();
     _summaryCache.clear();
     notifyListeners();
   }
 
-  /// Currently active timeline filter option (defaults to [TimelineFilter.allTime]).
+  @override
+  void dispose() {
+    _repository.removeListener(_onRepositoryChanged);
+    _currencyService.removeListener(_onRepositoryChanged);
+    super.dispose();
+  }
+
+  // ── Active Timeline Selection ──────────────────────────────────────────────
+
   TimelineFilter get selectedTimeline => _selectedTimeline;
 
-  /// Updates active timeline option and triggers UI refresh.
-  void setTimeline(TimelineFilter filter) {
+  void setSelectedTimeline(TimelineFilter filter) {
     if (_selectedTimeline != filter) {
       _selectedTimeline = filter;
       notifyListeners();
     }
   }
+
+  /// Alias for backward compatibility with existing tests/views.
+  void setTimeline(TimelineFilter filter) => setSelectedTimeline(filter);
 
   /// Active target currency symbol (e.g. '$', '€', '£', '¥').
   String get currentSymbol => _currencyService.currentSymbol;
@@ -143,64 +159,102 @@ class DashboardViewModel extends ChangeNotifier {
   SpendingSummaryData _calculateSpendingSummary(SpendingSummaryPeriod period) {
     final now = DateTime.now();
     double total = 0.0;
+    double prevTotal = 0.0;
     int count = 0;
+    bool hasComparison = period != SpendingSummaryPeriod.allTime;
 
     for (final r in _repository.receipts) {
       final parsed = _parseDateString(r.date);
       if (parsed == null) continue;
 
-      bool include = false;
+      bool includeCurrent = false;
+      bool includePrev = false;
+
       switch (period) {
         case SpendingSummaryPeriod.oneMonth:
-          include = parsed.year == now.year && parsed.month == now.month;
+          includeCurrent = parsed.year == now.year && parsed.month == now.month;
+          final prevMonth = DateTime(now.year, now.month - 1, 1);
+          includePrev = parsed.year == prevMonth.year && parsed.month == prevMonth.month;
           break;
+
         case SpendingSummaryPeriod.threeMonths:
-          final limit = DateTime(now.year, now.month - 2, 1);
-          include = !parsed.isBefore(limit);
+          final currentLimit = DateTime(now.year, now.month - 2, 1);
+          final prevStart = DateTime(now.year, now.month - 5, 1);
+          includeCurrent = !parsed.isBefore(currentLimit);
+          includePrev = !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
           break;
+
         case SpendingSummaryPeriod.sixMonths:
-          final limit = DateTime(now.year, now.month - 5, 1);
-          include = !parsed.isBefore(limit);
+          final currentLimit = DateTime(now.year, now.month - 5, 1);
+          final prevStart = DateTime(now.year, now.month - 11, 1);
+          includeCurrent = !parsed.isBefore(currentLimit);
+          includePrev = !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
           break;
+
         case SpendingSummaryPeriod.twelveMonths:
-          final limit = DateTime(now.year, now.month - 11, 1);
-          include = !parsed.isBefore(limit);
+          final currentLimit = DateTime(now.year, now.month - 11, 1);
+          final prevStart = DateTime(now.year, now.month - 23, 1);
+          includeCurrent = !parsed.isBefore(currentLimit);
+          includePrev = !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
           break;
+
         case SpendingSummaryPeriod.ytd:
-          final limit = DateTime(now.year, 1, 1);
-          include = !parsed.isBefore(limit);
+          includeCurrent = parsed.year == now.year && parsed.month <= now.month;
+          includePrev = parsed.year == (now.year - 1) && parsed.month <= now.month;
           break;
+
         case SpendingSummaryPeriod.allTime:
-          include = true;
+          includeCurrent = true;
           break;
       }
 
-      if (include) {
-        total += _currencyService.convert(r.amount, r.currency);
+      final converted = _currencyService.convert(r.amount, r.currency);
+      if (includeCurrent) {
+        total += converted;
         count++;
+      }
+      if (hasComparison && includePrev) {
+        prevTotal += converted;
       }
     }
 
     String title;
+    String? comparisonLabel;
+
     switch (period) {
       case SpendingSummaryPeriod.oneMonth:
         title = "TOTAL SPENT THIS MONTH";
+        comparisonLabel = "compared to last month";
         break;
       case SpendingSummaryPeriod.threeMonths:
         title = "TOTAL SPENT LAST 3 MONTHS";
+        comparisonLabel = "compared to last 3 months";
         break;
       case SpendingSummaryPeriod.sixMonths:
         title = "TOTAL SPENT LAST 6 MONTHS";
+        comparisonLabel = "compared to last 6 months";
         break;
       case SpendingSummaryPeriod.twelveMonths:
         title = "TOTAL SPENT LAST 12 MONTHS";
+        comparisonLabel = "compared to last 12 months";
         break;
       case SpendingSummaryPeriod.ytd:
         title = "TOTAL SPENT YEAR TO DATE";
+        comparisonLabel = "compared to last year";
         break;
       case SpendingSummaryPeriod.allTime:
         title = "TOTAL SPENT ALL TIME";
+        comparisonLabel = null;
         break;
+    }
+
+    double? percentageChange;
+    if (hasComparison) {
+      if (prevTotal == 0.0) {
+        percentageChange = total == 0.0 ? 0.0 : 100.0;
+      } else {
+        percentageChange = ((total - prevTotal) / prevTotal) * 100.0;
+      }
     }
 
     final formatted = _currencyService.format(total, fromCurrencyCode: _currencyService.currentCurrency);
@@ -213,6 +267,9 @@ class DashboardViewModel extends ChangeNotifier {
       transactionCount: count,
       title: title,
       subtitle: subtitle,
+      previousTotalAmount: hasComparison ? prevTotal : null,
+      percentageChange: percentageChange,
+      comparisonLabel: comparisonLabel,
     );
   }
 
@@ -367,12 +424,5 @@ class DashboardViewModel extends ChangeNotifier {
     } catch (_) {
       return null;
     }
-  }
-
-  @override
-  void dispose() {
-    _repository.removeListener(_onDataChanged);
-    _currencyService.removeListener(_onDataChanged);
-    super.dispose();
   }
 }
