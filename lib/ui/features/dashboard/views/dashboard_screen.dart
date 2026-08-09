@@ -1,5 +1,4 @@
-// File: lib/ui/features/dashboard/views/dashboard_screen.dart
-
+import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -53,33 +52,63 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                     // Header Row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Hello, Nino",
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: textPrimary,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_viewModel.isLoggedIn &&
+                                  _viewModel.username != null &&
+                                  _viewModel.username!.isNotEmpty) ...[
+                                Text(
+                                  "Hello, ${_viewModel.username}",
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                              ],
+                              Text(
+                                "Here is your spending breakdown",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Here is your spending breakdown",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: textSecondary,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                        NeumorphicIconBadge(
-                          icon: Icons.qr_code_scanner_rounded,
-                          iconSize: 22,
-                          onTap: () => context.push('/scanner'),
-                        ),
+                        const SizedBox(width: 8),
+                        if (_viewModel.isLoggedIn)
+                          _buildAvatarWidget(_viewModel.avatarImagePath, accent, textSecondary, controller)
+                        else
+                          NeumorphicButtonWidget(
+                            color: Colors.transparent,
+                            borderRadius: 10,
+                            depth: 4,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            onPressed: () => context.push('/login'),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.login_rounded, size: 13, color: accent),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "Login",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: accent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -135,5 +164,54 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         );
       },
     );
+  }
+
+  Widget _buildAvatarWidget(
+    String? path,
+    Color accent,
+    Color fallbackColor,
+    AppThemeController controller,
+  ) {
+    final isDark = controller.themeMode == ThemeMode.dark;
+    final base = controller.currentBaseColor;
+
+    return Neumorphic(
+      style: NeumorphicStyle(
+        depth: 4,
+        intensity: 0.85,
+        boxShape: const NeumorphicBoxShape.circle(),
+        color: base,
+        border: NeumorphicBorder(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.6),
+          width: 0.8,
+        ),
+      ),
+      child: SizedBox(
+        width: 38,
+        height: 38,
+        child: ClipOval(
+          child: _buildAvatarImage(path, accent, fallbackColor),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarImage(String? path, Color accent, Color fallbackColor) {
+    if (path != null && path.isNotEmpty) {
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return Image.network(
+          path,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Icon(Icons.person_rounded, color: accent, size: 22),
+        );
+      } else {
+        return Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Icon(Icons.person_rounded, color: accent, size: 22),
+        );
+      }
+    }
+    return Icon(Icons.person_rounded, color: accent, size: 22);
   }
 }

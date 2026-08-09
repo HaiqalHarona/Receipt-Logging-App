@@ -76,6 +76,10 @@ class DashboardViewModel extends ChangeNotifier {
 
   TimelineFilter _selectedTimeline = TimelineFilter.thisMonth;
 
+  bool _isLoggedIn = false;
+  String? _username;
+  String? _avatarImagePath;
+
   final Map<TimelineFilter, List<MonthlySpendingPoint>> _timelineCache = {};
   final Map<SpendingSummaryPeriod, SpendingSummaryData> _summaryCache = {};
 
@@ -86,6 +90,17 @@ class DashboardViewModel extends ChangeNotifier {
         _currencyService = currencyService ?? CurrencyService.instance {
     _repository.addListener(_onRepositoryChanged);
     _currencyService.addListener(_onRepositoryChanged);
+  }
+
+  bool get isLoggedIn => _isLoggedIn;
+  String? get username => _username;
+  String? get avatarImagePath => _avatarImagePath;
+
+  void setLoginState({required bool isLoggedIn, String? username, String? avatarImagePath}) {
+    _isLoggedIn = isLoggedIn;
+    _username = username;
+    _avatarImagePath = avatarImagePath;
+    notifyListeners();
   }
 
   void _onRepositoryChanged() {

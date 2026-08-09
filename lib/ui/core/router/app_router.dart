@@ -7,6 +7,9 @@ import '../../features/receipt_detail/views/receipt_detail_screen.dart';
 import '../../features/analytics/views/analytics_screen.dart';
 import '../../features/paywall/views/paywall_screen.dart';
 import '../../features/auth/views/auth_screen.dart';
+import '../../features/auth/views/login_screen.dart';
+import '../../features/auth/views/signup_screen.dart';
+import '../../features/auth/views/forgot_password_screen.dart';
 import '../../features/settings/views/customization_screen.dart';
 import '../../features/settings/views/db_viewer_screen.dart';
 import '../../features/scanner/views/scanner_screen.dart';
@@ -78,6 +81,18 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/auth',
       pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const AuthScreen()),
+    ),
+    GoRoute(
+      path: '/login',
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const LoginScreen()),
+    ),
+    GoRoute(
+      path: '/signup',
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const SignUpScreen()),
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ForgotPasswordScreen()),
     ),
     GoRoute(
       path: '/customization',
