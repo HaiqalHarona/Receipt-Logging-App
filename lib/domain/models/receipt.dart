@@ -13,6 +13,9 @@ class Receipt {
   final String category;
   final String? imagePath;
 
+  /// Timestamp when the receipt was created/added.
+  final DateTime? createdAt;
+
   /// Legacy flat string items retained for backward-compatibility.
   final List<String> items;
 
@@ -28,6 +31,7 @@ class Receipt {
     required this.currency,
     required this.category,
     this.imagePath,
+    this.createdAt,
     this.items = const [],
     this.lineItems = const [],
   });
@@ -40,6 +44,7 @@ class Receipt {
     String? currency,
     String? category,
     String? imagePath,
+    DateTime? createdAt,
     List<String>? items,
     List<LineItem>? lineItems,
   }) {
@@ -51,6 +56,7 @@ class Receipt {
       currency: currency ?? this.currency,
       category: category ?? this.category,
       imagePath: imagePath ?? this.imagePath,
+      createdAt: createdAt ?? this.createdAt,
       items: items ?? this.items,
       lineItems: lineItems ?? this.lineItems,
     );
@@ -65,6 +71,7 @@ class Receipt {
       'currency': currency,
       'category': category,
       'imagePath': imagePath,
+      if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
       'items': items,
       'lineItems': lineItems.map((li) => li.toJson()).toList(),
     };
@@ -91,6 +98,13 @@ class Receipt {
       parsedLineItems = parseLegacyItemsToLineItems(parsedItems);
     }
 
+    DateTime? parsedCreatedAt;
+    if (json['createdAt'] != null) {
+      parsedCreatedAt = DateTime.tryParse(json['createdAt'] as String);
+    } else if (json['created_at'] != null) {
+      parsedCreatedAt = DateTime.tryParse(json['created_at'] as String);
+    }
+
     return Receipt(
       id: json['id'] as String? ?? 'receipt_${DateTime.now().millisecondsSinceEpoch}',
       merchant: json['merchant'] as String? ?? 'Unknown Merchant',
@@ -99,6 +113,7 @@ class Receipt {
       currency: json['currency'] as String? ?? 'USD',
       category: json['category'] as String? ?? 'Other 📦',
       imagePath: json['imagePath'] as String?,
+      createdAt: parsedCreatedAt,
       items: parsedItems,
       lineItems: parsedLineItems,
     );
@@ -142,6 +157,7 @@ class Receipt {
           currency == other.currency &&
           category == other.category &&
           imagePath == other.imagePath &&
+          createdAt == other.createdAt &&
           listEquals(items, other.items) &&
           listEquals(lineItems, other.lineItems);
 
@@ -154,11 +170,12 @@ class Receipt {
       currency.hashCode ^
       category.hashCode ^
       imagePath.hashCode ^
+      createdAt.hashCode ^
       Object.hashAll(items) ^
       Object.hashAll(lineItems);
 
   @override
   String toString() {
-    return 'Receipt(id: $id, merchant: $merchant, amount: $amount $currency, date: $date, lineItems: ${lineItems.length})';
+    return 'Receipt(id: $id, merchant: $merchant, amount: $amount $currency, date: $date, createdAt: $createdAt, lineItems: ${lineItems.length})';
   }
 }

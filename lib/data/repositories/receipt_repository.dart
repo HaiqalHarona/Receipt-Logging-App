@@ -19,7 +19,7 @@ class ReceiptRepository extends ChangeNotifier {
   ReceiptRepository._() {
     // In test environments only, provide seed data for unit tests
     if (_isTestEnvironment) {
-      _receipts = _getTestSampleReceipts();
+      _receipts = List.of(_getTestSampleReceipts());
     }
   }
   static final ReceiptRepository instance = ReceiptRepository._();
@@ -53,26 +53,30 @@ class ReceiptRepository extends ChangeNotifier {
 
   /// Saves a single receipt to the Isar database.
   Future<void> saveReceipt(Receipt receipt) async {
+    final receiptToSave = receipt.createdAt != null ? receipt : receipt.copyWith(createdAt: DateTime.now());
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
       await isar.writeTxn(() async {
         final existing = await isar.receiptIsarModels
             .where()
-            .receiptIdEqualTo(receipt.id)
+            .receiptIdEqualTo(receiptToSave.id)
             .findFirst();
-        final model = ReceiptIsarModel.fromDomain(receipt);
+        final model = ReceiptIsarModel.fromDomain(receiptToSave);
         if (existing != null) {
           model.id = existing.id;
+          if (receipt.createdAt == null) {
+            model.createdAt = existing.createdAt;
+          }
         }
         await isar.receiptIsarModels.put(model);
       });
       await _loadFromIsar();
     } else {
-      final index = _receipts.indexWhere((r) => r.id == receipt.id);
+      final index = _receipts.indexWhere((r) => r.id == receiptToSave.id);
       if (index >= 0) {
-        _receipts[index] = receipt;
+        _receipts[index] = receiptToSave;
       } else {
-        _receipts.insert(0, receipt);
+        _receipts.insert(0, receiptToSave);
       }
     }
     notifyListeners();
@@ -84,13 +88,17 @@ class ReceiptRepository extends ChangeNotifier {
       final isar = IsarService.isar;
       await isar.writeTxn(() async {
         for (final r in newReceipts) {
+          final receiptToSave = r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
           final existing = await isar.receiptIsarModels
               .where()
-              .receiptIdEqualTo(r.id)
+              .receiptIdEqualTo(receiptToSave.id)
               .findFirst();
-          final model = ReceiptIsarModel.fromDomain(r);
+          final model = ReceiptIsarModel.fromDomain(receiptToSave);
           if (existing != null) {
             model.id = existing.id;
+            if (r.createdAt == null) {
+              model.createdAt = existing.createdAt;
+            }
           }
           await isar.receiptIsarModels.put(model);
         }
@@ -98,11 +106,12 @@ class ReceiptRepository extends ChangeNotifier {
       await _loadFromIsar();
     } else {
       for (final r in newReceipts) {
-        final index = _receipts.indexWhere((existing) => existing.id == r.id);
+        final receiptToSave = r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
+        final index = _receipts.indexWhere((existing) => existing.id == receiptToSave.id);
         if (index >= 0) {
-          _receipts[index] = r;
+          _receipts[index] = receiptToSave;
         } else {
-          _receipts.insert(0, r);
+          _receipts.insert(0, receiptToSave);
         }
       }
     }

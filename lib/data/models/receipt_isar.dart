@@ -84,6 +84,7 @@ class ReceiptIsarModel {
       ..currency = receipt.currency
       ..category = receipt.category.split(',').map((c) => CategoryUtils.sanitize(c)).where((c) => c.isNotEmpty).join(', ')
       ..imagePath = receipt.imagePath
+      ..createdAt = receipt.createdAt ?? DateTime.now()
       ..items = receipt.items
       ..lineItems = receipt.lineItems.map((li) => li.toIsar()).toList();
   }
@@ -108,6 +109,7 @@ class ReceiptIsarModel {
       currency: currency,
       category: sanitizedCat,
       imagePath: imagePath,
+      createdAt: createdAt,
       items: items,
       lineItems: domainLineItems,
     );
