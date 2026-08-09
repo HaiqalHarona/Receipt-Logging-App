@@ -5,6 +5,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../services/isar_service.dart';
 import '../../../../data/repositories/receipt_repository.dart';
+import '../../../../data/seeders/receipt_seeder.dart';
 import '../../../core/theme/theme_controller.dart';
 
 class DbViewerScreen extends StatefulWidget {
@@ -186,26 +187,59 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                               color: textPrimary,
                             ),
                           ),
-                          if (receipts.isNotEmpty)
-                            NeumorphicButton(
-                              style: NeumorphicStyle(
-                                depth: 2,
-                                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-                                color: Colors.redAccent.withValues(alpha: 0.1),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              onPressed: () {
-                                _showClearConfirmDialog(context);
-                              },
-                              child: Text(
-                                "Clear DB",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.redAccent,
+                          Row(
+                            children: [
+                              NeumorphicButton(
+                                style: NeumorphicStyle(
+                                  depth: 2,
+                                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+                                  color: accent.withValues(alpha: 0.15),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                onPressed: () async {
+                                  await ReceiptSeeder.seedDatabase();
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Seeded 24 receipts across 12 months!'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Text(
+                                  "Seed DB (24)",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: accent,
+                                  ),
                                 ),
                               ),
-                            ),
+                              if (receipts.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                NeumorphicButton(
+                                  style: NeumorphicStyle(
+                                    depth: 2,
+                                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+                                    color: Colors.redAccent.withValues(alpha: 0.1),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  onPressed: () {
+                                    _showClearConfirmDialog(context);
+                                  },
+                                  child: Text(
+                                    "Clear DB",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.redAccent,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
