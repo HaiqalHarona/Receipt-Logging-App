@@ -146,11 +146,16 @@ class DashboardViewModel extends ChangeNotifier {
     return _currencyService.format(totalSpent, fromCurrencyCode: _currencyService.currentCurrency);
   }
 
-  /// Latest 5 receipts for quick dashboard preview.
+  /// Latest 5 receipts for quick dashboard preview ordered by createdAt descending (latest to earliest).
   List<Receipt> get recentTransactions {
-    final all = _repository.receipts;
-    if (all.length <= 5) return all;
-    return all.sublist(0, 5);
+    final sorted = List<Receipt>.from(_repository.receipts)
+      ..sort((a, b) {
+        final aTime = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bTime = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bTime.compareTo(aTime);
+      });
+    if (sorted.length <= 5) return sorted;
+    return sorted.sublist(0, 5);
   }
 
   /// Converts a specific receipt's price into the active display currency string.

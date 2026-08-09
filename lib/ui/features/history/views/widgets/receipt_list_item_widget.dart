@@ -41,9 +41,6 @@ class ReceiptListItemWidget extends StatelessWidget {
     final primaryColor = CategoryUtils.getCategoryColor(primaryTag);
     final categoryIcon = CategoryUtils.getCategoryIcon(primaryTag);
 
-    final displayTags = allTags.take(2).toList();
-    final remainingCount = allTags.length > 2 ? allTags.length - 2 : 0;
-
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -95,51 +92,7 @@ class ReceiptListItemWidget extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          ...displayTags.map((tag) {
-                            final tagColor = CategoryUtils.getCategoryColor(tag);
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 4),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: tagColor.withAlpha(30),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: tagColor.withAlpha(120),
-                                    width: 0.8,
-                                  ),
-                                ),
-                                child: Text(
-                                  tag,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: tagColor,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                          if (remainingCount > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: textSecondary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '+$remainingCount',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: textSecondary,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
+                      _buildCategoryTags(allTags),
                     ],
                   ),
                 ),
@@ -176,5 +129,118 @@ class ReceiptListItemWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildCategoryTags(List<String> allTags) {
+    if (allTags.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double maxWidth = constraints.maxWidth;
+        final int m = allTags.length;
+
+        final List<double> tagWidths = allTags.map(_tagTotalWidth).toList();
+        final double totalAllWidth = tagWidths.fold(0.0, (sum, w) => sum + w);
+
+        List<String> visibleTags = [];
+        int remainingCount = 0;
+
+        if (totalAllWidth <= maxWidth) {
+          visibleTags = allTags;
+          remainingCount = 0;
+        } else {
+          int selectedK = 0;
+          for (int k = m - 1; k >= 1; k--) {
+            final double tagsWidth = tagWidths.take(k).fold(0.0, (sum, w) => sum + w);
+            final double badgeWidth = _badgeTotalWidth(m - k);
+            if (tagsWidth + badgeWidth <= maxWidth) {
+              selectedK = k;
+              break;
+            }
+          }
+
+          if (selectedK > 0) {
+            visibleTags = allTags.take(selectedK).toList();
+            remainingCount = m - selectedK;
+          } else {
+            visibleTags = allTags.take(1).toList();
+            remainingCount = m - 1;
+          }
+        }
+
+        return ClipRect(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...visibleTags.map((tag) {
+                final tagColor = CategoryUtils.getCategoryColor(tag);
+                return Flexible(
+                  fit: FlexFit.loose,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: tagColor.withAlpha(30),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: tagColor.withAlpha(120),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        tag,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: tagColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              if (remainingCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: textSecondary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '+$remainingCount',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: textSecondary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  double _measureTextWidth(String text, TextStyle style) {
+    final TextPainter tp = TextPainter(
+      text: TextSpan(text: text, style: style),
+      maxLines: 1,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return tp.size.width;
+  }
+
+  double _tagTotalWidth(String tag) {
+    const style = TextStyle(fontSize: 10, fontWeight: FontWeight.bold);
+    return _measureTextWidth(tag, style) + 16.0;
+  }
+
+  double _badgeTotalWidth(int count) {
+    const style = TextStyle(fontSize: 9, fontWeight: FontWeight.bold);
+    return _measureTextWidth('+$count', style) + 14.0;
   }
 }
