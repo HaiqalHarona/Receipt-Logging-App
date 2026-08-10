@@ -181,9 +181,10 @@ class BackendApiClient {
 
   // ── USER AUTHENTICATION & PROFILE ───────────────────────────────────────────
 
-  /// Registers a new user account. Rejects duplicate usernames (HTTP 409).
+  /// Registers a new user account. Rejects duplicate usernames or emails (HTTP 409).
   Future<UserRecordDto> createUser({
     required String username,
+    required String email,
     required String password,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/create');
@@ -194,6 +195,7 @@ class BackendApiClient {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'username': username,
+            'email': email,
             'password': password,
           }),
         )
@@ -242,6 +244,42 @@ class BackendApiClient {
 
     final response =
         await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    return UserRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Updates mutable profile fields for the authenticated user via PATCH /user/me.
+  Future<UserRecordDto> updateUserProfile({
+    required String deviceId,
+    required String deviceToken,
+    required String userId,
+    String? email,
+    String? countryCode,
+    String? mobileNumber,
+    String? avatarImagePath,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
+    final headers = ApiConfig.buildHeaders(
+      deviceId: deviceId,
+      deviceToken: deviceToken,
+      userId: userId,
+    );
+
+    final Map<String, dynamic> body = {};
+    if (email != null) body['email'] = email;
+    if (countryCode != null) body['country_code'] = countryCode;
+    if (mobileNumber != null) body['mobile_number'] = mobileNumber;
+    if (avatarImagePath != null) body['avatar_image_path'] = avatarImagePath;
+
+    final response = await _http
+        .patch(
+          uri,
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(ApiConfig.timeout);
 
     _assertStatus(response, 200);
     return UserRecordDto.fromJson(

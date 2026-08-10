@@ -4,6 +4,8 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../../cloud/api/backend_api_client.dart';
+import '../../../../cloud/services/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -20,6 +22,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+
+  // Inline field-level error states
+  String? _usernameError;
+  String? _emailError;
+  String? _passwordError;
+  String? _confirmPasswordError;
+
+  @override
+  void initState() {
+    super.initState();
+    if (AuthService.instance.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/dashboard');
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -30,36 +49,143 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _onSignUp() {
+  // ── VALIDATION ──────────────────────────────────────────────────────────────
+
+  bool _validateFields() {
     final username = _usernameController.text.trim();
-    if (username.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a username'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
+    final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
-    if (password != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Passwords do not match'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
+    bool valid = true;
+
+    String? usernameErr;
+    String? emailErr;
+    String? passwordErr;
+    String? confirmErr;
+
+    if (username.isEmpty) {
+      usernameErr = 'Username is required.';
+      valid = false;
+    } else if (username.length < 3) {
+      usernameErr = 'Username must be at least 3 characters.';
+      valid = false;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Account created for $username!'),
-        behavior: SnackBarBehavior.floating,
+    if (email.isEmpty) {
+      emailErr = 'Email address is required.';
+      valid = false;
+    } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      emailErr = 'Please enter a valid email address.';
+      valid = false;
+    }
+
+    if (password.isEmpty) {
+      passwordErr = 'Password is required.';
+      valid = false;
+    } else if (password.length < 6) {
+      passwordErr = 'Password must be at least 6 characters.';
+      valid = false;
+    }
+
+    if (confirmPassword.isEmpty) {
+      confirmErr = 'Please confirm your password.';
+      valid = false;
+    } else if (password != confirmPassword) {
+      confirmErr = 'Passwords do not match.';
+      valid = false;
+    }
+
+    setState(() {
+      _usernameError = usernameErr;
+      _emailError = emailErr;
+      _passwordError = passwordErr;
+      _confirmPasswordError = confirmErr;
+    });
+
+    return valid;
+  }
+
+  // ── SIGN UP HANDLER ─────────────────────────────────────────────────────────
+
+  Future<void> _onSignUp() async {
+    if (!_validateFields()) return;
+
+    setState(() => _isLoading = true);
+
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    try {
+      final user = await BackendApiClient.instance.createUser(
+        username: username,
+        email: email,
+        password: password,
+      );
+
+      // Auto login: persist session and link hardware device
+      await AuthService.instance.saveSession(user);
+      await AuthService.instance.linkCurrentDevice(user);
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Account created! Welcome, ${user.username}!'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+
+      // Navigate to dashboard, clearing the auth stack
+      context.go('/dashboard');
+    } on ApiException catch (e) {
+      setState(() => _isLoading = false);
+
+      final detail = e.message.toLowerCase();
+      if (detail.contains('username')) {
+        setState(() => _usernameError = 'This username is already taken.');
+      } else if (detail.contains('email')) {
+        setState(() => _emailError = 'An account with this email already exists.');
+      } else {
+        // Fallback: surface the server message as a username error
+        setState(() => _usernameError = e.message);
+      }
+      debugPrint('⚠️ [SignUp] ApiException: ${e.statusCode} - ${e.message}');
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to connect. Please check your internet connection.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      debugPrint('⚠️ [SignUp] Unexpected error: $e');
+    }
+  }
+
+  // ── HELPERS ─────────────────────────────────────────────────────────────────
+
+  Widget _buildFieldError(String? error) {
+    if (error == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, left: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 13),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              error,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+            ),
+          ),
+        ],
       ),
     );
-    context.pop();
   }
 
   @override
@@ -120,7 +246,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                // Username Input Field
+                // ── USERNAME ─────────────────────────────────────────────────
                 Text(
                   "USERNAME",
                   style: TextStyle(
@@ -141,6 +267,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         child: TextField(
                           controller: _usernameController,
                           style: TextStyle(color: textPrimary, fontSize: 14),
+                          autocorrect: false,
+                          onChanged: (_) {
+                            if (_usernameError != null) setState(() => _usernameError = null);
+                          },
                           decoration: InputDecoration(
                             hintText: "Choose a username",
                             hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
@@ -151,9 +281,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ],
                   ),
                 ),
+                _buildFieldError(_usernameError),
                 const SizedBox(height: 16),
 
-                // Email Address Input Field (Placeholder)
+                // ── EMAIL ─────────────────────────────────────────────────────
                 Text(
                   "EMAIL ADDRESS",
                   style: TextStyle(
@@ -175,6 +306,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           style: TextStyle(color: textPrimary, fontSize: 14),
+                          autocorrect: false,
+                          onChanged: (_) {
+                            if (_emailError != null) setState(() => _emailError = null);
+                          },
                           decoration: InputDecoration(
                             hintText: "user@example.com",
                             hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
@@ -185,9 +320,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ],
                   ),
                 ),
+                _buildFieldError(_emailError),
                 const SizedBox(height: 16),
 
-                // Password Input Field
+                // ── PASSWORD ──────────────────────────────────────────────────
                 Text(
                   "PASSWORD",
                   style: TextStyle(
@@ -209,6 +345,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
+                          onChanged: (_) {
+                            if (_passwordError != null) setState(() => _passwordError = null);
+                            // Also clear confirm error when password is edited
+                            if (_confirmPasswordError != null) setState(() => _confirmPasswordError = null);
+                          },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
                             hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
@@ -231,9 +372,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ],
                   ),
                 ),
+                _buildFieldError(_passwordError),
                 const SizedBox(height: 16),
 
-                // Confirm Password Input Field
+                // ── CONFIRM PASSWORD ──────────────────────────────────────────
                 Text(
                   "CONFIRM PASSWORD",
                   style: TextStyle(
@@ -255,6 +397,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           controller: _confirmPasswordController,
                           obscureText: _obscureConfirmPassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
+                          onChanged: (_) {
+                            if (_confirmPasswordError != null) setState(() => _confirmPasswordError = null);
+                          },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
                             hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
@@ -277,6 +422,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ],
                   ),
                 ),
+                _buildFieldError(_confirmPasswordError),
                 const SizedBox(height: 28),
 
                 // Sign Up Button
@@ -284,16 +430,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   width: double.infinity,
                   height: 52,
                   child: NeumorphicButtonWidget(
-                    onPressed: _onSignUp,
-                    child: const Center(
-                      child: Text(
-                        "Sign Up",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    onPressed: _isLoading ? null : _onSignUp,
+                    child: Center(
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              "Sign Up",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                 ),

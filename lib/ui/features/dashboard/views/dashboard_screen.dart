@@ -58,19 +58,19 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (_viewModel.isLoggedIn &&
-                                  _viewModel.username != null &&
-                                  _viewModel.username!.isNotEmpty) ...[
-                                Text(
-                                  "Hello, ${_viewModel.username}",
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: textPrimary,
-                                  ),
+                              Text(
+                                _viewModel.isLoggedIn &&
+                                        _viewModel.username != null &&
+                                        _viewModel.username!.isNotEmpty
+                                    ? "Welcome back, ${_viewModel.username}."
+                                    : "Welcome back",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
                                 ),
-                                const SizedBox(height: 4),
-                              ],
+                              ),
+                              const SizedBox(height: 4),
                               Text(
                                 "Here is your spending breakdown",
                                 style: TextStyle(
@@ -85,7 +85,10 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                         ),
                         const SizedBox(width: 8),
                         if (_viewModel.isLoggedIn)
-                          _buildAvatarWidget(_viewModel.avatarImagePath, accent, textSecondary, controller)
+                          GestureDetector(
+                            onTap: () => context.push('/user-settings'),
+                            child: _buildAvatarWidget(_viewModel.avatarImagePath, accent, textSecondary, controller),
+                          )
                         else
                           NeumorphicButtonWidget(
                             color: Colors.transparent,

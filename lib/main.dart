@@ -11,6 +11,7 @@ import 'data/repositories/receipt_repository.dart';
 
 import 'services/device_identity_service.dart';
 import 'services/api/backend_api_client.dart';
+import 'cloud/services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,7 @@ void main() async {
   ]);
   await ReceiptRepository.instance.init();
   await DeviceIdentityService.instance.init(BackendApiClient.instance);
+  await AuthService.instance.init();
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     bool isDebug = false;

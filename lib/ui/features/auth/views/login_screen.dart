@@ -4,6 +4,8 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../../cloud/api/backend_api_client.dart';
+import '../../../../cloud/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +17,20 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    if (AuthService.instance.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/dashboard');
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -24,25 +39,87 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _onSignIn() {
-    final username = _usernameController.text.trim();
-    if (username.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your username'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  Future<void> _onSignIn() async {
+    final identifier = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    // Clear any previous error
+    setState(() => _errorMessage = null);
+
+    // Basic field validation — show same generic error to avoid enumeration
+    if (identifier.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Invalid username, email, or password. Please try again.';
+      });
       return;
     }
-    // Stub login success for UI demonstration
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Signed in as $username'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    context.pop();
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await BackendApiClient.instance.loginUser(
+        username: identifier,
+        password: password,
+      );
+
+      final user = response.user;
+      if (user == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Invalid username, email, or password. Please try again.';
+        });
+        return;
+      }
+
+      // Persist session and link hardware device to user account
+      await AuthService.instance.saveSession(user);
+      await AuthService.instance.linkCurrentDevice(user);
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Welcome back, ${user.username}!'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+
+      // Navigate to dashboard, clearing the auth stack
+      context.go('/dashboard');
+    } on ApiException catch (e) {
+      final msg = 'Invalid username, email, or password. Please try again.';
+      setState(() {
+        _isLoading = false;
+        _errorMessage = msg;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+      debugPrint('⚠️ [Login] ApiException: ${e.statusCode} - ${e.message}');
+    } catch (e) {
+      const msg = 'Unable to connect. Please check your internet connection.';
+      setState(() {
+        _isLoading = false;
+        _errorMessage = msg;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(msg),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      debugPrint('⚠️ [Login] Unexpected error: $e');
+    }
   }
 
   void _onForgetPassword() {
@@ -111,9 +188,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 36),
 
-                // Username Input Field
+                // Username or Email Input Field
                 Text(
-                  "USERNAME",
+                  "USERNAME OR EMAIL",
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -132,8 +209,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: TextField(
                           controller: _usernameController,
                           style: TextStyle(color: textPrimary, fontSize: 14),
+                          keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
+                          onChanged: (_) {
+                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                          },
                           decoration: InputDecoration(
-                            hintText: "Enter your username",
+                            hintText: "Enter your username or email",
                             hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
                             border: InputBorder.none,
                           ),
@@ -166,6 +248,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
+                          onChanged: (_) {
+                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                          },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
                             hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
@@ -188,23 +273,62 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
+
+                // Inline Error Banner
+                if (_errorMessage != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4), width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ] else
+                  const SizedBox(height: 12),
 
                 // Sign In Button
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: NeumorphicButtonWidget(
-                    onPressed: _onSignIn,
-                    child: const Center(
-                      child: Text(
-                        "Sign In",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    onPressed: _isLoading ? null : _onSignIn,
+                    child: Center(
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              "Sign In",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                 ),

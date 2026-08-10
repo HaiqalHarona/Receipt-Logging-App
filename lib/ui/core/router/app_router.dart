@@ -12,7 +12,10 @@ import '../../features/auth/views/signup_screen.dart';
 import '../../features/auth/views/forgot_password_screen.dart';
 import '../../features/settings/views/customization_screen.dart';
 import '../../features/settings/views/db_viewer_screen.dart';
+import '../../features/settings/views/user_settings_screen.dart';
 import '../../features/scanner/views/scanner_screen.dart';
+
+import '../../../cloud/services/auth_service.dart';
 
 Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widget child}) {
   return CustomTransitionPage<void>(
@@ -38,6 +41,19 @@ Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widge
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/dashboard',
+  redirect: (BuildContext context, GoRouterState state) {
+    final isLoggedIn = AuthService.instance.isLoggedIn;
+    final path = state.matchedLocation;
+    final isAuthRoute = path == '/login' || path == '/signup' || path == '/auth';
+
+    if (isLoggedIn && isAuthRoute) {
+      return '/dashboard';
+    }
+    if (!isLoggedIn && path == '/user-settings') {
+      return '/dashboard';
+    }
+    return null;
+  },
   routes: [
     ShellRoute(
       builder: (context, state, child) => MainTabShell(
@@ -101,6 +117,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/settings/db-viewer',
       pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const DbViewerScreen()),
+    ),
+    GoRoute(
+      path: '/user-settings',
+      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const UserSettingsScreen()),
     ),
     GoRoute(
       path: '/scanner',

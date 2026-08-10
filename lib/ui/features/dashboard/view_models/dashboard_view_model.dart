@@ -5,6 +5,8 @@ import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
 
+import '../../../../cloud/services/auth_service.dart';
+
 // ── Spending Summary & Monthly Graph Models ──────────────────────────────────
 
 /// Timeline options for the dashboard spending graph.
@@ -90,10 +92,28 @@ class DashboardViewModel extends ChangeNotifier {
         _currencyService = currencyService ?? CurrencyService.instance {
     _repository.addListener(_onRepositoryChanged);
     _currencyService.addListener(_onRepositoryChanged);
+    AuthService.instance.addListener(_onAuthChanged);
+    _syncAuthSession();
   }
 
-  bool get isLoggedIn => _isLoggedIn;
-  String? get username => _username;
+  void _syncAuthSession() {
+    if (AuthService.instance.isLoggedIn) {
+      _isLoggedIn = true;
+      _username = AuthService.instance.currentUsername;
+    } else {
+      _isLoggedIn = false;
+      _username = null;
+      _avatarImagePath = null;
+    }
+  }
+
+  void _onAuthChanged() {
+    _syncAuthSession();
+    notifyListeners();
+  }
+
+  bool get isLoggedIn => AuthService.instance.isLoggedIn ? true : _isLoggedIn;
+  String? get username => AuthService.instance.isLoggedIn ? (AuthService.instance.currentUsername ?? _username) : (_isLoggedIn ? _username : null);
   String? get avatarImagePath => _avatarImagePath;
 
   void setLoginState({required bool isLoggedIn, String? username, String? avatarImagePath}) {
@@ -113,6 +133,7 @@ class DashboardViewModel extends ChangeNotifier {
   void dispose() {
     _repository.removeListener(_onRepositoryChanged);
     _currencyService.removeListener(_onRepositoryChanged);
+    AuthService.instance.removeListener(_onAuthChanged);
     super.dispose();
   }
 
