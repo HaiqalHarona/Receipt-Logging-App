@@ -229,6 +229,67 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Initiates password reset flow via email address or mobile number.
+  Future<Map<String, dynamic>> initiatePasswordReset(String identifier) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/reset-password-initiate');
+
+    final response = await _http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'identifier': identifier}),
+        )
+        .timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Verifies 6-digit OTP and returns single-use reset_token on success.
+  Future<String> verifyPasswordResetOtp({
+    required String identifier,
+    required String otp,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/reset-password-otp');
+
+    final response = await _http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'identifier': identifier,
+            'otp': otp,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (data['reset_token'] as String?) ?? '';
+  }
+
+  /// Completes password reset using single-use reset_token and new password.
+  Future<bool> completePasswordReset({
+    required String resetToken,
+    required String newPassword,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/password-reset-new');
+
+    final response = await _http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'reset_token': resetToken,
+            'new_password': newPassword,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    return true;
+  }
+
   /// Retrieves current authenticated user profile.
   Future<UserRecordDto> fetchUserProfile({
     required String deviceId,

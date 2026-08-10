@@ -10,6 +10,8 @@ import '../../features/auth/views/auth_screen.dart';
 import '../../features/auth/views/login_screen.dart';
 import '../../features/auth/views/signup_screen.dart';
 import '../../features/auth/views/forgot_password_screen.dart';
+import '../../features/auth/views/otp_verification_screen.dart';
+import '../../features/auth/views/reset_password_screen.dart';
 import '../../features/settings/views/customization_screen.dart';
 import '../../features/settings/views/db_viewer_screen.dart';
 import '../../features/settings/views/user_settings_screen.dart';
@@ -109,6 +111,32 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/forgot-password',
       pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ForgotPasswordScreen()),
+    ),
+    GoRoute(
+      path: '/verify-otp',
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final identifier = extra['identifier'] as String? ?? '';
+        final devOtp = extra['dev_otp'] as String?;
+        return _buildNeumorphicPage(
+          state: state,
+          child: OtpVerificationScreen(
+            identifier: identifier,
+            initialDevOtp: devOtp,
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/reset-password',
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final resetToken = extra['reset_token'] as String? ?? '';
+        return _buildNeumorphicPage(
+          state: state,
+          child: ResetPasswordScreen(resetToken: resetToken),
+        );
+      },
     ),
     GoRoute(
       path: '/customization',
