@@ -102,7 +102,7 @@ class BackendApiClient {
           uri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'device_id': deviceId,
+            'device_name': deviceId,
             'device_token': deviceToken,
           }),
         )
@@ -119,8 +119,8 @@ class BackendApiClient {
     required String deviceToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/devices/me');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
+    final headers = ApiConfig.buildDeviceHeaders(
+      deviceName: deviceId,
       deviceToken: deviceToken,
     );
 
@@ -132,17 +132,16 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  /// Links a device to a user account, or unlinks (pass [userId] = null for guest mode).
-  Future<DeviceRecordDto> linkDevice({
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+  /// Rotates the secret device_token for an authenticated hardware device.
+  Future<DeviceRecordDto> rotateDeviceToken({
+    required String deviceName,
+    required String oldDeviceToken,
+    required String newDeviceToken,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/devices/link');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final uri = Uri.parse('${ApiConfig.baseUrl}/devices/rotate-token');
+    final headers = ApiConfig.buildDeviceHeaders(
+      deviceName: deviceName,
+      deviceToken: oldDeviceToken,
     );
 
     final response = await _http
@@ -150,9 +149,47 @@ class BackendApiClient {
           uri,
           headers: headers,
           body: jsonEncode({
-            'device_id': deviceId,
-            'device_token': deviceToken,
-            'user_id': userId,
+            'new_device_token': newDeviceToken,
+          }),
+        )
+        .timeout(ApiConfig.timeout);
+
+    _assertStatus(response, 200);
+    return DeviceRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Links a device to a user account (pass [username] = string), or unlinks (pass [username] = null).
+  Future<DeviceRecordDto> linkDevice({
+    required String deviceName,
+    required String deviceToken,
+    String? username,
+    String? userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/devices/link');
+
+    final Map<String, String> headers;
+    if (username != null && username.isNotEmpty && userToken != null && userToken.isNotEmpty) {
+      headers = ApiConfig.buildLinkBridgeHeaders(
+        deviceName: deviceName,
+        deviceToken: deviceToken,
+        username: username,
+        userToken: userToken,
+      );
+    } else {
+      headers = ApiConfig.buildDeviceHeaders(
+        deviceName: deviceName,
+        deviceToken: deviceToken,
+      );
+    }
+
+    final response = await _http
+        .post(
+          uri,
+          headers: headers,
+          body: jsonEncode({
+            'device_name': deviceName,
+            'username': username,
           }),
         )
         .timeout(ApiConfig.timeout);
@@ -168,8 +205,8 @@ class BackendApiClient {
     required String deviceToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/devices/me');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
+    final headers = ApiConfig.buildDeviceHeaders(
+      deviceName: deviceId,
       deviceToken: deviceToken,
     );
 
@@ -292,15 +329,13 @@ class BackendApiClient {
 
   /// Retrieves current authenticated user profile.
   Future<UserRecordDto> fetchUserProfile({
-    required String deviceId,
-    required String deviceToken,
-    required String userId,
+    required String username,
+    required String userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response =
@@ -313,19 +348,17 @@ class BackendApiClient {
 
   /// Updates mutable profile fields for the authenticated user via PATCH /user/me.
   Future<UserRecordDto> updateUserProfile({
-    required String deviceId,
-    required String deviceToken,
-    required String userId,
+    required String username,
+    required String userToken,
     String? email,
     String? countryCode,
     String? mobileNumber,
     String? avatarImagePath,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final Map<String, dynamic> body = {};
@@ -349,15 +382,13 @@ class BackendApiClient {
 
   /// Soft-deletes user profile and unlinks active devices.
   Future<bool> deleteUserProfile({
-    required String deviceId,
-    required String deviceToken,
-    required String userId,
+    required String username,
+    required String userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response =
@@ -370,31 +401,27 @@ class BackendApiClient {
 
   /// Sends a receipt image to Gemini 3.6 Flash Vision API via the backend.
   ///
-  /// Returns the AI-extracted [ReceiptDto] on success.
-  /// Skips retries if the backend explicitly rejects the document for low confidence
-  /// (<0.8 threshold for non-receipts).
+  /// Requires X-Request-Type header ('user' or 'guest').
   Future<ReceiptDto?> parseReceiptImage({
     required List<int> imageBytes,
     required String filename,
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String requestType,
+    String? deviceName,
+    String? deviceToken,
+    String? username,
+    String? userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/scan/parse');
     final request = http.MultipartRequest('POST', uri);
 
-    final cleanDeviceId = deviceId.trim();
-    final cleanDeviceToken = deviceToken.trim();
-
-    if (cleanDeviceId.isNotEmpty) {
-      request.headers['X-Device-ID'] = cleanDeviceId;
-    }
-    if (cleanDeviceToken.isNotEmpty) {
-      request.headers['X-Device-Token'] = cleanDeviceToken;
-    }
-    if (userId != null && userId.trim().isNotEmpty) {
-      request.headers['X-User-ID'] = userId.trim();
-    }
+    final headers = ApiConfig.buildScanHeaders(
+      requestType: requestType,
+      deviceName: deviceName,
+      deviceToken: deviceToken,
+      username: username,
+      userToken: userToken,
+    );
+    request.headers.addAll(headers);
 
     final extension = filename.split('.').last.toLowerCase();
     final mimeType = (extension == 'png') ? 'image/png' : 'image/jpeg';
@@ -428,15 +455,7 @@ class BackendApiClient {
         await Future.delayed(const Duration(milliseconds: 1500));
 
         final retryRequest = http.MultipartRequest('POST', uri);
-        if (cleanDeviceId.isNotEmpty) {
-          retryRequest.headers['X-Device-ID'] = cleanDeviceId;
-        }
-        if (cleanDeviceToken.isNotEmpty) {
-          retryRequest.headers['X-Device-Token'] = cleanDeviceToken;
-        }
-        if (userId != null && userId.trim().isNotEmpty) {
-          retryRequest.headers['X-User-ID'] = userId.trim();
-        }
+        retryRequest.headers.addAll(headers);
 
         retryRequest.files.add(
           http.MultipartFile.fromBytes(
@@ -470,15 +489,13 @@ class BackendApiClient {
   /// Persists a parsed [ReceiptDto] in the backend Supabase database.
   Future<ReceiptRecordDto> saveReceipt({
     required ReceiptDto receipt,
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String username,
+    required String userToken,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/create');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response = await _http
@@ -494,17 +511,15 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  /// Fetches all non-deleted receipts for the session identity, newest first.
+  /// Fetches all non-deleted receipts for the authenticated user, newest first.
   Future<List<ReceiptRecordDto>> fetchReceipts({
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String username,
+    required String userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response =
@@ -520,15 +535,13 @@ class BackendApiClient {
   /// Soft-deletes a receipt by ID. Returns `true` on success.
   Future<bool> deleteReceipt({
     required String receiptId,
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String username,
+    required String userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/$receiptId');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response =
@@ -539,18 +552,16 @@ class BackendApiClient {
 
   // ── AI CHAT ──────────────────────────────────────────────────────────────────
 
-  /// Creates a new AI conversation (max 10 limit per identity).
+  /// Creates a new AI conversation in Supabase cloud store.
   Future<ConversationDto> createConversation({
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String username,
+    required String userToken,
     String? title,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/chat/create');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response = await _http
@@ -566,21 +577,19 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  /// Lists all conversations owned by the caller's session identity, newest first.
+  /// Lists all conversations owned by the user identity, newest first.
   Future<List<ConversationDto>> fetchConversations({
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String username,
+    required String userToken,
     int limit = 20,
     int offset = 0,
   }) async {
     final uri = Uri.parse(
       '${ApiConfig.baseUrl}/chat/list?limit=$limit&offset=$offset',
     );
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response =
@@ -593,29 +602,39 @@ class BackendApiClient {
         .toList();
   }
 
-  /// Sends a user message to Gemini 3.6 Flash via the backend.
+  /// Sends a user message to Gemini 3.6 Flash via the backend (multi-store support).
   Future<ChatQueryResponseDto> sendChatQuery({
-    required String conversationId,
     required String message,
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String requestType,
+    String? conversationId,
+    List<Map<String, dynamic>>? conversationHistory,
+    List<Map<String, dynamic>>? recentReceipts,
+    String? deviceName,
+    String? deviceToken,
+    String? username,
+    String? userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/chat/query');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
+    final headers = ApiConfig.buildScanHeaders(
+      requestType: requestType,
+      deviceName: deviceName,
       deviceToken: deviceToken,
-      userId: userId,
+      username: username,
+      userToken: userToken,
     );
+
+    final Map<String, dynamic> bodyPayload = {
+      'conversation_id': conversationId,
+      'message': message,
+      if (conversationHistory != null) 'conversation_history': conversationHistory,
+      if (recentReceipts != null) 'recent_receipts': recentReceipts,
+    };
 
     final response = await _http
         .post(
           uri,
           headers: headers,
-          body: jsonEncode({
-            'conversation_id': conversationId,
-            'message': message,
-          }),
+          body: jsonEncode(bodyPayload),
         )
         .timeout(ApiConfig.timeout);
 
@@ -627,9 +646,8 @@ class BackendApiClient {
   /// Fetches paginated message history for a conversation.
   Future<List<ChatMessageDto>> fetchChatHistory({
     required String conversationId,
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String username,
+    required String userToken,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -637,10 +655,9 @@ class BackendApiClient {
       '${ApiConfig.baseUrl}/chat/history'
       '?conversation_id=$conversationId&limit=$limit&offset=$offset',
     );
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response =
@@ -657,15 +674,13 @@ class BackendApiClient {
   /// Soft-deletes a conversation by UUID. Returns `true` on success.
   Future<bool> deleteConversation({
     required String conversationId,
-    required String deviceId,
-    required String deviceToken,
-    String? userId,
+    required String username,
+    required String userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/chat/$conversationId');
-    final headers = ApiConfig.buildHeaders(
-      deviceId: deviceId,
-      deviceToken: deviceToken,
-      userId: userId,
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
     );
 
     final response =

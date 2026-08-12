@@ -72,8 +72,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       // Persist session and link hardware device to user account
-      await AuthService.instance.saveSession(user);
-      await AuthService.instance.linkCurrentDevice(user);
+      await AuthService.instance.saveSession(user, userToken: password);
+      await AuthService.instance.linkCurrentDevice(user, userToken: password);
 
       if (!mounted) return;
       setState(() => _isLoading = false);

@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../cloud/services/device_identity_service.dart';
+import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/models/user_models.dart';
 
 class UserSettingsScreen extends StatefulWidget {
@@ -230,8 +232,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   Future<void> _onLogout() async {
-    await AuthService.instance.clearSession();
+    // 1. Unlink hardware device from user account on backend while user credentials are still active
     await AuthService.instance.linkCurrentDevice(null);
+
+    // 2. Rotate deviceToken for guest security while keeping persistent deviceId, and update backend (POST /devices/register)
+    await DeviceIdentityService.instance.rotateDeviceToken(BackendApiClient.instance);
+
+    // 3. Clear local user session credentials
+    await AuthService.instance.clearSession();
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

@@ -87,4 +87,49 @@ class DeviceIdentityService {
     _deviceToken = deviceToken;
     _isInitialized = true;
   }
+
+  /// Keeps the persistent hardware `deviceId` intact, regenerates a fresh secret `deviceToken`,
+  /// authenticates with the current `deviceToken` via `POST /api/v1/devices/rotate-token`,
+  /// and saves the new `deviceToken` locally.
+  /// Called upon user logout to enter Guest Mode while maintaining hardware device continuity.
+  Future<void> rotateDeviceToken(BackendApiClient apiClient) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      const uuid = Uuid();
+
+      // Keep existing persistent deviceId if present, else fallback/generate
+      _deviceId ??= prefs.getString(_keyDeviceId);
+      if (_deviceId == null || _deviceId!.isEmpty) {
+        _deviceId = 'dev_${uuid.v4()}';
+        await prefs.setString(_keyDeviceId, _deviceId!);
+      }
+
+      final oldToken = _deviceToken ?? prefs.getString(_keyDeviceToken) ?? '';
+      final newToken = 'token_${uuid.v4()}';
+
+      if (oldToken.isNotEmpty) {
+        await apiClient.rotateDeviceToken(
+          deviceName: _deviceId!,
+          oldDeviceToken: oldToken,
+          newDeviceToken: newToken,
+        );
+        debugPrint('🚀 [DeviceIdentity] Rotated device token with backend successfully');
+      } else {
+        await apiClient.registerDevice(
+          deviceId: _deviceId!,
+          deviceToken: newToken,
+        );
+        debugPrint('🚀 [DeviceIdentity] Initial device token registered with backend');
+      }
+
+      _deviceToken = newToken;
+      await prefs.setString(_keyDeviceToken, _deviceToken!);
+      debugPrint('🔐 [DeviceIdentity] Saved new deviceToken locally for deviceId: $_deviceId');
+    } catch (e) {
+      debugPrint('⚠️ [DeviceIdentity] Token rotation error: $e');
+    }
+  }
+
+  /// Alias for backward compatibility.
+  Future<void> resetToNewGuestDevice(BackendApiClient apiClient) => rotateDeviceToken(apiClient);
 }

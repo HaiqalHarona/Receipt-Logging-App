@@ -124,8 +124,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
       // Auto login: persist session and link hardware device
-      await AuthService.instance.saveSession(user);
-      await AuthService.instance.linkCurrentDevice(user);
+      await AuthService.instance.saveSession(user, userToken: password);
+      await AuthService.instance.linkCurrentDevice(user, userToken: password);
 
       if (!mounted) return;
       setState(() => _isLoading = false);

@@ -22,12 +22,14 @@ class AuthService extends ChangeNotifier {
 
   static const String _keyUserId = 'session_user_id';
   static const String _keyUsername = 'session_username';
+  static const String _keyUserToken = 'session_user_token';
   static const String _keyEmail = 'session_email';
   static const String _keyCountryCode = 'session_country_code';
   static const String _keyMobileNumber = 'session_mobile_number';
 
   String? _userId;
   String? _username;
+  String? _userToken;
   String? _email;
   String? _countryCode;
   String? _mobileNumber;
@@ -43,6 +45,9 @@ class AuthService extends ChangeNotifier {
   /// Returns the persisted username, or null if not signed in.
   String? get currentUsername => _username;
 
+  /// Returns the persisted user authentication password token.
+  String? get currentUserToken => _userToken;
+
   /// Returns the persisted email address, or null if not signed in.
   String? get currentEmail => _email;
 
@@ -57,6 +62,7 @@ class AuthService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _userId = prefs.getString(_keyUserId);
       _username = prefs.getString(_keyUsername);
+      _userToken = prefs.getString(_keyUserToken);
       _email = prefs.getString(_keyEmail);
       _countryCode = prefs.getString(_keyCountryCode);
       _mobileNumber = prefs.getString(_keyMobileNumber);
@@ -86,7 +92,7 @@ class AuthService extends ChangeNotifier {
   /// **Caching Rule**: Fetches from backend via `GET /user/me` ONLY ONCE if not cached.
   /// Subsequent reads immediately return the cached [UserRecordDto] without making extra HTTP calls.
   Future<UserRecordDto?> getOrFetchProfile() async {
-    if (!isLoggedIn) return null;
+    if (!isLoggedIn || _username == null || _userToken == null) return null;
 
     // Return cached profile if already present with complete details
     if (_cachedProfile != null && _cachedProfile!.id.isNotEmpty) {
@@ -95,11 +101,10 @@ class AuthService extends ChangeNotifier {
     }
 
     try {
-      debugPrint('🌐 [AuthService] Fetching profile from backend for userId: $_userId');
+      debugPrint('🌐 [AuthService] Fetching profile from backend for username: $_username');
       final fetched = await BackendApiClient.instance.fetchUserProfile(
-        deviceId: ApiConfig.deviceId,
-        deviceToken: ApiConfig.deviceToken,
-        userId: _userId!,
+        username: _username!,
+        userToken: _userToken!,
       );
 
       _cachedProfile = fetched;
@@ -116,13 +121,12 @@ class AuthService extends ChangeNotifier {
     required String countryCode,
     required String mobileNumber,
   }) async {
-    if (!isLoggedIn) return false;
+    if (!isLoggedIn || _username == null || _userToken == null) return false;
 
     try {
       final updated = await BackendApiClient.instance.updateUserProfile(
-        deviceId: ApiConfig.deviceId,
-        deviceToken: ApiConfig.deviceToken,
-        userId: _userId!,
+        username: _username!,
+        userToken: _userToken!,
         countryCode: countryCode,
         mobileNumber: mobileNumber,
       );
@@ -143,9 +147,12 @@ class AuthService extends ChangeNotifier {
   // ── SESSION MANAGEMENT ──────────────────────────────────────────────────────
 
   /// Persists a new user session and cached profile locally.
-  Future<void> saveSession(UserRecordDto user) async {
+  Future<void> saveSession(UserRecordDto user, {String? userToken}) async {
     _userId = user.id;
     _username = user.username;
+    if (userToken != null && userToken.isNotEmpty) {
+      _userToken = userToken;
+    }
     _email = user.email;
     _countryCode = user.countryCode;
     _mobileNumber = user.mobileNumber;
@@ -161,6 +168,9 @@ class AuthService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyUserId, user.id);
       await prefs.setString(_keyUsername, user.username);
+      if (_userToken != null) {
+        await prefs.setString(_keyUserToken, _userToken!);
+      }
       await prefs.setString(_keyEmail, user.email);
       if (user.countryCode != null) {
         await prefs.setString(_keyCountryCode, user.countryCode!);
@@ -181,6 +191,7 @@ class AuthService extends ChangeNotifier {
   Future<void> clearSession() async {
     _userId = null;
     _username = null;
+    _userToken = null;
     _email = null;
     _countryCode = null;
     _mobileNumber = null;
@@ -190,6 +201,7 @@ class AuthService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyUserId);
       await prefs.remove(_keyUsername);
+      await prefs.remove(_keyUserToken);
       await prefs.remove(_keyEmail);
       await prefs.remove(_keyCountryCode);
       await prefs.remove(_keyMobileNumber);
@@ -203,14 +215,16 @@ class AuthService extends ChangeNotifier {
   // ── DEVICE LINKING ──────────────────────────────────────────────────────────
 
   /// Links or unlinks the current hardware device.
-  Future<void> linkCurrentDevice(UserRecordDto? user) async {
+  Future<void> linkCurrentDevice(UserRecordDto? user, {String? userToken}) async {
     try {
+      final token = userToken ?? _userToken ?? '';
       await BackendApiClient.instance.linkDevice(
-        deviceId: ApiConfig.deviceId,
+        deviceName: ApiConfig.deviceId,
         deviceToken: ApiConfig.deviceToken,
-        userId: user?.id,
+        username: user?.username,
+        userToken: token.isNotEmpty ? token : null,
       );
-      debugPrint('🔗 [AuthService] Device identity updated with backend (userId: ${user?.id})');
+      debugPrint('🔗 [AuthService] Device identity updated with backend (username: ${user?.username})');
     } catch (e) {
       debugPrint('⚠️ [AuthService] Device linking deferred: $e');
     }

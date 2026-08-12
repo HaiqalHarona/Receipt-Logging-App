@@ -35,11 +35,73 @@ class ApiConfig {
   /// Default request timeout — Gemini vision can take ~3s.
   static const Duration timeout = Duration(seconds: 30);
 
-  /// Builds the standard identity headers required by all protected endpoints.
-  ///
-  /// [deviceId]    — unique hardware fingerprint (persistent).
-  /// [deviceToken] — secret token stored securely after device registration.
-  /// [userId]      — optional; only sent when the user is signed in.
+  /// Builds device-scoped headers (GET /devices/me, DELETE /devices/me).
+  static Map<String, String> buildDeviceHeaders({
+    required String deviceName,
+    required String deviceToken,
+  }) {
+    return {
+      'Content-Type': 'application/json',
+      'X-Device-Name': deviceName,
+      'X-Device-Token': deviceToken,
+    };
+  }
+
+  /// Builds user-scoped headers (GET/PATCH/DELETE /user/me, /receipts/*, /chat/*).
+  static Map<String, String> buildUserHeaders({
+    required String username,
+    required String userToken,
+  }) {
+    return {
+      'Content-Type': 'application/json',
+      'X-User-Name': username,
+      'X-User-Token': userToken,
+    };
+  }
+
+  /// Builds 4-header link bridge headers required by POST /devices/link.
+  static Map<String, String> buildLinkBridgeHeaders({
+    required String deviceName,
+    required String deviceToken,
+    required String username,
+    required String userToken,
+  }) {
+    return {
+      'Content-Type': 'application/json',
+      'X-Device-Name': deviceName,
+      'X-Device-Token': deviceToken,
+      'X-User-Name': username,
+      'X-User-Token': userToken,
+    };
+  }
+
+  /// Builds scoped headers required by /scan/* and POST /chat/query.
+  static Map<String, String> buildScanHeaders({
+    required String requestType,
+    String? deviceName,
+    String? deviceToken,
+    String? username,
+    String? userToken,
+  }) {
+    final cleanType = requestType.trim().toLowerCase();
+    if (cleanType == 'guest') {
+      return {
+        'Content-Type': 'application/json',
+        'X-Request-Type': 'guest',
+        'X-Device-Name': deviceName ?? '',
+        'X-Device-Token': deviceToken ?? '',
+      };
+    } else {
+      return {
+        'Content-Type': 'application/json',
+        'X-Request-Type': 'user',
+        'X-User-Name': username ?? '',
+        'X-User-Token': userToken ?? '',
+      };
+    }
+  }
+
+  /// Legacy helper retained for backward compatibility.
   static Map<String, String> buildHeaders({
     required String deviceId,
     required String deviceToken,
@@ -47,9 +109,9 @@ class ApiConfig {
   }) {
     return {
       'Content-Type': 'application/json',
-      'X-Device-ID': deviceId,
+      'X-Device-Name': deviceId,
       'X-Device-Token': deviceToken,
-      if (userId != null && userId.isNotEmpty) 'X-User-ID': userId,
+      if (userId != null && userId.isNotEmpty) 'X-User-Name': userId,
     };
   }
 }

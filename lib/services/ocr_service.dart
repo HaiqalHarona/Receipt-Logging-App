@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../data/mappers/line_item_mapper.dart';
 import '../domain/models/receipt.dart';
+import '../cloud/services/auth_service.dart';
 import 'api/api_config.dart';
 import 'api/api_models.dart';
 import 'api/backend_api_client.dart';
@@ -73,15 +74,18 @@ class OcrService {
 
     String? backendErrorDetails;
     try {
-      final deviceId = ApiConfig.deviceId;
-      final deviceToken = ApiConfig.deviceToken;
-      debugPrint('📷 [OcrService] Sending vision parse request to ${ApiConfig.baseUrl}/scan/parse (device_id: $deviceId)');
+      final bool isUser = AuthService.instance.isLoggedIn &&
+          AuthService.instance.currentUsername != null &&
+          AuthService.instance.currentUserToken != null;
 
       final dto = await _api.parseReceiptImage(
         imageBytes: bytes,
         filename: filename,
-        deviceId: deviceId,
-        deviceToken: deviceToken,
+        requestType: isUser ? 'user' : 'guest',
+        deviceName: isUser ? null : ApiConfig.deviceId,
+        deviceToken: isUser ? null : ApiConfig.deviceToken,
+        username: isUser ? AuthService.instance.currentUsername : null,
+        userToken: isUser ? AuthService.instance.currentUserToken : null,
       );
 
       if (dto != null) {
