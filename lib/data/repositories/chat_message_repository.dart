@@ -162,4 +162,17 @@ class ChatMessageRepository extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  /// Wipes all chat messages from Isar DB (called on logout/account reset).
+  Future<void> clearAll() async {
+    if (IsarService.isInitialized) {
+      await IsarService.isar.writeTxn(() async {
+        await IsarService.isar.chatMessageIsarModels.clear();
+      });
+    }
+    _currentHistory = [];
+    _activeConversationId = null;
+    notifyListeners();
+  }
 }
+

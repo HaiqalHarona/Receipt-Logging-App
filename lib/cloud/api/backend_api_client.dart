@@ -160,11 +160,15 @@ class BackendApiClient {
   }
 
   /// Links a device to a user account (pass [username] = string), or unlinks (pass [username] = null).
+  ///
+  /// [migrateData] — optional guest data payload for migration on signup:
+  ///   `{"receipts": [...], "conversations": [...], "chat_messages": [...]}`.
   Future<DeviceRecordDto> linkDevice({
     required String deviceName,
     required String deviceToken,
     String? username,
     String? userToken,
+    Map<String, dynamic>? migrateData,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/devices/link');
 
@@ -183,14 +187,17 @@ class BackendApiClient {
       );
     }
 
+    final body = <String, dynamic>{
+      'device_name': deviceName,
+      'username': username,
+      if (migrateData != null) 'migrate_data': migrateData,
+    };
+
     final response = await _http
         .post(
           uri,
           headers: headers,
-          body: jsonEncode({
-            'device_name': deviceName,
-            'username': username,
-          }),
+          body: jsonEncode(body),
         )
         .timeout(ApiConfig.timeout);
 
@@ -198,6 +205,7 @@ class BackendApiClient {
     return DeviceRecordDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
   }
+
 
   /// Soft-deletes calling device registration record.
   Future<bool> deleteDeviceProfile({

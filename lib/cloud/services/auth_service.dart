@@ -215,7 +215,14 @@ class AuthService extends ChangeNotifier {
   // ── DEVICE LINKING ──────────────────────────────────────────────────────────
 
   /// Links or unlinks the current hardware device.
-  Future<void> linkCurrentDevice(UserRecordDto? user, {String? userToken}) async {
+  ///
+  /// [migrateData] — optional guest data payload (receipts/conversations/chat_messages)
+  /// to bulk-migrate into Supabase when linking the device to a newly signed-up user.
+  Future<void> linkCurrentDevice(
+    UserRecordDto? user, {
+    String? userToken,
+    Map<String, dynamic>? migrateData,
+  }) async {
     try {
       final token = userToken ?? _userToken ?? '';
       await BackendApiClient.instance.linkDevice(
@@ -223,6 +230,7 @@ class AuthService extends ChangeNotifier {
         deviceToken: ApiConfig.deviceToken,
         username: user?.username,
         userToken: token.isNotEmpty ? token : null,
+        migrateData: migrateData,
       );
       debugPrint('🔗 [AuthService] Device identity updated with backend (username: ${user?.username})');
     } catch (e) {
@@ -230,3 +238,4 @@ class AuthService extends ChangeNotifier {
     }
   }
 }
+

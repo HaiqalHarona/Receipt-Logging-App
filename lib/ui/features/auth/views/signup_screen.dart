@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../services/data_export_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -117,6 +118,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final password = _passwordController.text;
 
     try {
+      // Export guest data before creating the account so we have the payload
+      // ready to pass to linkDevice — migration happens atomically on linking.
+      final guestData = await DataExportService.instance.exportGuestData();
+      final hasGuestData = (guestData['receipts'] as List).isNotEmpty ||
+          (guestData['conversations'] as List).isNotEmpty ||
+          (guestData['chat_messages'] as List).isNotEmpty;
+
       final user = await BackendApiClient.instance.createUser(
         username: username,
         email: email,
@@ -124,8 +132,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
       // Auto login: persist session and link hardware device
+      // Pass migrateData only when there is actual guest data to migrate.
       await AuthService.instance.saveSession(user, userToken: password);
-      await AuthService.instance.linkCurrentDevice(user, userToken: password);
+      await AuthService.instance.linkCurrentDevice(
+        user,
+        userToken: password,
+        migrateData: hasGuestData ? guestData : null,
+      );
 
       if (!mounted) return;
       setState(() => _isLoading = false);

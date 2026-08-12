@@ -9,6 +9,10 @@ import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/models/user_models.dart';
+import '../../../../data/repositories/receipt_repository.dart';
+import '../../../../data/repositories/conversation_repository.dart';
+import '../../../../data/repositories/chat_message_repository.dart';
+import '../../../../services/data_export_service.dart';
 
 class UserSettingsScreen extends StatefulWidget {
   const UserSettingsScreen({super.key});
@@ -232,24 +236,58 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   Future<void> _onLogout() async {
-    // 1. Unlink hardware device from user account on backend while user credentials are still active
-    await AuthService.instance.linkCurrentDevice(null);
+    try {
+      final user = _profile ?? AuthService.instance.cachedProfile;
+      final token = AuthService.instance.currentUserToken;
 
-    // 2. Rotate deviceToken for guest security while keeping persistent deviceId, and update backend (POST /devices/register)
-    await DeviceIdentityService.instance.rotateDeviceToken(BackendApiClient.instance);
+      // 1. Export local Isar records to verify sync status
+      final exportData = await DataExportService.instance.exportGuestData();
+      final hasLocalData = (exportData['receipts'] as List).isNotEmpty ||
+          (exportData['conversations'] as List).isNotEmpty ||
+          (exportData['chat_messages'] as List).isNotEmpty;
 
-    // 3. Clear local user session credentials
-    await AuthService.instance.clearSession();
+      // 2. Strict cloud upload verification: upload local data before unlinking
+      if (hasLocalData && user != null && token != null) {
+        await AuthService.instance.linkCurrentDevice(
+          user,
+          userToken: token,
+          migrateData: exportData,
+        );
+      }
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Logged out successfully."),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      // 3. Purge all local Isar DB collections once upload is confirmed
+      await ReceiptRepository.instance.clearAll();
+      await ConversationRepository.instance.clearAll();
+      await ChatMessageRepository.instance.clearAll();
 
-    context.go('/dashboard');
+      // 4. Unlink hardware device from user account on backend
+      await AuthService.instance.linkCurrentDevice(null);
+
+      // 5. Rotate deviceToken for guest security while keeping persistent deviceId
+      await DeviceIdentityService.instance.rotateDeviceToken(BackendApiClient.instance);
+
+      // 6. Clear local user session credentials
+      await AuthService.instance.clearSession();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Logged out successfully. Cloud data synced and local storage purged."),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      context.go('/dashboard');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Logout canceled: Cloud sync failed ($e). Data preserved locally."),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
