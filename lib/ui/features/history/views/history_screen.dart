@@ -6,6 +6,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../view_models/history_view_model.dart';
 import 'widgets/category_filter_bottom_sheet.dart';
 import 'widgets/receipt_list_item_widget.dart';
+import '../../../../services/app_logger_service.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -17,18 +18,36 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveClientMixin {
   final HistoryViewModel _viewModel = HistoryViewModel();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    AppLogger.info('UI', 'HistoryScreen initialized');
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      AppLogger.debug('UI', 'HistoryScreen reached bottom scroll threshold, requesting next page');
+      _viewModel.loadNextPage();
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     _viewModel.dispose();
     super.dispose();
   }
 
   void _openFilterModal() {
+    AppLogger.info('UI', 'User tapped Category Filter button');
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -37,6 +56,7 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
         availableCategories: _viewModel.availableCategories,
         initialSelectedCategories: _viewModel.selectedCategories,
         onApply: (selected) {
+          AppLogger.info('UI', 'User applied category filters: ${selected.toList()}');
           _viewModel.setCategories(selected);
         },
       ),
@@ -121,6 +141,7 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
                               if (_searchController.text.isNotEmpty)
                                 GestureDetector(
                                   onTap: () {
+                                    AppLogger.info('UI', 'User cleared search query');
                                     _searchController.clear();
                                     _viewModel.setSearchQuery('');
                                   },
@@ -229,6 +250,7 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
                             ),
                           )
                         : ListView.separated(
+                            controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.only(left: 24, right: 24, bottom: 120),
                             itemCount: list.length,
@@ -240,7 +262,10 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
                               return ReceiptListItemWidget(
                                 receipt: receipt,
                                 formattedPrice: formattedPrice,
-                                onTap: () => context.push('/receipt-detail', extra: receipt),
+                                onTap: () {
+                                  AppLogger.info('UI', 'User tapped receipt item: ${receipt.id}');
+                                  context.push('/receipt-detail', extra: receipt);
+                                },
                                 textPrimary: textPrimary,
                                 textSecondary: textSecondary,
                                 accent: accent,

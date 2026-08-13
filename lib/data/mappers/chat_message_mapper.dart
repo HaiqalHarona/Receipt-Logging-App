@@ -2,7 +2,7 @@
 //
 // Data Mappers for ChatMessage entities.
 // Keeps the domain model (ChatMessage) 100% decoupled from Isar DB annotations
-// and API network DTOs.
+// and API network DTOs, enforcing UTC timestamp normalization.
 
 import '../../domain/models/chat_message.dart';
 import '../models/chat_message_isar.dart';
@@ -15,7 +15,7 @@ extension ChatMessageIsarMapper on ChatMessageIsarModel {
       conversationId: conversationId,
       sender: sender,
       content: content,
-      createdAt: createdAt,
+      createdAt: createdAt.toUtc(),
     );
   }
 }
@@ -27,7 +27,7 @@ extension ChatMessageDomainMapper on ChatMessage {
       ..conversationId = conversationId
       ..sender = sender
       ..content = content
-      ..createdAt = createdAt;
+      ..createdAt = createdAt.toUtc();
   }
 
   ChatMessageDto toDto() {
@@ -48,7 +48,7 @@ extension ChatMessageDtoMapper on ChatMessageDto {
       conversationId: conversationId,
       sender: sender,
       content: content,
-      createdAt: DateTime.tryParse(createdAt)?.toLocal() ?? DateTime.now(),
+      createdAt: DateTime.tryParse(createdAt)?.toUtc() ?? DateTime.now().toUtc(),
     );
   }
 }

@@ -3,6 +3,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'app_logger_service.dart';
 import '../data/mappers/line_item_mapper.dart';
 import '../domain/models/receipt.dart';
 import '../cloud/services/auth_service.dart';
@@ -89,7 +90,7 @@ class OcrService {
       );
 
       if (dto != null) {
-        debugPrint('✅ [OcrService] Backend Vision API parsed receipt successfully');
+        AppLogger.info('OcrService', 'Backend Vision API parsed receipt successfully');
         return _dtoToReceipt(dto, imagePath: imagePath);
       }
     } catch (e) {
@@ -98,7 +99,7 @@ class OcrService {
       } else {
         backendErrorDetails = e.toString();
       }
-      debugPrint('⚠️ [OcrService] Backend Vision API error ($e). Attempting on-device MLKit OCR fallback...');
+      AppLogger.warning('OcrService', 'Backend Vision API error ($e). Attempting on-device MLKit OCR fallback...');
     }
 
     // Fall back to On-Device Google MLKit Text Recognition if backend fails
@@ -169,8 +170,8 @@ class OcrService {
         imagePath: imagePath,
         items: lines.take(8).toList(),
       );
-    } catch (e) {
-      debugPrint("[OcrService] MLKit fallback error: $e");
+    } catch (e, st) {
+      AppLogger.error('OcrService', 'MLKit fallback error', e, st);
       return null;
     }
   }

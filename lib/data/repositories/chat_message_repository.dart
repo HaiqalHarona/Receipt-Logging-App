@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
+import '../../services/app_logger_service.dart';
 import '../../services/isar_service.dart';
 import '../models/chat_message_isar.dart';
 import '../mappers/chat_message_mapper.dart';
 import '../../domain/models/chat_message.dart';
+import '../../services/cloud_sync_service.dart';
 import 'conversation_repository.dart';
 
 class ChatMessageRepository extends ChangeNotifier {
@@ -26,6 +28,7 @@ class ChatMessageRepository extends ChangeNotifier {
 
   Future<void> init() async {
     if (_isInitialized) return;
+    AppLogger.info('Isar', '[ChatMessageRepository] Initializing chat message repository...');
     _isInitialized = true;
   }
 
@@ -43,13 +46,29 @@ class ChatMessageRepository extends ChangeNotifier {
     int limit = 100,
     int offset = 0,
   }) async {
-    if (!IsarService.isInitialized) return [];
+    if (!IsarService.isInitialized) {
+      AppLogger.warning('Isar', '[ChatMessageRepository] fetchHistory called before IsarService initialized');
+      return [];
+    }
 
     try {
-      final isarModels = await IsarService.isar.chatMessageIsarModels
+      AppLogger.debug('Isar', '[ChatMessageRepository] Querying chat messages for conversation $conversationId (offset: $offset, limit: $limit)');
+      var isarModels = await IsarService.isar.chatMessageIsarModels
           .where()
           .conversationIdEqualTo(conversationId)
           .findAll();
+      AppLogger.debug('Isar', '[ChatMessageRepository] Query result: found ${isarModels.length} local messages for conversation $conversationId.');
+
+      // If no local messages exist for this conversation, lazy load from backend
+      if (isarModels.isEmpty && offset == 0) {
+        AppLogger.info('Isar', '[ChatMessageRepository] No local messages for $conversationId, triggering cloud sync lazy load...');
+        await CloudSyncService.instance.ensureChatHistoryLoaded(conversationId);
+        isarModels = await IsarService.isar.chatMessageIsarModels
+            .where()
+            .conversationIdEqualTo(conversationId)
+            .findAll();
+        AppLogger.debug('Isar', '[ChatMessageRepository] Post-sync query result: found ${isarModels.length} messages for conversation $conversationId.');
+      }
 
       // Sort chronologically (oldest first) in Dart
       isarModels.sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -65,9 +84,10 @@ class ChatMessageRepository extends ChangeNotifier {
         notifyListeners();
       }
 
+      AppLogger.info('Isar', '[ChatMessageRepository] Fetched ${messages.length} messages for conversation $conversationId.');
       return messages;
-    } catch (e) {
-      debugPrint('⚠️ [ChatMessageRepository] fetchHistory error: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error('Isar', '[ChatMessageRepository] fetchHistory error', e, stackTrace);
       return [];
     }
   }
@@ -97,9 +117,13 @@ class ChatMessageRepository extends ChangeNotifier {
       ..createdAt = now;
 
     if (IsarService.isInitialized) {
+      AppLogger.info('Isar', '[ChatMessageRepository] Transaction write: adding message $messageId (sender: $sender) to conversation $conversationId');
       await IsarService.isar.writeTxn(() async {
         await IsarService.isar.chatMessageIsarModels.put(model);
       });
+      AppLogger.debug('Isar', '[ChatMessageRepository] Saved message $messageId to Isar DB.');
+    } else {
+      AppLogger.debug('Isar', '[ChatMessageRepository] Isar not initialized; message $messageId added in-memory only.');
     }
 
     final message = model.toDomain();
@@ -123,10 +147,12 @@ class ChatMessageRepository extends ChangeNotifier {
     if (messages.isEmpty) return;
 
     if (IsarService.isInitialized) {
+      AppLogger.info('Isar', '[ChatMessageRepository] Transaction write: batch saving ${messages.length} chat messages');
       await IsarService.isar.writeTxn(() async {
         final models = messages.map((m) => m.toIsar()).toList();
         await IsarService.isar.chatMessageIsarModels.putAll(models);
       });
+      AppLogger.debug('Isar', '[ChatMessageRepository] Batch saved ${messages.length} messages to Isar DB.');
     }
 
     // Refresh cache if the batch touches the active conversation
@@ -143,6 +169,7 @@ class ChatMessageRepository extends ChangeNotifier {
   /// Typically called before or after softDeleting the parent conversation.
   Future<void> deleteHistoryForConversation(String conversationId) async {
     if (IsarService.isInitialized) {
+      AppLogger.info('Isar', '[ChatMessageRepository] Transaction write: deleting chat history for conversation $conversationId');
       await IsarService.isar.writeTxn(() async {
         final allMsgs = await IsarService.isar.chatMessageIsarModels
             .where()
@@ -151,8 +178,10 @@ class ChatMessageRepository extends ChangeNotifier {
             .where((m) => m.conversationId == conversationId)
             .map((m) => m.id)
             .toList();
+        AppLogger.debug('Isar', '[ChatMessageRepository] Query result: found ${ids.length} messages to delete for conversation $conversationId');
         await IsarService.isar.chatMessageIsarModels.deleteAll(ids);
       });
+      AppLogger.debug('Isar', '[ChatMessageRepository] Deleted chat history for conversation $conversationId from Isar DB.');
     }
 
     if (_activeConversationId == conversationId) {
@@ -166,9 +195,11 @@ class ChatMessageRepository extends ChangeNotifier {
   /// Wipes all chat messages from Isar DB (called on logout/account reset).
   Future<void> clearAll() async {
     if (IsarService.isInitialized) {
+      AppLogger.info('Isar', '[ChatMessageRepository] Transaction write: clearing chatMessageIsarModels collection');
       await IsarService.isar.writeTxn(() async {
         await IsarService.isar.chatMessageIsarModels.clear();
       });
+      AppLogger.debug('Isar', '[ChatMessageRepository] Cleared all chat messages from Isar DB.');
     }
     _currentHistory = [];
     _activeConversationId = null;

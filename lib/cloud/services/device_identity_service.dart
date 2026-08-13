@@ -12,6 +12,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../../services/app_logger_service.dart';
 import '../api/backend_api_client.dart';
 
 class DeviceIdentityService {
@@ -51,9 +52,9 @@ class DeviceIdentityService {
       if (_deviceId == null || _deviceId!.isEmpty) {
         _deviceId = 'dev_${uuid.v4()}';
         await prefs.setString(_keyDeviceId, _deviceId!);
-        debugPrint('🔑 [DeviceIdentity] Generated new persistent deviceId: $_deviceId');
+        AppLogger.info('DeviceIdentity', 'Generated new persistent deviceId: $_deviceId');
       } else {
-        debugPrint('🔑 [DeviceIdentity] Loaded existing persistent deviceId: $_deviceId');
+        AppLogger.info('DeviceIdentity', 'Loaded existing persistent deviceId: $_deviceId');
       }
 
       // Read or generate persistent deviceToken
@@ -61,7 +62,7 @@ class DeviceIdentityService {
       if (_deviceToken == null || _deviceToken!.isEmpty) {
         _deviceToken = 'token_${uuid.v4()}';
         await prefs.setString(_keyDeviceToken, _deviceToken!);
-        debugPrint('🔐 [DeviceIdentity] Generated new deviceToken');
+        AppLogger.info('DeviceIdentity', 'Generated new deviceToken');
       }
 
       // Register or refresh device identity with the backend
@@ -70,14 +71,14 @@ class DeviceIdentityService {
           deviceId: _deviceId!,
           deviceToken: _deviceToken!,
         );
-        debugPrint('🚀 [DeviceIdentity] Device registered with backend successfully');
+        AppLogger.info('DeviceIdentity', 'Device registered with backend successfully');
       } catch (e) {
-        debugPrint('⚠️ [DeviceIdentity] Backend device registration deferred: $e');
+        AppLogger.warning('DeviceIdentity', 'Backend device registration deferred', e);
       }
 
       _isInitialized = true;
-    } catch (e) {
-      debugPrint('⚠️ [DeviceIdentity] Initialization error: $e');
+    } catch (e, st) {
+      AppLogger.error('DeviceIdentity', 'Initialization error', e, st);
     }
   }
 
@@ -113,20 +114,20 @@ class DeviceIdentityService {
           oldDeviceToken: oldToken,
           newDeviceToken: newToken,
         );
-        debugPrint('🚀 [DeviceIdentity] Rotated device token with backend successfully');
+        AppLogger.info('DeviceIdentity', 'Rotated device token with backend successfully');
       } else {
         await apiClient.registerDevice(
           deviceId: _deviceId!,
           deviceToken: newToken,
         );
-        debugPrint('🚀 [DeviceIdentity] Initial device token registered with backend');
+        AppLogger.info('DeviceIdentity', 'Initial device token registered with backend');
       }
 
       _deviceToken = newToken;
       await prefs.setString(_keyDeviceToken, _deviceToken!);
-      debugPrint('🔐 [DeviceIdentity] Saved new deviceToken locally for deviceId: $_deviceId');
-    } catch (e) {
-      debugPrint('⚠️ [DeviceIdentity] Token rotation error: $e');
+      AppLogger.info('DeviceIdentity', 'Saved new deviceToken locally for deviceId: $_deviceId');
+    } catch (e, st) {
+      AppLogger.error('DeviceIdentity', 'Token rotation error', e, st);
     }
   }
 

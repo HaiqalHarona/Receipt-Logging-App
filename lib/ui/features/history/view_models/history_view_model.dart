@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
+import '../../../../services/cloud_sync_service.dart';
+import '../../../../services/app_logger_service.dart';
 import '../../../core/utils/category_utils.dart';
 
 enum HistorySortField { none, name, amount, date }
@@ -30,6 +32,7 @@ class HistoryViewModel extends ChangeNotifier {
     CurrencyService? currencyService,
   })  : _repository = repository ?? ReceiptRepository.instance,
         _currencyService = currencyService ?? CurrencyService.instance {
+    AppLogger.debug('VM', 'HistoryViewModel initialized');
     _repository.addListener(_onDataChanged);
     _currencyService.addListener(_onDataChanged);
     _repository.init();
@@ -63,6 +66,7 @@ class HistoryViewModel extends ChangeNotifier {
 
   /// Sets the search query with a 500ms debounce.
   void setSearchQuery(String query) {
+    AppLogger.debug('VM', 'HistoryViewModel setSearchQuery: "$query"');
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _searchQuery = query.trim().toLowerCase();
@@ -77,17 +81,20 @@ class HistoryViewModel extends ChangeNotifier {
     } else {
       _selectedCategories.add(category);
     }
+    AppLogger.debug('VM', 'HistoryViewModel toggleCategory "$category" (active: $_selectedCategories)');
     notifyListeners();
   }
 
   /// Clears all active category filters.
   void clearCategories() {
+    AppLogger.debug('VM', 'HistoryViewModel clearCategories');
     _selectedCategories.clear();
     notifyListeners();
   }
 
   /// Sets multiple selected categories at once.
   void setCategories(Set<String> categories) {
+    AppLogger.debug('VM', 'HistoryViewModel setCategories: $categories');
     _selectedCategories = Set.from(categories);
     notifyListeners();
   }
@@ -106,6 +113,7 @@ class HistoryViewModel extends ChangeNotifier {
       _sortStep = 0;
       _sortAscending = true;
     }
+    AppLogger.debug('VM', 'HistoryViewModel toggleSort field: $field, step: $_sortStep, asc: $_sortAscending');
     notifyListeners();
   }
 
@@ -184,7 +192,33 @@ class HistoryViewModel extends ChangeNotifier {
     return '-${_currencyService.format(receipt.amount, fromCurrencyCode: receipt.currency)}';
   }
 
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
+
+  /// Lazy loads the next page of receipts from the backend when scrolling near bottom.
+  Future<void> loadNextPage() async {
+    if (_isLoadingMore) return;
+    _isLoadingMore = true;
+    AppLogger.debug('VM', 'HistoryViewModel loadNextPage started (offset: ${_repository.receipts.length})');
+    notifyListeners();
+    try {
+      final count = await CloudSyncService.instance.fetchMoreReceipts(
+        offset: _repository.receipts.length,
+      );
+      AppLogger.info('VM', 'HistoryViewModel loadNextPage fetched $count new receipts');
+      if (count > 0) {
+        notifyListeners();
+      }
+    } catch (e) {
+      AppLogger.error('VM', 'HistoryViewModel loadNextPage error: $e', e);
+    } finally {
+      _isLoadingMore = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteReceipt(String id) async {
+    AppLogger.info('VM', 'HistoryViewModel deleteReceipt id: $id');
     await _repository.deleteReceipt(id);
   }
 

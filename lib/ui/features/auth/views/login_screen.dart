@@ -6,6 +6,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../services/cloud_sync_service.dart';
+import '../../../../services/app_logger_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    AppLogger.info('UI', 'LoginScreen initialized');
     if (AuthService.instance.isLoggedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/dashboard');
@@ -40,6 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _onSignIn() async {
+    AppLogger.info('UI', 'User tapped Sign In');
     final identifier = _usernameController.text.trim();
     final password = _passwordController.text;
 
@@ -48,6 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // Basic field validation — show same generic error to avoid enumeration
     if (identifier.isEmpty || password.isEmpty) {
+      AppLogger.warning('UI', 'Login validation failed: empty identifier or password');
       setState(() {
         _errorMessage = 'Invalid username, email, or password. Please try again.';
       });
@@ -64,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final user = response.user;
       if (user == null) {
+        AppLogger.warning('UI', 'Login failed: user response null');
         setState(() {
           _isLoading = false;
           _errorMessage = 'Invalid username, email, or password. Please try again.';
@@ -71,12 +77,15 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Persist session and link hardware device to user account
+      // Persist session, link hardware device, and perform initial cloud sync
       await AuthService.instance.saveSession(user, userToken: password);
       await AuthService.instance.linkCurrentDevice(user, userToken: password);
+      await CloudSyncService.instance.syncOnLogin();
 
       if (!mounted) return;
       setState(() => _isLoading = false);
+
+      AppLogger.info('UI', 'User logged in successfully: ${user.username}');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -103,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
-      debugPrint('⚠️ [Login] ApiException: ${e.statusCode} - ${e.message}');
+      AppLogger.error('UI', 'Login ApiException: ${e.statusCode} - ${e.message}', e);
     } catch (e) {
       const msg = 'Unable to connect. Please check your internet connection.';
       setState(() {
@@ -118,15 +127,17 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
-      debugPrint('⚠️ [Login] Unexpected error: $e');
+      AppLogger.error('UI', 'Login unexpected error: $e', e);
     }
   }
 
   void _onForgetPassword() {
+    AppLogger.info('UI', 'User tapped Forget Password');
     context.push('/forgot-password');
   }
 
   void _onSignUp() {
+    AppLogger.info('UI', 'User tapped Sign Up');
     context.push('/signup');
   }
 
@@ -153,7 +164,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     NeumorphicIconBadge(
                       icon: Icons.arrow_back_rounded,
                       iconSize: 20,
-                      onTap: () => context.pop(),
+                      onTap: () {
+                        AppLogger.info('UI', 'User tapped Back on LoginScreen');
+                        context.pop();
+                      },
                     ),
                     Text(
                       "Login",

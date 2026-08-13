@@ -4,8 +4,8 @@
 // into a single JSON-serializable map for submission to POST /api/v1/devices/link
 // as `migrate_data` during sign-up.
 
-import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
+import 'app_logger_service.dart';
 import '../data/repositories/receipt_repository.dart';
 import '../data/repositories/conversation_repository.dart';
 import '../services/isar_service.dart';
@@ -32,8 +32,13 @@ class DataExportService {
       final receipts = ReceiptRepository.instance.receipts;
       final conversations = ConversationRepository.instance.conversations;
 
+      // Filter to export ONLY local guest data (records with local IDs like res-xxx),
+      // skipping records that were downloaded from Supabase (valid 36-char UUIDs).
+      final guestReceipts = receipts.where((r) => !_isUuid(r.id)).toList();
+      final guestConversations = conversations.where((c) => !_isUuid(c.id)).toList();
+
       // ── Receipts ────────────────────────────────────────────────────────────
-      final receiptsJson = receipts.map((r) => {
+      final receiptsJson = guestReceipts.map((r) => {
         'id': r.id,
         'receipt': {
           'merchant_name': r.merchant,
@@ -45,33 +50,35 @@ class DataExportService {
           'raw_text': '',
           'confidence_score': 0.0,
         },
-        'created_at': r.createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        'created_at': (r.createdAt ?? DateTime.now()).toUtc().toIso8601String(),
       }).toList();
 
       // ── Conversations ────────────────────────────────────────────────────────
-      final conversationsJson = conversations.map((c) => {
+      final conversationsJson = guestConversations.map((c) => {
         'id': c.id,
         'title': c.title,
-        'created_at': c.createdAt.toIso8601String(),
-        'updated_at': c.updatedAt.toIso8601String(),
+        'created_at': c.createdAt.toUtc().toIso8601String(),
+        'updated_at': c.updatedAt.toUtc().toIso8601String(),
       }).toList();
 
       // ── Chat Messages (all conversations from Isar directly) ─────────────────
       final List<Map<String, dynamic>> chatMessagesJson = [];
       if (IsarService.isInitialized && conversationsJson.isNotEmpty) {
-        for (final conv in conversations) {
+        for (final conv in guestConversations) {
           final msgs = await IsarService.isar.chatMessageIsarModels
               .where()
               .conversationIdEqualTo(conv.id)
               .findAll();
           for (final m in msgs) {
-            chatMessagesJson.add({
-              'id': m.messageId,
-              'conversation_id': m.conversationId,
-              'sender': m.sender,
-              'content': m.content,
-              'created_at': m.createdAt.toIso8601String(),
-            });
+            if (!_isUuid(m.messageId)) {
+              chatMessagesJson.add({
+                'id': m.messageId,
+                'conversation_id': m.conversationId,
+                'sender': m.sender,
+                'content': m.content,
+                'created_at': m.createdAt.toUtc().toIso8601String(),
+              });
+            }
           }
         }
       }
@@ -82,16 +89,25 @@ class DataExportService {
         'chat_messages': chatMessagesJson,
       };
 
-      debugPrint(
-        '📦 [DataExportService] Exported guest data: '
+      AppLogger.info(
+        'DataExport',
+        'Exported guest data: '
         'receipts=${receiptsJson.length} '
         'conversations=${conversationsJson.length} '
         'chat_messages=${chatMessagesJson.length}',
       );
       return result;
-    } catch (e) {
-      debugPrint('⚠️ [DataExportService] Export failed: $e');
+    } catch (e, st) {
+      AppLogger.error('DataExport', 'Export failed', e, st);
       return {'receipts': [], 'conversations': [], 'chat_messages': []};
     }
+  }
+
+  bool _isUuid(String? id) {
+    if (id == null || id.isEmpty) return false;
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    return uuidRegex.hasMatch(id);
   }
 }

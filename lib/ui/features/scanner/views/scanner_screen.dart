@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/ocr_service.dart';
+import '../../../../services/app_logger_service.dart';
 
 /// Vision Receipt Scanner Screen
 /// Supports single scan vs. bulk mode (capped at 10 receipts max),
@@ -37,6 +38,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   void initState() {
     super.initState();
+    AppLogger.info('UI', 'ScannerScreen initialized');
     WidgetsBinding.instance.addObserver(this);
     _scanAnimationController = AnimationController(
       vsync: this,
@@ -77,10 +79,11 @@ class _ScannerScreenState extends State<ScannerScreen>
           setState(() {
             _isCameraInitialized = true;
           });
+          AppLogger.info('UI', 'Camera initialized successfully');
         }
       }
-    } catch (_) {
-      // Fallback gracefully if camera is unavailable in emulator/web
+    } catch (e) {
+      AppLogger.warning('UI', 'Camera init fallback (unavailable): $e');
     }
   }
 
@@ -106,10 +109,13 @@ class _ScannerScreenState extends State<ScannerScreen>
         _isFlashOn = !_isFlashOn;
       });
     }
+    AppLogger.info('UI', 'User toggled flash (on: $_isFlashOn)');
   }
 
   Future<void> _capturePhoto() async {
+    AppLogger.info('UI', 'User tapped Capture Photo');
     if (_queuedImages.length >= 10) {
+      AppLogger.warning('UI', 'Capture photo blocked: maximum 10 receipts limit reached');
       _showToast("Maximum 10 receipts limit reached");
       return;
     }
@@ -119,10 +125,12 @@ class _ScannerScreenState extends State<ScannerScreen>
       try {
         capturedFile = await _cameraController!.takePicture();
       } catch (e) {
+        AppLogger.error('UI', 'Failed to capture photo', e);
         _showToast("Failed to capture photo. Please try again.");
         return;
       }
     } else {
+      AppLogger.warning('UI', 'Capture photo failed: Camera unavailable');
       _showToast("Camera unavailable. Please choose an image from Gallery or pick a file.");
       return;
     }
@@ -142,7 +150,9 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   Future<void> _pickFromGallery() async {
+    AppLogger.info('UI', 'User tapped Gallery picker (bulkMode: $_isBulkMode)');
     if (_queuedImages.length >= 10) {
+      AppLogger.warning('UI', 'Gallery picker blocked: maximum 10 receipts limit reached');
       _showToast("Maximum 10 receipts limit reached");
       return;
     }
@@ -170,6 +180,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   void _removeQueuedImage(int index) {
+    AppLogger.info('UI', 'User removed queued image at index $index');
     setState(() {
       _queuedImages.removeAt(index);
     });
@@ -178,6 +189,7 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _processQueueAndNavigate() async {
     if (_queuedImages.isEmpty) return;
 
+    AppLogger.info('UI', 'Starting OCR processing for ${_queuedImages.length} receipt image(s)');
     setState(() {
       _isProcessing = true;
       _processingStep = 1;
@@ -192,6 +204,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         final results = await OcrService.instance.processImages(
           [_queuedImages[i].path],
           onFallbackMessage: (msg) {
+            AppLogger.warning('UI', 'OCR fallback message: $msg');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -221,6 +234,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         _isProcessing = false;
       });
 
+      AppLogger.info('UI', 'OCR processing completed: ${parsedReceipts.length} receipt(s) parsed');
       if (parsedReceipts.isNotEmpty) {
         context.push('/verification', extra: parsedReceipts);
       }
@@ -231,6 +245,7 @@ class _ScannerScreenState extends State<ScannerScreen>
         _isProcessing = false;
       });
 
+      AppLogger.error('UI', 'OCR processing failed with error', e);
       _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
     }
   }
@@ -301,12 +316,14 @@ class _ScannerScreenState extends State<ScannerScreen>
                         accent: accent,
                         textSecondary: textSecondary,
                         onSingleSelect: () {
+                          AppLogger.info('UI', 'User selected Single Scan mode');
                           setState(() {
                             _isBulkMode = false;
                             _queuedImages.clear();
                           });
                         },
                         onBulkSelect: () {
+                          AppLogger.info('UI', 'User selected Bulk mode');
                           setState(() {
                             _isBulkMode = true;
                           });
@@ -340,6 +357,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                         onCapture: _capturePhoto,
                         onProcessQueue: _processQueueAndNavigate,
                         onManualEntry: () {
+                          AppLogger.info('UI', 'User tapped Manual entry on ScannerScreen');
                           _queuedImages.clear();
                           _queuedImages.add(XFile(''));
                           _processQueueAndNavigate();
@@ -389,7 +407,10 @@ class _ScannerTopBar extends StatelessWidget {
       child: Row(
         children: [
           NeumorphicButton(
-            onPressed: () => context.pop(),
+            onPressed: () {
+              AppLogger.info('UI', 'User tapped Back on ScannerScreen');
+              context.pop();
+            },
             style: NeumorphicStyle(
               depth: 4,
               intensity: 0.8,

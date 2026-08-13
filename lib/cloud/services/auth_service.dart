@@ -11,6 +11,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/app_logger_service.dart';
 import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
 import '../models/user_models.dart';
@@ -78,10 +79,10 @@ class AuthService extends ChangeNotifier {
         );
       }
 
-      debugPrint('🔐 [AuthService] Session loaded: userId=$_userId, username=$_username');
+      AppLogger.info('AuthService', 'Session loaded: userId=$_userId, username=$_username');
       notifyListeners();
-    } catch (e) {
-      debugPrint('⚠️ [AuthService] Failed to load session: $e');
+    } catch (e, st) {
+      AppLogger.error('AuthService', 'Failed to load session', e, st);
     }
   }
 
@@ -96,12 +97,12 @@ class AuthService extends ChangeNotifier {
 
     // Return cached profile if already present with complete details
     if (_cachedProfile != null && _cachedProfile!.id.isNotEmpty) {
-      debugPrint('⚡ [AuthService] Served profile from cache for: ${_cachedProfile!.username}');
+      AppLogger.info('AuthService', 'Served profile from cache for: ${_cachedProfile!.username}');
       return _cachedProfile;
     }
 
     try {
-      debugPrint('🌐 [AuthService] Fetching profile from backend for username: $_username');
+      AppLogger.info('AuthService', 'Fetching profile from backend for username: $_username');
       final fetched = await BackendApiClient.instance.fetchUserProfile(
         username: _username!,
         userToken: _userToken!,
@@ -110,8 +111,8 @@ class AuthService extends ChangeNotifier {
       _cachedProfile = fetched;
       await _persistProfile(fetched);
       return _cachedProfile;
-    } catch (e) {
-      debugPrint('⚠️ [AuthService] Failed to fetch profile from backend: $e');
+    } catch (e, st) {
+      AppLogger.error('AuthService', 'Failed to fetch profile from backend', e, st);
       return _cachedProfile;
     }
   }
@@ -135,11 +136,11 @@ class AuthService extends ChangeNotifier {
       _countryCode = updated.countryCode;
       _mobileNumber = updated.mobileNumber;
       await _persistProfile(updated);
-      debugPrint('📱 [AuthService] Mobile number updated in backend and cache: +$countryCode $mobileNumber');
+      AppLogger.info('AuthService', 'Mobile number updated in backend and cache: +$countryCode $mobileNumber');
       notifyListeners();
       return true;
-    } catch (e) {
-      debugPrint('⚠️ [AuthService] Failed to update mobile number: $e');
+    } catch (e, st) {
+      AppLogger.error('AuthService', 'Failed to update mobile number', e, st);
       return false;
     }
   }
@@ -159,7 +160,7 @@ class AuthService extends ChangeNotifier {
     _cachedProfile = user;
 
     await _persistProfile(user);
-    debugPrint('🔐 [AuthService] Session saved for user: ${user.username}');
+    AppLogger.info('AuthService', 'Session saved for user: ${user.username}');
     notifyListeners();
   }
 
@@ -182,8 +183,8 @@ class AuthService extends ChangeNotifier {
       } else {
         await prefs.remove(_keyMobileNumber);
       }
-    } catch (e) {
-      debugPrint('⚠️ [AuthService] Failed to persist profile: $e');
+    } catch (e, st) {
+      AppLogger.error('AuthService', 'Failed to persist profile', e, st);
     }
   }
 
@@ -205,10 +206,10 @@ class AuthService extends ChangeNotifier {
       await prefs.remove(_keyEmail);
       await prefs.remove(_keyCountryCode);
       await prefs.remove(_keyMobileNumber);
-      debugPrint('🔐 [AuthService] Session cleared (logged out)');
+      AppLogger.info('AuthService', 'Session cleared (logged out)');
       notifyListeners();
-    } catch (e) {
-      debugPrint('⚠️ [AuthService] Failed to clear session: $e');
+    } catch (e, st) {
+      AppLogger.error('AuthService', 'Failed to clear session', e, st);
     }
   }
 
@@ -232,9 +233,9 @@ class AuthService extends ChangeNotifier {
         userToken: token.isNotEmpty ? token : null,
         migrateData: migrateData,
       );
-      debugPrint('🔗 [AuthService] Device identity updated with backend (username: ${user?.username})');
+      AppLogger.info('AuthService', 'Device identity updated with backend (username: ${user?.username})');
     } catch (e) {
-      debugPrint('⚠️ [AuthService] Device linking deferred: $e');
+      AppLogger.warning('AuthService', 'Device linking deferred', e);
     }
   }
 }

@@ -13,6 +13,7 @@ import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../data/repositories/conversation_repository.dart';
 import '../../../../data/repositories/chat_message_repository.dart';
 import '../../../../services/data_export_service.dart';
+import '../../../../services/app_logger_service.dart';
 
 class UserSettingsScreen extends StatefulWidget {
   const UserSettingsScreen({super.key});
@@ -28,6 +29,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    AppLogger.info('UI', 'UserSettingsScreen initialized');
     _loadProfile();
   }
 
@@ -42,6 +44,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   void _copyUserIdToClipboard(String userId) {
+    AppLogger.info('UI', 'User copied User ID to clipboard: $userId');
     Clipboard.setData(ClipboardData(text: userId));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -53,6 +56,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   Future<void> _showAddMobileBottomSheet(BuildContext context, Color accent, Color textPrimary, Color textSecondary) async {
+    AppLogger.info('UI', 'User opened Add Mobile modal');
     final countryCodeController = TextEditingController(text: _profile?.countryCode ?? "+60");
     final mobileController = TextEditingController(text: _profile?.mobileNumber ?? "");
     bool isSaving = false;
@@ -179,9 +183,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                               final cc = countryCodeController.text.trim();
                               final mn = mobileController.text.trim();
                               if (mn.isEmpty) {
+                                AppLogger.warning('UI', 'Mobile number save validation failed: empty mobile number');
                                 setModalState(() => errorMsg = "Please enter a mobile number.");
                                 return;
                               }
+                              AppLogger.info('UI', 'User saving mobile number');
                               setModalState(() {
                                 isSaving = true;
                                 errorMsg = null;
@@ -193,6 +199,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                               );
 
                               if (success && context.mounted) {
+                                AppLogger.info('UI', 'Mobile number updated successfully');
                                 Navigator.of(ctx).pop();
                                 _loadProfile(); // refresh cached profile state
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -202,6 +209,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                   ),
                                 );
                               } else {
+                                AppLogger.warning('UI', 'Mobile number update failed on backend');
                                 setModalState(() {
                                   isSaving = false;
                                   errorMsg = "Failed to update mobile number. Please try again.";
@@ -236,6 +244,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   Future<void> _onLogout() async {
+    AppLogger.info('UI', 'User tapped Log Out');
     try {
       final user = _profile ?? AuthService.instance.cachedProfile;
       final token = AuthService.instance.currentUserToken;
@@ -270,6 +279,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       await AuthService.instance.clearSession();
 
       if (!mounted) return;
+      AppLogger.info('UI', 'User logged out successfully');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Logged out successfully. Cloud data synced and local storage purged."),
@@ -280,6 +290,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       context.go('/dashboard');
     } catch (e) {
       if (!mounted) return;
+      AppLogger.error('UI', 'Logout error during cloud sync: $e', e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Logout canceled: Cloud sync failed ($e). Data preserved locally."),
@@ -324,7 +335,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                           NeumorphicIconBadge(
                             icon: Icons.arrow_back_rounded,
                             iconSize: 20,
-                            onTap: () => context.pop(),
+                            onTap: () {
+                              AppLogger.info('UI', 'User tapped Back on UserSettingsScreen');
+                              context.pop();
+                            },
                           ),
                           Text(
                             "User Settings",

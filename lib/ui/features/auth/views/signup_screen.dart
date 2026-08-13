@@ -7,6 +7,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/data_export_service.dart';
+import '../../../../services/app_logger_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -34,6 +35,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void initState() {
     super.initState();
+    AppLogger.info('UI', 'SignUpScreen initialized');
     if (AuthService.instance.isLoggedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/dashboard');
@@ -103,12 +105,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _confirmPasswordError = confirmErr;
     });
 
+    if (!valid) {
+      AppLogger.warning('UI', 'SignUp validation failed');
+    }
+
     return valid;
   }
 
   // ── SIGN UP HANDLER ─────────────────────────────────────────────────────────
 
   Future<void> _onSignUp() async {
+    AppLogger.info('UI', 'User tapped Sign Up button');
     if (!_validateFields()) return;
 
     setState(() => _isLoading = true);
@@ -143,6 +150,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
+      AppLogger.info('UI', 'Account created successfully for ${user.username}');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Account created! Welcome, ${user.username}!'),
@@ -165,7 +174,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         // Fallback: surface the server message as a username error
         setState(() => _usernameError = e.message);
       }
-      debugPrint('⚠️ [SignUp] ApiException: ${e.statusCode} - ${e.message}');
+      AppLogger.error('UI', 'SignUp ApiException: ${e.statusCode} - ${e.message}', e);
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
@@ -176,7 +185,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         );
       }
-      debugPrint('⚠️ [SignUp] Unexpected error: $e');
+      AppLogger.error('UI', 'SignUp unexpected error: $e', e);
     }
   }
 
@@ -224,7 +233,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     NeumorphicIconBadge(
                       icon: Icons.arrow_back_rounded,
                       iconSize: 20,
-                      onTap: () => context.pop(),
+                      onTap: () {
+                        AppLogger.info('UI', 'User tapped Back on SignUpScreen');
+                        context.pop();
+                      },
                     ),
                     Text(
                       "Sign Up",
@@ -471,6 +483,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Center(
                   child: GestureDetector(
                     onTap: () {
+                      AppLogger.info('UI', 'User tapped Log In link on SignUpScreen');
                       if (GoRouter.of(context).canPop()) {
                         context.pop();
                       } else {

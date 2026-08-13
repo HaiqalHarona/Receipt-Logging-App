@@ -2,7 +2,7 @@
 //
 // Data Mappers for Conversation entities.
 // Keeps the domain model (Conversation) 100% decoupled from Isar DB annotations
-// and API network DTOs.
+// and API network DTOs, enforcing UTC timestamp normalization.
 
 import '../../domain/models/conversation.dart';
 import '../models/conversation_isar.dart';
@@ -13,9 +13,9 @@ extension ConversationIsarMapper on ConversationIsarModel {
     return Conversation(
       id: conversationId,
       title: title,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-      deletedAt: deletedAt,
+      createdAt: createdAt.toUtc(),
+      updatedAt: updatedAt.toUtc(),
+      deletedAt: deletedAt?.toUtc(),
     );
   }
 }
@@ -25,9 +25,9 @@ extension ConversationDomainMapper on Conversation {
     return ConversationIsarModel()
       ..conversationId = id
       ..title = title
-      ..createdAt = createdAt
-      ..updatedAt = updatedAt
-      ..deletedAt = deletedAt;
+      ..createdAt = createdAt.toUtc()
+      ..updatedAt = updatedAt.toUtc()
+      ..deletedAt = deletedAt?.toUtc();
   }
 
   ConversationDto toDto({String deviceId = ''}) {
@@ -46,8 +46,8 @@ extension ConversationDtoMapper on ConversationDto {
     return Conversation(
       id: id,
       title: title,
-      createdAt: DateTime.tryParse(createdAt)?.toLocal() ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(updatedAt)?.toLocal() ?? DateTime.now(),
+      createdAt: DateTime.tryParse(createdAt)?.toUtc() ?? DateTime.now().toUtc(),
+      updatedAt: DateTime.tryParse(updatedAt)?.toUtc() ?? DateTime.now().toUtc(),
     );
   }
 }

@@ -33,6 +33,7 @@ library;
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import '../../services/app_logger_service.dart';
 import 'api_config.dart';
 import '../models/device_models.dart';
 import '../models/user_models.dart';
@@ -72,12 +73,60 @@ class BackendApiClient {
 
   final http.Client _http;
 
+  Future<http.Response> _sendRequest(
+    String method,
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
+    final methodUpper = method.toUpperCase();
+    final path = uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
+    AppLogger.debug('HTTP', '--> $methodUpper $path');
+    final stopwatch = Stopwatch()..start();
+    try {
+      final http.Response response;
+      switch (methodUpper) {
+        case 'GET':
+          response =
+              await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+          break;
+        case 'POST':
+          response = await _http
+              .post(uri, headers: headers, body: body)
+              .timeout(ApiConfig.timeout);
+          break;
+        case 'PATCH':
+          response = await _http
+              .patch(uri, headers: headers, body: body)
+              .timeout(ApiConfig.timeout);
+          break;
+        case 'DELETE':
+          response = await _http
+              .delete(uri, headers: headers, body: body)
+              .timeout(ApiConfig.timeout);
+          break;
+        default:
+          throw ArgumentError('Unsupported HTTP method: $method');
+      }
+      stopwatch.stop();
+      AppLogger.info('HTTP',
+          '<-- ${response.statusCode} $methodUpper $path (${stopwatch.elapsedMilliseconds}ms)');
+      return response;
+    } catch (e, st) {
+      if (stopwatch.isRunning) stopwatch.stop();
+      AppLogger.error('HTTP',
+          '<-- ERROR $methodUpper $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+      rethrow;
+    }
+  }
+
   // ── HEALTH (DEV ONLY) ─────────────────────────────────────────────────────────
 
   /// Calls GET /api/v1/health/ to verify backend service connectivity.
   /// Does not require identity headers.
   Future<Map<String, dynamic>> getHealth() async {
-    final response = await _http.get(
+    final response = await _sendRequest(
+      'GET',
       Uri.parse('${ApiConfig.baseUrl}/health/'),
       headers: {'Content-Type': 'application/json'},
     );
@@ -97,16 +146,15 @@ class BackendApiClient {
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/devices/register');
 
-    final response = await _http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'device_name': deviceId,
-            'device_token': deviceToken,
-          }),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'device_name': deviceId,
+        'device_token': deviceToken,
+      }),
+    );
 
     _assertStatus(response, 201);
     return DeviceRecordDto.fromJson(
@@ -124,8 +172,7 @@ class BackendApiClient {
       deviceToken: deviceToken,
     );
 
-    final response =
-        await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('GET', uri, headers: headers);
 
     _assertStatus(response, 200);
     return DeviceRecordDto.fromJson(
@@ -144,15 +191,14 @@ class BackendApiClient {
       deviceToken: oldDeviceToken,
     );
 
-    final response = await _http
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({
-            'new_device_token': newDeviceToken,
-          }),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'new_device_token': newDeviceToken,
+      }),
+    );
 
     _assertStatus(response, 200);
     return DeviceRecordDto.fromJson(
@@ -193,13 +239,12 @@ class BackendApiClient {
       if (migrateData != null) 'migrate_data': migrateData,
     };
 
-    final response = await _http
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode(body),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode(body),
+    );
 
     _assertStatus(response, 200);
     return DeviceRecordDto.fromJson(
@@ -218,8 +263,7 @@ class BackendApiClient {
       deviceToken: deviceToken,
     );
 
-    final response =
-        await _http.delete(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('DELETE', uri, headers: headers);
 
     return response.statusCode == 200;
   }
@@ -234,17 +278,16 @@ class BackendApiClient {
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/create');
 
-    final response = await _http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'username': username,
-            'email': email,
-            'password': password,
-          }),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'email': email,
+        'password': password,
+      }),
+    );
 
     _assertStatus(response, 201);
     return UserRecordDto.fromJson(
@@ -258,16 +301,15 @@ class BackendApiClient {
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/login');
 
-    final response = await _http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'username': username,
-            'password': password,
-          }),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'password': password,
+      }),
+    );
 
     _assertStatus(response, 200);
     return UserLoginResponseDto.fromJson(
@@ -278,13 +320,12 @@ class BackendApiClient {
   Future<Map<String, dynamic>> initiatePasswordReset(String identifier) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/reset-password-initiate');
 
-    final response = await _http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'identifier': identifier}),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'identifier': identifier}),
+    );
 
     _assertStatus(response, 200);
     return jsonDecode(response.body) as Map<String, dynamic>;
@@ -297,16 +338,15 @@ class BackendApiClient {
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/reset-password-otp');
 
-    final response = await _http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'identifier': identifier,
-            'otp': otp,
-          }),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'identifier': identifier,
+        'otp': otp,
+      }),
+    );
 
     _assertStatus(response, 200);
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -320,16 +360,15 @@ class BackendApiClient {
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/password-reset-new');
 
-    final response = await _http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'reset_token': resetToken,
-            'new_password': newPassword,
-          }),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'reset_token': resetToken,
+        'new_password': newPassword,
+      }),
+    );
 
     _assertStatus(response, 200);
     return true;
@@ -346,8 +385,7 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final response =
-        await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('GET', uri, headers: headers);
 
     _assertStatus(response, 200);
     return UserRecordDto.fromJson(
@@ -375,13 +413,12 @@ class BackendApiClient {
     if (mobileNumber != null) body['mobile_number'] = mobileNumber;
     if (avatarImagePath != null) body['avatar_image_path'] = avatarImagePath;
 
-    final response = await _http
-        .patch(
-          uri,
-          headers: headers,
-          body: jsonEncode(body),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'PATCH',
+      uri,
+      headers: headers,
+      body: jsonEncode(body),
+    );
 
     _assertStatus(response, 200);
     return UserRecordDto.fromJson(
@@ -399,8 +436,7 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final response =
-        await _http.delete(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('DELETE', uri, headers: headers);
 
     return response.statusCode == 200;
   }
@@ -443,53 +479,73 @@ class BackendApiClient {
       ),
     );
 
-    var streamed = await _http.send(request).timeout(ApiConfig.timeout);
-    var response = await http.Response.fromStream(streamed);
+    final path = uri.path;
+    AppLogger.debug('HTTP', '--> POST $path');
+    final stopwatch = Stopwatch()..start();
+    try {
+      var streamed = await _http.send(request).timeout(ApiConfig.timeout);
+      var response = await http.Response.fromStream(streamed);
+      stopwatch.stop();
+      AppLogger.info('HTTP',
+          '<-- ${response.statusCode} POST $path (${stopwatch.elapsedMilliseconds}ms)');
 
-    _assertStatus(response, 200);
+      _assertStatus(response, 200);
 
-    var body = jsonDecode(response.body) as Map<String, dynamic>;
-    var dto = ScanResponseDto.fromJson(body);
+      var body = jsonDecode(response.body) as Map<String, dynamic>;
+      var dto = ScanResponseDto.fromJson(body);
 
-    // If Gemini rate-limited or transient error (and NOT an explicit invalid document error), retry once
-    if (!dto.success || dto.data == null) {
-      final errorMsg = dto.error ?? '';
-      final isInvalidDocumentType = errorMsg.contains('Invalid document type') ||
-          errorMsg.contains('confidence score');
+      // If Gemini rate-limited or transient error (and NOT an explicit invalid document error), retry once
+      if (!dto.success || dto.data == null) {
+        final errorMsg = dto.error ?? '';
+        final isInvalidDocumentType =
+            errorMsg.contains('Invalid document type') ||
+                errorMsg.contains('confidence score');
 
-      // Do not retry if the backend explicitly rejected a non-receipt image
-      if (!isInvalidDocumentType) {
-        print("Transient parse error: '$errorMsg'. Retrying once in 1.5s...");
-        await Future.delayed(const Duration(milliseconds: 1500));
+        // Do not retry if the backend explicitly rejected a non-receipt image
+        if (!isInvalidDocumentType) {
+          AppLogger.warning('HTTP',
+              "Transient parse error: '$errorMsg'. Retrying once in 1.5s...");
+          await Future.delayed(const Duration(milliseconds: 1500));
 
-        final retryRequest = http.MultipartRequest('POST', uri);
-        retryRequest.headers.addAll(headers);
+          final retryRequest = http.MultipartRequest('POST', uri);
+          retryRequest.headers.addAll(headers);
 
-        retryRequest.files.add(
-          http.MultipartFile.fromBytes(
-            'image',
-            imageBytes,
-            filename: filename,
-            contentType: MediaType.parse(mimeType),
-          ),
-        );
+          retryRequest.files.add(
+            http.MultipartFile.fromBytes(
+              'image',
+              imageBytes,
+              filename: filename,
+              contentType: MediaType.parse(mimeType),
+            ),
+          );
 
-        streamed = await _http.send(retryRequest).timeout(ApiConfig.timeout);
-        response = await http.Response.fromStream(streamed);
-        _assertStatus(response, 200);
+          AppLogger.debug('HTTP', '--> POST $path (retry)');
+          final retryStopwatch = Stopwatch()..start();
+          streamed = await _http.send(retryRequest).timeout(ApiConfig.timeout);
+          response = await http.Response.fromStream(streamed);
+          retryStopwatch.stop();
+          AppLogger.info('HTTP',
+              '<-- ${response.statusCode} POST $path (${retryStopwatch.elapsedMilliseconds}ms)');
+          _assertStatus(response, 200);
 
-        body = jsonDecode(response.body) as Map<String, dynamic>;
-        dto = ScanResponseDto.fromJson(body);
+          body = jsonDecode(response.body) as Map<String, dynamic>;
+          dto = ScanResponseDto.fromJson(body);
+        }
       }
-    }
 
-    if (!dto.success || dto.data == null) {
-      throw ApiException(
-        dto.error ?? 'Backend vision model could not parse image.',
-        statusCode: response.statusCode,
-      );
+      if (!dto.success || dto.data == null) {
+        throw ApiException(
+          dto.error ?? 'Backend vision model could not parse image.',
+          statusCode: response.statusCode,
+        );
+      }
+      return dto.data;
+    } catch (e, st) {
+      if (stopwatch.isRunning) stopwatch.stop();
+      AppLogger.error('HTTP',
+          '<-- ERROR POST $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+      rethrow;
     }
-    return dto.data;
   }
 
   // ── RECEIPT CRUD ─────────────────────────────────────────────────────────────
@@ -506,32 +562,38 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final response = await _http
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({'receipt': receipt.toJson()}),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({'receipt': receipt.toJson()}),
+    );
 
     _assertStatus(response, 201);
     return ReceiptRecordDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  /// Fetches all non-deleted receipts for the authenticated user, newest first.
+  /// Fetches non-deleted receipts for the authenticated user, newest first.
+  /// Supports pagination via [limit] and [offset].
   Future<List<ReceiptRecordDto>> fetchReceipts({
     required String username,
     required String userToken,
+    int? limit,
+    int? offset,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/');
+    final queryParams = <String, String>{
+      if (limit != null) 'limit': '$limit',
+      if (offset != null) 'offset': '$offset',
+    };
+    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/')
+        .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
     final headers = ApiConfig.buildUserHeaders(
       username: username,
       userToken: userToken,
     );
 
-    final response =
-        await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('GET', uri, headers: headers);
 
     _assertStatus(response, 200);
     final list = jsonDecode(response.body) as List<dynamic>;
@@ -552,8 +614,7 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final response =
-        await _http.delete(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('DELETE', uri, headers: headers);
 
     return response.statusCode == 200;
   }
@@ -572,13 +633,12 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final response = await _http
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode({if (title != null) 'title': title}),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({if (title != null) 'title': title}),
+    );
 
     _assertStatus(response, 201);
     return ConversationDto.fromJson(
@@ -600,8 +660,7 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final response =
-        await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('GET', uri, headers: headers);
 
     _assertStatus(response, 200);
     final list = jsonDecode(response.body) as List<dynamic>;
@@ -638,13 +697,12 @@ class BackendApiClient {
       if (recentReceipts != null) 'recent_receipts': recentReceipts,
     };
 
-    final response = await _http
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode(bodyPayload),
-        )
-        .timeout(ApiConfig.timeout);
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode(bodyPayload),
+    );
 
     _assertStatus(response, 200);
     return ChatQueryResponseDto.fromJson(
@@ -668,8 +726,7 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final response =
-        await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('GET', uri, headers: headers);
 
     _assertStatus(response, 200);
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -691,8 +748,7 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final response =
-        await _http.delete(uri, headers: headers).timeout(ApiConfig.timeout);
+    final response = await _sendRequest('DELETE', uri, headers: headers);
 
     return response.statusCode == 200;
   }

@@ -7,6 +7,7 @@ import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../domain/models/line_item.dart';
 import '../../domain/models/receipt.dart';
+import '../../services/app_logger_service.dart';
 import '../../services/currency_service.dart';
 import '../../services/isar_service.dart';
 import '../models/receipt_isar.dart';
@@ -38,13 +39,15 @@ class ReceiptRepository extends ChangeNotifier {
   /// Also migrates any legacy JSON file records to Isar on first load.
   Future<void> init() async {
     if (_isInitialized) return;
+    AppLogger.info('Isar', '[ReceiptRepository] Initializing repository...');
 
     if (IsarService.isInitialized) {
       try {
         await _migrateLegacyJsonIfNeeded();
         await _loadFromIsar();
-      } catch (e) {
-        debugPrint('⚠️ [ReceiptRepository] Init error: $e');
+        AppLogger.info('Isar', '[ReceiptRepository] Initialized successfully with ${_receipts.length} receipts.');
+      } catch (e, stackTrace) {
+        AppLogger.error('Isar', '[ReceiptRepository] Init error', e, stackTrace);
       }
     }
     _isInitialized = true;
@@ -56,6 +59,7 @@ class ReceiptRepository extends ChangeNotifier {
     final receiptToSave = receipt.createdAt != null ? receipt : receipt.copyWith(createdAt: DateTime.now());
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
+      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: saving receipt ${receiptToSave.id} (${receiptToSave.merchant})');
       await isar.writeTxn(() async {
         final existing = await isar.receiptIsarModels
             .where()
@@ -70,6 +74,7 @@ class ReceiptRepository extends ChangeNotifier {
         }
         await isar.receiptIsarModels.put(model);
       });
+      AppLogger.debug('Isar', '[ReceiptRepository] Saved receipt ${receiptToSave.id} to Isar DB.');
       await _loadFromIsar();
     } else {
       final index = _receipts.indexWhere((r) => r.id == receiptToSave.id);
@@ -78,6 +83,7 @@ class ReceiptRepository extends ChangeNotifier {
       } else {
         _receipts.insert(0, receiptToSave);
       }
+      AppLogger.debug('Isar', '[ReceiptRepository] Saved receipt ${receiptToSave.id} to in-memory store.');
     }
     notifyListeners();
   }
@@ -86,6 +92,7 @@ class ReceiptRepository extends ChangeNotifier {
   Future<void> saveAllReceipts(List<Receipt> newReceipts) async {
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
+      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: batch saving ${newReceipts.length} receipts');
       await isar.writeTxn(() async {
         for (final r in newReceipts) {
           final receiptToSave = r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
@@ -103,6 +110,7 @@ class ReceiptRepository extends ChangeNotifier {
           await isar.receiptIsarModels.put(model);
         }
       });
+      AppLogger.debug('Isar', '[ReceiptRepository] Batch saved ${newReceipts.length} receipts to Isar DB.');
       await _loadFromIsar();
     } else {
       for (final r in newReceipts) {
@@ -114,6 +122,7 @@ class ReceiptRepository extends ChangeNotifier {
           _receipts.insert(0, receiptToSave);
         }
       }
+      AppLogger.debug('Isar', '[ReceiptRepository] Batch saved ${newReceipts.length} receipts to in-memory store.');
     }
     notifyListeners();
   }
@@ -125,6 +134,7 @@ class ReceiptRepository extends ChangeNotifier {
   Future<void> softDeleteReceipt(String id) async {
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
+      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: soft deleting receipt $id');
       await isar.writeTxn(() async {
         final existing = await isar.receiptIsarModels
             .where()
@@ -135,9 +145,11 @@ class ReceiptRepository extends ChangeNotifier {
           await isar.receiptIsarModels.put(existing);
         }
       });
+      AppLogger.debug('Isar', '[ReceiptRepository] Soft deleted receipt $id in Isar DB.');
       await _loadFromIsar();
     } else {
       _receipts.removeWhere((r) => r.id == id);
+      AppLogger.debug('Isar', '[ReceiptRepository] Soft deleted receipt $id from in-memory store.');
     }
     notifyListeners();
   }
@@ -146,6 +158,7 @@ class ReceiptRepository extends ChangeNotifier {
   Future<void> deleteReceipt(String id) async {
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
+      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: deleting receipt $id');
       await isar.writeTxn(() async {
         final existing = await isar.receiptIsarModels
             .where()
@@ -155,9 +168,11 @@ class ReceiptRepository extends ChangeNotifier {
           await isar.receiptIsarModels.delete(existing.id);
         }
       });
+      AppLogger.debug('Isar', '[ReceiptRepository] Permanently deleted receipt $id from Isar DB.');
       await _loadFromIsar();
     } else {
       _receipts.removeWhere((r) => r.id == id);
+      AppLogger.debug('Isar', '[ReceiptRepository] Permanently deleted receipt $id from in-memory store.');
     }
     notifyListeners();
   }
@@ -166,12 +181,15 @@ class ReceiptRepository extends ChangeNotifier {
   Future<void> clearAll() async {
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
+      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: clearing receiptIsarModels collection');
       await isar.writeTxn(() async {
         await isar.receiptIsarModels.clear();
       });
+      AppLogger.debug('Isar', '[ReceiptRepository] Cleared all receipts from Isar DB.');
       await _loadFromIsar();
     } else {
       _receipts.clear();
+      AppLogger.debug('Isar', '[ReceiptRepository] Cleared all receipts from in-memory store.');
     }
     notifyListeners();
   }
@@ -195,9 +213,10 @@ class ReceiptRepository extends ChangeNotifier {
     try {
       final isar = IsarService.isar;
       final isarModels = await isar.receiptIsarModels.where().findAll();
+      AppLogger.debug('Isar', '[ReceiptRepository] Query result: fetched ${isarModels.length} receiptIsarModels from Isar DB.');
       _receipts = isarModels.map((m) => m.toDomain()).toList();
-    } catch (e) {
-      debugPrint('⚠️ [ReceiptRepository] Load from Isar error: $e');
+    } catch (e, stackTrace) {
+      AppLogger.error('Isar', '[ReceiptRepository] Load from Isar error', e, stackTrace);
       _receipts = [];
     }
   }
@@ -206,6 +225,7 @@ class ReceiptRepository extends ChangeNotifier {
     try {
       final isar = IsarService.isar;
       final count = await isar.receiptIsarModels.count();
+      AppLogger.debug('Isar', '[ReceiptRepository] Query result: receipt count in Isar DB is $count.');
       if (count > 0) return; // Already has data in Isar
 
       final dir = await getApplicationDocumentsDirectory();
@@ -218,14 +238,18 @@ class ReceiptRepository extends ChangeNotifier {
             .where((r) => !r.id.startsWith('sample-'))
             .toList();
         if (legacyReceipts.isNotEmpty) {
+          AppLogger.info('Isar', '[ReceiptRepository] Transaction write: migrating ${legacyReceipts.length} legacy receipts to Isar DB');
           await isar.writeTxn(() async {
             for (final r in legacyReceipts) {
               await isar.receiptIsarModels.put(ReceiptIsarModel.fromDomain(r));
             }
           });
+          AppLogger.debug('Isar', '[ReceiptRepository] Successfully migrated legacy receipts to Isar DB.');
         }
       }
-    } catch (_) {}
+    } catch (e, stackTrace) {
+      AppLogger.error('Isar', '[ReceiptRepository] Migration error', e, stackTrace);
+    }
   }
 
   List<Receipt> _getTestSampleReceipts() {

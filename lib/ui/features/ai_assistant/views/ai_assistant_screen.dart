@@ -1,6 +1,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../../services/app_logger_service.dart';
 
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
@@ -21,6 +22,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
   @override
   void initState() {
     super.initState();
+    AppLogger.info('UI', 'AiAssistantScreen initialized');
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -216,16 +218,21 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
                                     ),
                                   ),
                                 ),
-                                Neumorphic(
-                                  style: NeumorphicStyle(
-                                    depth: 4,
-                                    intensity: 0.85,
-                                    color: accent,
-                                    boxShape: const NeumorphicBoxShape.circle(),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                GestureDetector(
+                                  onTap: () {
+                                    AppLogger.info('UI', 'User tapped send message in AI Assistant');
+                                  },
+                                  child: Neumorphic(
+                                    style: NeumorphicStyle(
+                                      depth: 4,
+                                      intensity: 0.85,
+                                      color: accent,
+                                      boxShape: const NeumorphicBoxShape.circle(),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                    ),
                                   ),
                                 ),
                               ],
