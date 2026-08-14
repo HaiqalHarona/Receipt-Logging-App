@@ -7,6 +7,7 @@ import '../../../../../domain/models/receipt.dart';
 import '../../../../../services/currency_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_utils.dart';
+import 'category_multi_select_bottom_sheet.dart';
 import 'line_items_table_widget.dart';
 
 /// Modular Neumorphic Card Widget allowing inline editing of receipt details.
@@ -38,15 +39,6 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   late List<String> _selectedCategories;
   late List<LineItem> _lineItems;
   bool _isAutoCalculate = true;
-
-  final List<String> _categories = [
-    'Groceries',
-    'Dining',
-    'Transport',
-    'Shopping',
-    'Electronics',
-    'General',
-  ];
 
   @override
   void initState() {
@@ -342,55 +334,82 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
           ),
           const SizedBox(height: 16),
 
-          // Indented Horizontal Scrollable Category Track
+          // Category Multi-Select Trigger Field
           _buildLabel("Category"),
           const SizedBox(height: 8),
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: -3,
-              intensity: 0.85,
-              color: NeumorphicTheme.baseColor(context),
-              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+          GestureDetector(
+            onTap: () async {
+              final result = await CategoryMultiSelectBottomSheet.show(
+                context,
+                initialSelected: _selectedCategories,
+              );
+              if (result != null) {
+                setState(() {
+                  _selectedCategories = result;
+                });
+                _notifyChange();
+              }
+            },
+            child: Neumorphic(
+              style: NeumorphicStyle(
+                depth: -3,
+                intensity: 0.85,
+                color: NeumorphicTheme.baseColor(context),
+                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
-                children: _categories.map((cat) {
-                  final isSelected = _selectedCategories.contains(cat);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: NeumorphicButton(
-                      onPressed: () {
-                        setState(() {
-                          if (isSelected) {
-                            _selectedCategories.remove(cat);
-                          } else {
-                            _selectedCategories.add(cat);
-                          }
-                        });
-                        _notifyChange();
-                      },
-                      style: NeumorphicStyle(
-                        depth: isSelected ? -2 : 3,
-                        intensity: 0.85,
-                        color: isSelected
-                            ? widget.accent.withValues(alpha: 0.2)
-                            : NeumorphicTheme.baseColor(context),
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      child: Text(
-                        cat,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? widget.accent : widget.textPrimary,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                children: [
+                  Expanded(
+                    child: _selectedCategories.isEmpty
+                        ? Text(
+                            'Select categories...',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              color: widget.textSecondary.withValues(alpha: 0.6),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: _selectedCategories.map((cat) {
+                              final catColor = CategoryUtils.getCategoryColor(cat);
+                              final catIcon = CategoryUtils.getCategoryIcon(cat);
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: catColor.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: catColor.withValues(alpha: 0.4), width: 0.8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(catIcon, size: 13, color: catColor),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      cat,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: catColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: widget.accent,
+                    size: 22,
+                  ),
+                ],
               ),
             ),
           ),

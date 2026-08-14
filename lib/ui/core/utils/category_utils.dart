@@ -1,6 +1,7 @@
 // File: lib/ui/core/utils/category_utils.dart
 
 import 'package:flutter/material.dart';
+import '../../../../services/category_service.dart';
 
 /// Centralized Category Utilities for color coding, emoji stripping, and icon mapping.
 class CategoryUtils {
@@ -15,6 +16,11 @@ class CategoryUtils {
 
   /// Returns a unique theme accent color for each category.
   static Color getCategoryColor(String cat) {
+    final custom = CategoryService.instance.findCustomCategory(cat);
+    if (custom != null) {
+      return custom.color;
+    }
+
     final clean = sanitize(cat).toLowerCase();
     if (clean.contains('grocer')) return const Color(0xFF10B981); // Emerald Green
     if (clean.contains('dining') || clean.contains('food')) return const Color(0xFFF59E0B); // Warm Amber
@@ -26,6 +32,11 @@ class CategoryUtils {
 
   /// Returns a clean Material icon for each category.
   static IconData getCategoryIcon(String cat) {
+    final custom = CategoryService.instance.findCustomCategory(cat);
+    if (custom != null) {
+      return custom.icon;
+    }
+
     final clean = sanitize(cat).toLowerCase();
     if (clean.contains('grocer')) return Icons.local_grocery_store_rounded;
     if (clean.contains('dining') || clean.contains('food')) return Icons.fastfood_rounded;

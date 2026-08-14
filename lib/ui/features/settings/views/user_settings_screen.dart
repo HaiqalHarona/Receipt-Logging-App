@@ -283,7 +283,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       AppLogger.info('UI', 'User logged out successfully');
       AppSnackBar.show(
         context,
-        message: "Logged out successfully. Cloud data synced and local storage purged.",
+        message: "Logged out successfully. User data synced to cloud.",
       );
 
       context.go('/dashboard');
