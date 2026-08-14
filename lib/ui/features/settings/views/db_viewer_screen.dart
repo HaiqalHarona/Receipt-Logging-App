@@ -7,6 +7,7 @@ import '../../../../services/isar_service.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../data/seeders/receipt_seeder.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 
 class DbViewerScreen extends StatefulWidget {
   const DbViewerScreen({super.key});
@@ -199,11 +200,9 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                                 onPressed: () async {
                                   await ReceiptSeeder.seedDatabase();
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Seeded 24 receipts across 12 months!'),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
+                                    AppSnackBar.show(
+                                      context,
+                                      message: 'Seeded 24 receipts across 12 months!',
                                     );
                                   }
                                 },

@@ -4,6 +4,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -44,14 +45,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
       final devOtp = res['dev_otp'] as String?;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(devOtp != null
-              ? 'Reset code: $devOtp (Logged to otp_dev.log)'
-              : 'Reset code requested! Check otp_dev.log for code.'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 5),
-        ),
+      AppSnackBar.show(
+        context,
+        message: devOtp != null
+            ? 'Reset code: $devOtp (Logged to otp_dev.log)'
+            : 'Reset code requested! Check otp_dev.log for code.',
+        duration: const Duration(seconds: 5),
       );
 
       // Navigate to OTP verification screen

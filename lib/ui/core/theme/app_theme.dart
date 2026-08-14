@@ -144,19 +144,29 @@ class NeumorphicButtonWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppThemeController.instance;
-    final btnColor = color ?? controller.accentColor;
+    final bool isDisabled = onPressed == null;
+    final baseBtnColor = color ?? controller.accentColor;
+
+    final hsl = HSLColor.fromColor(baseBtnColor);
+    final effectiveColor = isDisabled
+        ? hsl.withLightness((hsl.lightness * 0.55).clamp(0.0, 1.0)).toColor()
+        : baseBtnColor;
+
+    final effectiveDepth = isDisabled ? -4.0 : depth;
 
     return Container(
       margin: margin,
       child: NeumorphicButton(
         onPressed: onPressed,
         style: NeumorphicStyle(
-          color: btnColor,
-          depth: depth,
-          intensity: 0.9,
+          color: effectiveColor,
+          depth: effectiveDepth,
+          intensity: isDisabled ? 0.85 : 0.9,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
           border: NeumorphicBorder(
-            color: Colors.white.withValues(alpha: 0.25),
+            color: isDisabled
+                ? Colors.black.withValues(alpha: 0.35)
+                : Colors.white.withValues(alpha: 0.25),
             width: 1.0,
           ),
         ),

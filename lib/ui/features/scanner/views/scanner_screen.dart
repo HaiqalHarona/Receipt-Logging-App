@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/ocr_service.dart';
 import '../../../../services/app_logger_service.dart';
@@ -206,19 +207,11 @@ class _ScannerScreenState extends State<ScannerScreen>
           onFallbackMessage: (msg) {
             AppLogger.warning('UI', 'OCR fallback message: $msg');
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.white),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(msg)),
-                    ],
-                  ),
-                  backgroundColor: Colors.orange.shade700,
-                  duration: const Duration(seconds: 5),
-                  behavior: SnackBarBehavior.floating,
-                ),
+              AppSnackBar.show(
+                context,
+                message: msg,
+                isError: true,
+                duration: const Duration(seconds: 5),
               );
             }
           },
@@ -276,12 +269,10 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   void _showToast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        backgroundColor: AppThemeController.instance.accentColor,
-      ),
+    AppSnackBar.show(
+      context,
+      message: message,
+      duration: const Duration(seconds: 2),
     );
   }
 

@@ -31,6 +31,7 @@ class AppThemeController extends ChangeNotifier {
 
   ThemeMode _themeMode = ThemeMode.dark;
   ThemeMode get themeMode => _themeMode;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
 
   // Custom Colors
   Color? _customDarkAccentColor;

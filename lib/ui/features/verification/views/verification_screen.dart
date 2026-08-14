@@ -4,6 +4,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../domain/models/receipt.dart';
 import '../view_models/verification_view_model.dart';
 import 'widgets/verification_card_widget.dart';
@@ -58,13 +59,9 @@ class _VerificationScreenState extends State<VerificationScreen> {
     if (_viewModel.receipts.isEmpty) return;
     _viewModel.saveAllReceipts(() {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Successfully saved ${_viewModel.receipts.length} receipt${_viewModel.receipts.length > 1 ? 's' : ''} to ledger!",
-          ),
-          backgroundColor: AppThemeController.instance.accentColor,
-        ),
+      AppSnackBar.show(
+        context,
+        message: "Successfully saved ${_viewModel.receipts.length} receipt${_viewModel.receipts.length > 1 ? 's' : ''}!",
       );
       context.go('/dashboard');
     });

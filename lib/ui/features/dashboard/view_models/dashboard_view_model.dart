@@ -299,7 +299,7 @@ class DashboardViewModel extends ChangeNotifier {
     }
 
     final formatted = _currencyService.format(total, fromCurrencyCode: _currencyService.currentCurrency);
-    final subtitle = "Tally from ledger ($count transactions)";
+    final subtitle = "($count transactions) record(s) found.";
 
     return SpendingSummaryData(
       period: period,

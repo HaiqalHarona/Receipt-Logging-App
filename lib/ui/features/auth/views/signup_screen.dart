@@ -4,6 +4,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/data_export_service.dart';
@@ -152,12 +153,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       AppLogger.info('UI', 'Account created successfully for ${user.username}');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Account created! Welcome, ${user.username}!'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green.shade700,
-        ),
+      AppSnackBar.show(
+        context,
+        message: 'Account created! Welcome, ${user.username}!',
       );
 
       // Navigate to dashboard, clearing the auth stack
@@ -178,11 +176,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to connect. Please check your internet connection.'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.show(
+          context,
+          message: 'Unable to connect. Please check your internet connection.',
+          isError: true,
         );
       }
       AppLogger.error('UI', 'SignUp unexpected error: $e', e);

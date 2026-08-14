@@ -5,6 +5,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../cloud/api/backend_api_client.dart';
@@ -25,6 +26,7 @@ class UserSettingsScreen extends StatefulWidget {
 class _UserSettingsScreenState extends State<UserSettingsScreen> {
   UserRecordDto? _profile;
   bool _isLoading = true;
+  bool _isLoggingOut = false;
 
   @override
   void initState() {
@@ -46,12 +48,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   void _copyUserIdToClipboard(String userId) {
     AppLogger.info('UI', 'User copied User ID to clipboard: $userId');
     Clipboard.setData(ClipboardData(text: userId));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("User ID copied to clipboard!"),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
+    AppSnackBar.show(
+      context,
+      message: "User ID copied to clipboard!",
+      duration: const Duration(seconds: 2),
     );
   }
 
@@ -202,11 +202,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                 AppLogger.info('UI', 'Mobile number updated successfully');
                                 Navigator.of(ctx).pop();
                                 _loadProfile(); // refresh cached profile state
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Mobile number updated!"),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
+                                AppSnackBar.show(
+                                  context,
+                                  message: "Mobile number updated!",
                                 );
                               } else {
                                 AppLogger.warning('UI', 'Mobile number update failed on backend');
@@ -245,6 +243,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
   Future<void> _onLogout() async {
     AppLogger.info('UI', 'User tapped Log Out');
+    if (_isLoggingOut) return;
+    setState(() => _isLoggingOut = true);
+
     try {
       final user = _profile ?? AuthService.instance.cachedProfile;
       final token = AuthService.instance.currentUserToken;
@@ -280,24 +281,24 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
       if (!mounted) return;
       AppLogger.info('UI', 'User logged out successfully');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Logged out successfully. Cloud data synced and local storage purged."),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppSnackBar.show(
+        context,
+        message: "Logged out successfully. Cloud data synced and local storage purged.",
       );
 
       context.go('/dashboard');
     } catch (e) {
       if (!mounted) return;
       AppLogger.error('UI', 'Logout error during cloud sync: $e', e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Logout canceled: Cloud sync failed ($e). Data preserved locally."),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppSnackBar.show(
+        context,
+        message: "Logout canceled: Cloud sync failed ($e). Data preserved locally.",
+        isError: true,
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoggingOut = false);
+      }
     }
   }
 
@@ -542,23 +543,32 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                   child: NeumorphicButtonWidget(
                     color: Colors.redAccent.withValues(alpha: 0.15),
                     borderRadius: 12,
-                    onPressed: _onLogout,
-                    child: const Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            "Log Out",
-                            style: TextStyle(
-                              color: Colors.redAccent,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                    onPressed: _isLoggingOut ? null : _onLogout,
+                    child: Center(
+                      child: _isLoggingOut
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.redAccent,
+                              ),
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Log Out",
+                                  style: TextStyle(
+                                    color: Colors.redAccent,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ),

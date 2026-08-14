@@ -10,6 +10,7 @@ import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/category_utils.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 
 enum _MenuAction { copyId, copyJson, delete }
 
@@ -122,26 +123,20 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
   }
 
   void _handleMenuAction(_MenuAction action, Receipt r) {
-    final accent = AppThemeController.instance.accentColor;
-
     switch (action) {
       case _MenuAction.copyId:
         Clipboard.setData(ClipboardData(text: r.id));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Receipt ID copied to clipboard.'),
-            backgroundColor: accent,
-          ),
+        AppSnackBar.show(
+          context,
+          message: 'Receipt ID copied to clipboard.',
         );
         break;
       case _MenuAction.copyJson:
         final jsonStr = const JsonEncoder.withIndent('  ').convert(r.toJson());
         Clipboard.setData(ClipboardData(text: jsonStr));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Receipt JSON copied to clipboard.'),
-            backgroundColor: accent,
-          ),
+        AppSnackBar.show(
+          context,
+          message: 'Receipt JSON copied to clipboard.',
         );
         break;
       case _MenuAction.delete:
@@ -184,7 +179,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Are you sure you want to delete this receipt from your ledger? This action cannot be undone.',
+                  'Are you sure you want to delete this receipt? This action cannot be undone.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: textSecondary),
                 ),
@@ -219,11 +214,10 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                             await ReceiptRepository.instance.deleteReceipt(_receipt!.id);
                           }
                           if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Receipt deleted.'),
-                              backgroundColor: Colors.redAccent,
-                            ),
+                          AppSnackBar.show(
+                            context,
+                            message: 'Receipt deleted.',
+                            isError: true,
                           );
                           context.pop();
                         },
@@ -450,12 +444,15 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                '#ID: ${r.id}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: textSecondary.withValues(alpha: 0.6),
+                              Flexible(
+                                child: Text(
+                                  '#ID: ${r.id.length > 14 ? "${r.id.substring(0, 14)}..." : r.id}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                  ),
                                 ),
                               ),
                               Text(

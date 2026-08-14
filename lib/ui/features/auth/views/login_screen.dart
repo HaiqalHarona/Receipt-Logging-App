@@ -4,6 +4,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/cloud_sync_service.dart';
@@ -186,11 +187,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red.shade700,
-                              disabledBackgroundColor: Colors.grey.shade700,
+                              disabledBackgroundColor: Colors.red.shade900.withValues(alpha: 0.4),
                               disabledForegroundColor: Colors.white38,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
+                                side: canOverride ? BorderSide.none : BorderSide(color: Colors.red.shade900, width: 1),
                               ),
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             ),
@@ -232,17 +234,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Check if local unsynced guest data exists before logging in
-    if (await _hasLocalGuestData()) {
-      AppLogger.info('UI', 'Local guest data detected. Prompting override warning modal...');
-      final confirmed = await _showGuestOverrideWarningModal();
-      if (!confirmed) {
-        AppLogger.info('UI', 'User canceled login from guest override warning modal.');
-        return;
-      }
-      await _purgeLocalGuestData();
-    }
-
     setState(() => _isLoading = true);
 
     try {
@@ -261,9 +252,27 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Persist session, link hardware device, and perform initial cloud sync
+      // Persist session and link hardware device first
       await AuthService.instance.saveSession(user, userToken: password);
       await AuthService.instance.linkCurrentDevice(user, userToken: password);
+
+      // Check if local unsynced guest data exists AFTER successful login and device linking
+      if (await _hasLocalGuestData()) {
+        AppLogger.info('UI', 'User authenticated. Local guest data detected. Prompting override warning modal...');
+        final confirmed = await _showGuestOverrideWarningModal();
+        if (!confirmed) {
+          AppLogger.info('UI', 'User canceled override modal. Unlinking device and clearing session...');
+          await AuthService.instance.linkCurrentDevice(null);
+          await AuthService.instance.clearSession();
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
+          return;
+        }
+        await _purgeLocalGuestData();
+      }
+
+      // Perform initial cloud sync after modal confirmation
       await CloudSyncService.instance.syncOnLogin();
 
       if (!mounted) return;
@@ -271,12 +280,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       AppLogger.info('UI', 'User logged in successfully: ${user.username}');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Welcome back, ${user.username}!'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green.shade700,
-        ),
+      AppSnackBar.show(
+        context,
+        message: 'Welcome back, ${user.username}!',
       );
 
       // Navigate to dashboard, clearing the auth stack
@@ -288,12 +294,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = msg;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red.shade700,
-          ),
+        AppSnackBar.show(
+          context,
+          message: msg,
+          isError: true,
         );
       }
       AppLogger.error('UI', 'Login ApiException: ${e.statusCode} - ${e.message}', e);
@@ -304,11 +308,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = msg;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(msg),
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.show(
+          context,
+          message: msg,
+          isError: true,
         );
       }
       AppLogger.error('UI', 'Login unexpected error: $e', e);

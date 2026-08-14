@@ -114,7 +114,7 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: Text(
-                  "No categories found in ledger.",
+                  "No categories found.",
                   style: TextStyle(color: textSecondary, fontSize: 13),
                 ),
               ),

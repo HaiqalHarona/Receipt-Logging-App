@@ -4,6 +4,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -82,12 +83,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Password reset successfully! Please log in.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green.shade700,
-        ),
+      AppSnackBar.show(
+        context,
+        message: 'Password reset successfully! Please log in.',
       );
 
       context.go('/login');
