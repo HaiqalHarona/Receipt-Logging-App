@@ -96,113 +96,84 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
         boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
         color: NeumorphicTheme.baseColor(context),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SizedBox(
-        height: 116,
+        height: 98,
         width: double.infinity,
-        child: Column(
-          children: [
-            // Carousel Viewport (Manual scrolling disabled)
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(), // Disabled manual swiping
-                itemCount: _periodCount,
-                itemBuilder: (context, realIndex) {
-                  final period = _periods[realIndex];
-                  final summary = widget.viewModel.getSpendingSummary(period);
+        child: PageView.builder(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(), // Disabled manual swiping
+          itemCount: _periodCount,
+          itemBuilder: (context, realIndex) {
+            final period = _periods[realIndex];
+            final summary = widget.viewModel.getSpendingSummary(period);
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      // Row 1: Title (top-left) & Currency Badge (top-right)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            summary.title,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.1,
-                              color: widget.textSecondary,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: widget.accent.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              widget.viewModel.currentCurrencyCode,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: widget.accent,
-                              ),
-                            ),
-                          ),
-                        ],
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                // Row 1: Title (top-left) & Currency Badge (top-right)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      summary.title,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                        color: widget.textSecondary,
                       ),
-                      const SizedBox(height: 3),
-
-                      // Row 2: Total Spending Amount
-                      Text(
-                        summary.formattedTotal,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: widget.accent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        widget.viewModel.currentCurrencyCode,
                         style: TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: widget.textPrimary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: widget.accent,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
 
-                      // Row 3: Comparison Badge (Red if +%, Green if -%, Gray if 0%, Omitted for All-Time)
-                      if (summary.percentageChange != null && summary.comparisonLabel != null) ...[
-                        _buildComparisonBadge(summary),
-                        const SizedBox(height: 2),
-                      ],
-
-                      // Row 4: Record Count
-                      Text(
-                        "${summary.transactionCount} record${summary.transactionCount == 1 ? '' : 's'}",
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w500,
-                          color: widget.textSecondary,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 3),
-
-            // Read-only Carousel Dot Indicators (6 elements)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_periodCount, (index) {
-                final isSelected = index == activeIndex;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeInOut,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: isSelected ? 16 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? widget.accent
-                        : widget.textSecondary.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(3),
+                // Row 2: Total Spending Amount
+                Text(
+                  summary.formattedTotal,
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: widget.textPrimary,
                   ),
-                );
-              }),
-            ),
-          ],
+                ),
+                const SizedBox(height: 2),
+
+                // Row 3: Comparison Badge (Red if +%, Green if -%, Gray if 0%, Omitted for All-Time)
+                if (summary.percentageChange != null && summary.comparisonLabel != null) ...[
+                  _buildComparisonBadge(summary),
+                  const SizedBox(height: 2),
+                ],
+
+                // Row 4: Record Count
+                Text(
+                  "${summary.transactionCount} record${summary.transactionCount == 1 ? '' : 's'}",
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: widget.textSecondary,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

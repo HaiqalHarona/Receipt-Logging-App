@@ -341,20 +341,20 @@ class DashboardViewModel extends ChangeNotifier {
     final now = DateTime.now();
 
     if (filter == TimelineFilter.thisMonth) {
-      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-      final Map<int, double> dayBuckets = { for (int i = 1; i <= daysInMonth; i++) i: 0.0 };
+      final currentDay = now.day;
+      final Map<int, double> dayBuckets = { for (int i = 1; i <= currentDay; i++) i: 0.0 };
 
       for (final receipt in _repository.receipts) {
         final parsed = _parseDateString(receipt.date);
         if (parsed == null) continue;
-        if (parsed.year == now.year && parsed.month == now.month) {
+        if (parsed.year == now.year && parsed.month == now.month && parsed.day <= currentDay) {
           final converted = _currencyService.convert(receipt.amount, receipt.currency);
           dayBuckets[parsed.day] = (dayBuckets[parsed.day] ?? 0.0) + converted;
         }
       }
 
       final mm = now.month.toString().padLeft(2, '0');
-      return List.generate(daysInMonth, (index) {
+      return List.generate(currentDay, (index) {
         final day = index + 1;
         final dd = day.toString().padLeft(2, '0');
         return MonthlySpendingPoint(
