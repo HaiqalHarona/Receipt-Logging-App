@@ -8,6 +8,13 @@ import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../data/repositories/receipt_repository.dart';
+import '../../../../data/repositories/conversation_repository.dart';
+import '../../../../data/repositories/chat_message_repository.dart';
+import '../../../../services/isar_service.dart';
+import '../../../../data/models/receipt_isar.dart';
+import '../../../../domain/models/receipt.dart';
+import 'package:isar/isar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,6 +49,172 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  bool _isUuid(String id) {
+    if (id.isEmpty) return false;
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    return uuidRegex.hasMatch(id);
+  }
+
+  Future<bool> _hasLocalGuestData() async {
+    await ReceiptRepository.instance.init();
+    await ConversationRepository.instance.init();
+
+    List<Receipt> receipts = ReceiptRepository.instance.receipts;
+    if (IsarService.isInitialized) {
+      try {
+        final models = await IsarService.isar.receiptIsarModels.where().findAll();
+        receipts = models.map((m) => m.toDomain()).toList();
+        AppLogger.info('UI', '_hasLocalGuestData direct Isar query found ${receipts.length} receipts');
+      } catch (e) {
+        AppLogger.error('UI', 'Error querying Isar in _hasLocalGuestData', e);
+      }
+    }
+
+    final hasGuestReceipts = receipts.any((r) => !_isUuid(r.id));
+    final hasGuestConversations = ConversationRepository.instance.conversations.any((c) => !_isUuid(c.id));
+    return hasGuestReceipts || hasGuestConversations;
+  }
+
+  Future<void> _purgeLocalGuestData() async {
+    AppLogger.info('UI', 'Purging local guest data before logging in to existing account...');
+    await ReceiptRepository.instance.clearAll();
+    await ConversationRepository.instance.clearAll();
+    await ChatMessageRepository.instance.clearAll();
+  }
+
+  Future<bool> _showGuestOverrideWarningModal() async {
+    final controller = AppThemeController.instance;
+    final textPrimary = controller.textColor;
+    final textSecondary = controller.secondaryTextColor;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        String inputText = '';
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final canOverride = inputText.trim() == 'Override Data';
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: Neumorphic(
+                style: NeumorphicStyle(
+                  depth: 0,
+                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+                  color: NeumorphicTheme.baseColor(dialogContext),
+                  border: NeumorphicBorder(color: Colors.red.shade700, width: 2.0),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 28),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "Warning",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Cannot migrate local receipts, settings, and other data into an existing account. If you wish to save these data, please create a new account.",
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        "To confirm data override, type 'Override Data' below (case-sensitive):",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: -3,
+                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+                          color: NeumorphicTheme.baseColor(dialogContext),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          child: TextField(
+                            onChanged: (val) {
+                              setDialogState(() {
+                                inputText = val;
+                              });
+                            },
+                            style: TextStyle(color: textPrimary, fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'Override Data',
+                              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(color: textSecondary),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade700,
+                              disabledBackgroundColor: Colors.grey.shade700,
+                              disabledForegroundColor: Colors.white38,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            onPressed: canOverride ? () => Navigator.of(ctx).pop(true) : null,
+                            child: const Text(
+                              "Override Data",
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
   Future<void> _onSignIn() async {
     AppLogger.info('UI', 'User tapped Sign In');
     final identifier = _usernameController.text.trim();
@@ -57,6 +230,17 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = 'Invalid username, email, or password. Please try again.';
       });
       return;
+    }
+
+    // Check if local unsynced guest data exists before logging in
+    if (await _hasLocalGuestData()) {
+      AppLogger.info('UI', 'Local guest data detected. Prompting override warning modal...');
+      final confirmed = await _showGuestOverrideWarningModal();
+      if (!confirmed) {
+        AppLogger.info('UI', 'User canceled login from guest override warning modal.');
+        return;
+      }
+      await _purgeLocalGuestData();
     }
 
     setState(() => _isLoading = true);

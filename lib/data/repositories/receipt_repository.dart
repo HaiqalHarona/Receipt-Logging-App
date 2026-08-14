@@ -11,6 +11,8 @@ import '../../services/app_logger_service.dart';
 import '../../services/currency_service.dart';
 import '../../services/isar_service.dart';
 import '../models/receipt_isar.dart';
+import '../../cloud/api/backend_api_client.dart';
+import '../../cloud/services/auth_service.dart';
 
 /// Single source of truth for receipt data.
 ///
@@ -38,19 +40,21 @@ class ReceiptRepository extends ChangeNotifier {
   /// Initializes Isar repository and loads saved receipts.
   /// Also migrates any legacy JSON file records to Isar on first load.
   Future<void> init() async {
-    if (_isInitialized) return;
+    if (_isInitialized && _receipts.isNotEmpty) return;
     AppLogger.info('Isar', '[ReceiptRepository] Initializing repository...');
 
     if (IsarService.isInitialized) {
       try {
         await _migrateLegacyJsonIfNeeded();
         await _loadFromIsar();
+        _isInitialized = true;
         AppLogger.info('Isar', '[ReceiptRepository] Initialized successfully with ${_receipts.length} receipts.');
       } catch (e, stackTrace) {
         AppLogger.error('Isar', '[ReceiptRepository] Init error', e, stackTrace);
       }
+    } else {
+      AppLogger.warning('Isar', '[ReceiptRepository] IsarService not initialized yet; deferring init.');
     }
-    _isInitialized = true;
     notifyListeners();
   }
 
@@ -127,11 +131,45 @@ class ReceiptRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _isUuid(String id) {
+    if (id.isEmpty) return false;
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    return uuidRegex.hasMatch(id);
+  }
+
+  void _deleteFromCloudIfSynced(String id) {
+    if (_isUuid(id) && AuthService.instance.isLoggedIn) {
+      final username = AuthService.instance.currentUsername;
+      final userToken = AuthService.instance.currentUserToken;
+      if (username != null && userToken != null) {
+        AppLogger.info('CloudSync', '[ReceiptRepository] Triggering backend DELETE /receipts/$id on Supabase...');
+        BackendApiClient.instance
+            .deleteReceipt(
+              receiptId: id,
+              username: username,
+              userToken: userToken,
+            )
+            .then((success) {
+          if (success) {
+            AppLogger.info('CloudSync', '[ReceiptRepository] Cloud receipt $id deleted on Supabase.');
+          } else {
+            AppLogger.warning('CloudSync', '[ReceiptRepository] Backend DELETE /receipts/$id returned false.');
+          }
+        }).catchError((e, st) {
+          AppLogger.error('CloudSync', '[ReceiptRepository] Error executing DELETE /receipts/$id', e, st);
+        });
+      }
+    }
+  }
+
   /// Soft-deletes a receipt by setting [deletedAt] on the local Isar record.
   ///
   /// The receipt is hidden from active queries immediately via [notifyListeners],
   /// but the local Isar record is retained for sync audit purposes.
   Future<void> softDeleteReceipt(String id) async {
+    _deleteFromCloudIfSynced(id);
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
       AppLogger.info('Isar', '[ReceiptRepository] Transaction write: soft deleting receipt $id');
@@ -156,6 +194,7 @@ class ReceiptRepository extends ChangeNotifier {
 
   /// Deletes a receipt by ID.
   Future<void> deleteReceipt(String id) async {
+    _deleteFromCloudIfSynced(id);
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
       AppLogger.info('Isar', '[ReceiptRepository] Transaction write: deleting receipt $id');

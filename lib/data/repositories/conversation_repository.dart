@@ -41,17 +41,19 @@ class ConversationRepository extends ChangeNotifier {
   /// Initializes the repository by loading conversations from Isar.
   /// Safe to call multiple times — only loads once.
   Future<void> init() async {
-    if (_isInitialized) return;
+    if (_isInitialized && _conversations.isNotEmpty) return;
     AppLogger.info('Isar', '[ConversationRepository] Initializing conversation repository...');
     if (IsarService.isInitialized) {
       try {
         await _loadFromIsar();
+        _isInitialized = true;
         AppLogger.info('Isar', '[ConversationRepository] Initialized successfully with ${_conversations.length} active conversations.');
       } catch (e, stackTrace) {
         AppLogger.error('Isar', '[ConversationRepository] Init error', e, stackTrace);
       }
+    } else {
+      AppLogger.warning('Isar', '[ConversationRepository] IsarService not initialized yet; deferring init.');
     }
-    _isInitialized = true;
     notifyListeners();
   }
 

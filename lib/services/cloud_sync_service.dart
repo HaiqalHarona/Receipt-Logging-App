@@ -40,22 +40,18 @@ class CloudSyncService {
       await AuthService.instance.getOrFetchProfile();
 
       // ── 2. Initial Receipts Load (Limit 20) ────────────────────────────────
-      if (ReceiptRepository.instance.receipts.isEmpty) {
-        await fetchMoreReceipts(offset: 0, limit: 20);
-      }
+      await fetchMoreReceipts(offset: 0, limit: 20);
 
       // ── 3. Initial Conversations Load (Limit 20) ───────────────────────────
-      if (ConversationRepository.instance.conversations.isEmpty) {
-        final convDtos = await BackendApiClient.instance.fetchConversations(
-          username: username,
-          userToken: token,
-          limit: 20,
-          offset: 0,
-        );
-        if (convDtos.isNotEmpty) {
-          final domainConvs = convDtos.map((dto) => dto.toDomain()).toList();
-          await ConversationRepository.instance.saveBatch(domainConvs);
-        }
+      final convDtos = await BackendApiClient.instance.fetchConversations(
+        username: username,
+        userToken: token,
+        limit: 20,
+        offset: 0,
+      );
+      if (convDtos.isNotEmpty) {
+        final domainConvs = convDtos.map((dto) => dto.toDomain()).toList();
+        await ConversationRepository.instance.saveBatch(domainConvs);
       }
 
       AppLogger.info('CloudSync', 'Login sync completed successfully');
@@ -71,9 +67,13 @@ class CloudSyncService {
   Future<int> fetchMoreReceipts({required int offset, int limit = 20}) async {
     final username = AuthService.instance.currentUsername;
     final token = AuthService.instance.currentUserToken;
-    if (username == null || token == null) return 0;
+    if (username == null || token == null) {
+      AppLogger.warning('CloudSync', 'fetchMoreReceipts skipped: username or token null');
+      return 0;
+    }
 
     try {
+      AppLogger.info('CloudSync', 'Executing fetchReceipts for user $username (offset: $offset, limit: $limit)...');
       final recordDtos = await BackendApiClient.instance.fetchReceipts(
         username: username,
         userToken: token,
@@ -81,14 +81,17 @@ class CloudSyncService {
         offset: offset,
       );
 
-      if (recordDtos.isEmpty) return 0;
+      if (recordDtos.isEmpty) {
+        AppLogger.info('CloudSync', 'fetchReceipts returned 0 records');
+        return 0;
+      }
 
       final domainReceipts = recordDtos.map((record) => _recordDtoToDomain(record)).toList();
       await ReceiptRepository.instance.saveAllReceipts(domainReceipts);
-      AppLogger.info('CloudSync', 'Loaded ${domainReceipts.length} receipts (offset: $offset)');
+      AppLogger.info('CloudSync', 'Loaded ${domainReceipts.length} receipts into Isar DB (offset: $offset)');
       return domainReceipts.length;
     } catch (e, st) {
-      AppLogger.error('CloudSync', 'fetchMoreReceipts error', e, st);
+      AppLogger.error('CloudSync', 'fetchMoreReceipts failed with exception', e, st);
       return 0;
     }
   }
