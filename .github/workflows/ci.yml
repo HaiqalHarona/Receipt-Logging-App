@@ -104,6 +104,40 @@ jobs:
           name: android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
+  build-ios:
+    name: Build iOS App
+    needs: analyze-and-test
+    runs-on: macos-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Create Dummy .env for CI
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://dummy.supabase.co' }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci' }}" >> .env
+          echo "FASTAPI_BASE_URL=${{ secrets.FASTAPI_BASE_URL || 'https://dummy-receipt-api.com' }}" >> .env
+          echo "OCR_SPACE_API_KEY=${{ secrets.OCR_SPACE_API_KEY || 'dummy_ocr_key' }}" >> .env
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS Release (Unsigned)
+        run: flutter build ios --release --no-codesign
+
+      - name: Upload iOS App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-app
+          path: build/ios/iphoneos/Runner.app
+
   build-web:
     name: Build Web App
     needs: analyze-and-test
