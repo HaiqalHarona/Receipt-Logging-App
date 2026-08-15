@@ -46,8 +46,10 @@ extension ConversationDtoMapper on ConversationDto {
     return Conversation(
       id: id,
       title: title,
-      createdAt: DateTime.tryParse(createdAt)?.toUtc() ?? DateTime.now().toUtc(),
-      updatedAt: DateTime.tryParse(updatedAt)?.toUtc() ?? DateTime.now().toUtc(),
+      createdAt:
+          DateTime.tryParse(createdAt)?.toUtc() ?? DateTime.now().toUtc(),
+      updatedAt:
+          DateTime.tryParse(updatedAt)?.toUtc() ?? DateTime.now().toUtc(),
     );
   }
 }

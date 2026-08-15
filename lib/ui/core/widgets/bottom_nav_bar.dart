@@ -12,7 +12,7 @@ class AppBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder( 
+    return AnimatedBuilder(
       animation: AppThemeController.instance,
       builder: (context, _) {
         final controller = AppThemeController.instance;
@@ -376,4 +376,3 @@ class NotchedPillBorderPainter extends CustomPainter {
         oldDelegate.smoothRadius != smoothRadius;
   }
 }
-

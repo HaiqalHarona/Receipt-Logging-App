@@ -151,7 +151,8 @@ class ReceiptListItemWidget extends StatelessWidget {
         } else {
           int selectedK = 0;
           for (int k = m - 1; k >= 1; k--) {
-            final double tagsWidth = tagWidths.take(k).fold(0.0, (sum, w) => sum + w);
+            final double tagsWidth =
+                tagWidths.take(k).fold(0.0, (sum, w) => sum + w);
             final double badgeWidth = _badgeTotalWidth(m - k);
             if (tagsWidth + badgeWidth <= maxWidth) {
               selectedK = k;
@@ -179,7 +180,8 @@ class ReceiptListItemWidget extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(right: 4),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: tagColor.withAlpha(30),
                         borderRadius: BorderRadius.circular(6),
@@ -204,7 +206,8 @@ class ReceiptListItemWidget extends StatelessWidget {
               }),
               if (remainingCount > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
                     color: textSecondary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),

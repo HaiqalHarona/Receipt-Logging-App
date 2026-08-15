@@ -35,31 +35,37 @@ class DataExportService {
       // Filter to export ONLY local guest data (records with local IDs like res-xxx),
       // skipping records that were downloaded from Supabase (valid 36-char UUIDs).
       final guestReceipts = receipts.where((r) => !_isUuid(r.id)).toList();
-      final guestConversations = conversations.where((c) => !_isUuid(c.id)).toList();
+      final guestConversations =
+          conversations.where((c) => !_isUuid(c.id)).toList();
 
       // ── Receipts ────────────────────────────────────────────────────────────
-      final receiptsJson = guestReceipts.map((r) => {
-        'id': r.id,
-        'receipt': {
-          'merchant_name': r.merchant,
-          'line_items': r.lineItems.map((l) => l.toJson()).toList(),
-          'total_amount': r.amount,
-          'currency': r.currency,
-          'category': r.category,
-          'date': r.date,
-          'raw_text': '',
-          'confidence_score': 0.0,
-        },
-        'created_at': (r.createdAt ?? DateTime.now()).toUtc().toIso8601String(),
-      }).toList();
+      final receiptsJson = guestReceipts
+          .map((r) => {
+                'id': r.id,
+                'receipt': {
+                  'merchant_name': r.merchant,
+                  'line_items': r.lineItems.map((l) => l.toJson()).toList(),
+                  'total_amount': r.amount,
+                  'currency': r.currency,
+                  'category': r.category,
+                  'date': r.date,
+                  'raw_text': '',
+                  'confidence_score': 0.0,
+                },
+                'created_at':
+                    (r.createdAt ?? DateTime.now()).toUtc().toIso8601String(),
+              })
+          .toList();
 
       // ── Conversations ────────────────────────────────────────────────────────
-      final conversationsJson = guestConversations.map((c) => {
-        'id': c.id,
-        'title': c.title,
-        'created_at': c.createdAt.toUtc().toIso8601String(),
-        'updated_at': c.updatedAt.toUtc().toIso8601String(),
-      }).toList();
+      final conversationsJson = guestConversations
+          .map((c) => {
+                'id': c.id,
+                'title': c.title,
+                'created_at': c.createdAt.toUtc().toIso8601String(),
+                'updated_at': c.updatedAt.toUtc().toIso8601String(),
+              })
+          .toList();
 
       // ── Chat Messages (all conversations from Isar directly) ─────────────────
       final List<Map<String, dynamic>> chatMessagesJson = [];
@@ -92,9 +98,9 @@ class DataExportService {
       AppLogger.info(
         'DataExport',
         'Exported guest data: '
-        'receipts=${receiptsJson.length} '
-        'conversations=${conversationsJson.length} '
-        'chat_messages=${chatMessagesJson.length}',
+            'receipts=${receiptsJson.length} '
+            'conversations=${conversationsJson.length} '
+            'chat_messages=${chatMessagesJson.length}',
       );
       return result;
     } catch (e, st) {

@@ -63,7 +63,7 @@ class ReceiptDto {
   final double totalAmount;
   final String currency;
   final String? category;
-  final String date;          // ISO 8601 string
+  final String date; // ISO 8601 string
   final String rawText;
   final double confidenceScore;
   final String? notes;

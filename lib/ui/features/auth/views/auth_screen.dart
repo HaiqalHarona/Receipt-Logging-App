@@ -8,8 +8,10 @@ class AuthScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = NeumorphicTheme.isUsingDark(context);
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final textPrimary =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
 
     return NeumorphicBackground(
       child: Scaffold(
@@ -95,8 +97,10 @@ class AuthScreen extends StatelessWidget {
     bool isObscure = false,
   }) {
     final isDark = NeumorphicTheme.isUsingDark(context);
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final textPrimary =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,4 +135,3 @@ class AuthScreen extends StatelessWidget {
     );
   }
 }
-

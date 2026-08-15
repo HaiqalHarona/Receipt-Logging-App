@@ -21,7 +21,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -167,12 +168,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (detail.contains('username')) {
         setState(() => _usernameError = 'This username is already taken.');
       } else if (detail.contains('email')) {
-        setState(() => _emailError = 'An account with this email already exists.');
+        setState(
+            () => _emailError = 'An account with this email already exists.');
       } else {
         // Fallback: surface the server message as a username error
         setState(() => _usernameError = e.message);
       }
-      AppLogger.error('UI', 'SignUp ApiException: ${e.statusCode} - ${e.message}', e);
+      AppLogger.error(
+          'UI', 'SignUp ApiException: ${e.statusCode} - ${e.message}', e);
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
@@ -194,7 +197,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       padding: const EdgeInsets.only(top: 6, left: 4),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 13),
+          const Icon(Icons.error_outline_rounded,
+              color: Colors.redAccent, size: 13),
           const SizedBox(width: 5),
           Expanded(
             child: Text(
@@ -231,7 +235,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       icon: Icons.arrow_back_rounded,
                       iconSize: 20,
                       onTap: () {
-                        AppLogger.info('UI', 'User tapped Back on SignUpScreen');
+                        AppLogger.info(
+                            'UI', 'User tapped Back on SignUpScreen');
                         context.pop();
                       },
                     ),
@@ -280,10 +285,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
-                      Icon(Icons.person_rounded, color: textSecondary, size: 20),
+                      Icon(Icons.person_rounded,
+                          color: textSecondary, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -291,11 +298,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           autocorrect: false,
                           onChanged: (_) {
-                            if (_usernameError != null) setState(() => _usernameError = null);
+                            if (_usernameError != null)
+                              setState(() => _usernameError = null);
                           },
                           decoration: InputDecoration(
                             hintText: "Choose a username",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -318,7 +328,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
                       Icon(Icons.email_rounded, color: textSecondary, size: 20),
@@ -330,11 +341,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           autocorrect: false,
                           onChanged: (_) {
-                            if (_emailError != null) setState(() => _emailError = null);
+                            if (_emailError != null)
+                              setState(() => _emailError = null);
                           },
                           decoration: InputDecoration(
                             hintText: "user@example.com",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -357,7 +371,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
                       Icon(Icons.lock_rounded, color: textSecondary, size: 20),
@@ -368,13 +383,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           obscureText: _obscurePassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           onChanged: (_) {
-                            if (_passwordError != null) setState(() => _passwordError = null);
+                            if (_passwordError != null)
+                              setState(() => _passwordError = null);
                             // Also clear confirm error when password is edited
-                            if (_confirmPasswordError != null) setState(() => _confirmPasswordError = null);
+                            if (_confirmPasswordError != null)
+                              setState(() => _confirmPasswordError = null);
                           },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -386,7 +405,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           });
                         },
                         child: Icon(
-                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscurePassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
                           color: textSecondary,
                           size: 20,
                         ),
@@ -409,10 +430,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
-                      Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
+                      Icon(Icons.lock_outline_rounded,
+                          color: textSecondary, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -420,11 +443,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           obscureText: _obscureConfirmPassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           onChanged: (_) {
-                            if (_confirmPasswordError != null) setState(() => _confirmPasswordError = null);
+                            if (_confirmPasswordError != null)
+                              setState(() => _confirmPasswordError = null);
                           },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -436,7 +462,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           });
                         },
                         child: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
                           color: textSecondary,
                           size: 20,
                         ),
@@ -480,7 +508,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Center(
                   child: GestureDetector(
                     onTap: () {
-                      AppLogger.info('UI', 'User tapped Log In link on SignUpScreen');
+                      AppLogger.info(
+                          'UI', 'User tapped Log In link on SignUpScreen');
                       if (GoRouter.of(context).canPop()) {
                         context.pop();
                       } else {

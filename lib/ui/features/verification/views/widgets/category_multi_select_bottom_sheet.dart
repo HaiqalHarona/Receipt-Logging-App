@@ -91,7 +91,9 @@ class _CategoryMultiSelectBottomSheetState
   void initState() {
     super.initState();
     _selectedCategories = Set.from(
-      widget.initialSelected.map((s) => CategoryUtils.sanitize(s).trim()).where((s) => s.isNotEmpty),
+      widget.initialSelected
+          .map((s) => CategoryUtils.sanitize(s).trim())
+          .where((s) => s.isNotEmpty),
     );
     CategoryService.instance.init().then((_) {
       if (mounted) setState(() {});
@@ -105,7 +107,8 @@ class _CategoryMultiSelectBottomSheetState
   }
 
   List<String> get _allCategories {
-    final customNames = CategoryService.instance.customCategories.map((c) => c.name).toList();
+    final customNames =
+        CategoryService.instance.customCategories.map((c) => c.name).toList();
     final combined = <String>[..._defaultCategories];
     for (final custom in customNames) {
       if (!combined.contains(custom)) {
@@ -125,11 +128,13 @@ class _CategoryMultiSelectBottomSheetState
     final colorVal = _presetColors[_selectedColorIndex].toARGB32();
     final iconCodePoint = _presetIcons[_selectedIconIndex].codePoint;
 
-    final success = await CategoryService.instance.addCategory(name, colorVal, iconCodePoint);
+    final success = await CategoryService.instance
+        .addCategory(name, colorVal, iconCodePoint);
     if (!success) {
       setState(() {
         if (CategoryService.instance.isMaxReached) {
-          _creationError = 'Maximum ${CategoryService.maxCustomCategories} custom categories reached.';
+          _creationError =
+              'Maximum ${CategoryService.maxCustomCategories} custom categories reached.';
         } else {
           _creationError = 'A category with this name already exists.';
         }
@@ -200,7 +205,8 @@ class _CategoryMultiSelectBottomSheetState
                       _creationError = null;
                     });
                   },
-                  child: Icon(Icons.close_rounded, color: textSecondary, size: 22),
+                  child:
+                      Icon(Icons.close_rounded, color: textSecondary, size: 22),
                 )
               else
                 Text(
@@ -219,8 +225,10 @@ class _CategoryMultiSelectBottomSheetState
           Flexible(
             child: SingleChildScrollView(
               child: _isAddingNew
-                  ? _buildAddCategoryView(baseColor, accent, textPrimary, textSecondary)
-                  : _buildMultiSelectListView(baseColor, accent, textPrimary, textSecondary),
+                  ? _buildAddCategoryView(
+                      baseColor, accent, textPrimary, textSecondary)
+                  : _buildMultiSelectListView(
+                      baseColor, accent, textPrimary, textSecondary),
             ),
           ),
 
@@ -239,7 +247,8 @@ class _CategoryMultiSelectBottomSheetState
                       depth: 4,
                       intensity: 0.85,
                       color: accent,
-                      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(14)),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     child: const Center(
@@ -296,10 +305,13 @@ class _CategoryMultiSelectBottomSheetState
                 style: NeumorphicStyle(
                   depth: isSelected ? -2 : 3,
                   intensity: 0.85,
-                  color: isSelected ? accent.withValues(alpha: 0.15) : baseColor,
-                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
+                  color:
+                      isSelected ? accent.withValues(alpha: 0.15) : baseColor,
+                  boxShape:
+                      NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(
                   children: [
                     Container(
@@ -316,14 +328,19 @@ class _CategoryMultiSelectBottomSheetState
                         cat,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected ? accent : textPrimary,
                         ),
                       ),
                     ),
                     Icon(
-                      isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                      color: isSelected ? accent : textSecondary.withValues(alpha: 0.4),
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      color: isSelected
+                          ? accent
+                          : textSecondary.withValues(alpha: 0.4),
                       size: 22,
                     ),
                   ],
@@ -350,7 +367,8 @@ class _CategoryMultiSelectBottomSheetState
             style: NeumorphicStyle(
               depth: isMaxReached ? -4 : 3,
               intensity: 0.85,
-              color: isMaxReached ? baseColor.withValues(alpha: 0.5) : baseColor,
+              color:
+                  isMaxReached ? baseColor.withValues(alpha: 0.5) : baseColor,
               boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
             ),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -360,7 +378,9 @@ class _CategoryMultiSelectBottomSheetState
                 Icon(
                   Icons.add_circle_outline_rounded,
                   size: 18,
-                  color: isMaxReached ? textSecondary.withValues(alpha: 0.5) : accent,
+                  color: isMaxReached
+                      ? textSecondary.withValues(alpha: 0.5)
+                      : accent,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -370,7 +390,9 @@ class _CategoryMultiSelectBottomSheetState
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.bold,
-                    color: isMaxReached ? textSecondary.withValues(alpha: 0.5) : accent,
+                    color: isMaxReached
+                        ? textSecondary.withValues(alpha: 0.5)
+                        : accent,
                   ),
                 ),
               ],
@@ -401,12 +423,14 @@ class _CategoryMultiSelectBottomSheetState
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline_rounded, size: 16, color: Colors.redAccent),
+                const Icon(Icons.error_outline_rounded,
+                    size: 16, color: Colors.redAccent),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     _creationError!,
-                    style: const TextStyle(fontSize: 12, color: Colors.redAccent),
+                    style:
+                        const TextStyle(fontSize: 12, color: Colors.redAccent),
                   ),
                 ),
               ],
@@ -418,7 +442,8 @@ class _CategoryMultiSelectBottomSheetState
         // Category Name Input
         Text(
           'Category Name',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
         ),
         const SizedBox(height: 6),
         Neumorphic(
@@ -430,11 +455,14 @@ class _CategoryMultiSelectBottomSheetState
           ),
           child: TextField(
             controller: _newCatNameController,
-            style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                color: textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               hintText: 'e.g., Subscriptions, Books, Pet Care',
-              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5), fontSize: 13),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              hintStyle: TextStyle(
+                  color: textSecondary.withValues(alpha: 0.5), fontSize: 13),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               border: InputBorder.none,
             ),
             onChanged: (_) {
@@ -447,7 +475,8 @@ class _CategoryMultiSelectBottomSheetState
         // Color Presets Grid (8 Colors)
         Text(
           'Select Theme Color',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -466,7 +495,9 @@ class _CategoryMultiSelectBottomSheetState
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
-                  border: isSelected ? Border.all(color: textPrimary, width: 3) : null,
+                  border: isSelected
+                      ? Border.all(color: textPrimary, width: 3)
+                      : null,
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
@@ -478,7 +509,8 @@ class _CategoryMultiSelectBottomSheetState
                       : null,
                 ),
                 child: isSelected
-                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+                    ? const Icon(Icons.check_rounded,
+                        color: Colors.white, size: 20)
                     : null,
               ),
             );
@@ -489,7 +521,8 @@ class _CategoryMultiSelectBottomSheetState
         // Icon Presets Grid (12 Icons)
         Text(
           'Select Icon',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -506,8 +539,11 @@ class _CategoryMultiSelectBottomSheetState
                 style: NeumorphicStyle(
                   depth: isSelected ? -2 : 3,
                   intensity: 0.85,
-                  color: isSelected ? currentColor.withValues(alpha: 0.2) : baseColor,
-                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                  color: isSelected
+                      ? currentColor.withValues(alpha: 0.2)
+                      : baseColor,
+                  boxShape:
+                      NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                 ),
                 padding: const EdgeInsets.all(10),
                 child: Icon(
@@ -536,7 +572,8 @@ class _CategoryMultiSelectBottomSheetState
                   depth: 2,
                   intensity: 0.85,
                   color: baseColor,
-                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                  boxShape:
+                      NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Center(
@@ -559,7 +596,8 @@ class _CategoryMultiSelectBottomSheetState
                   depth: 4,
                   intensity: 0.85,
                   color: accent,
-                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                  boxShape:
+                      NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: const Center(

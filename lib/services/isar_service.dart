@@ -22,7 +22,8 @@ class IsarService {
   static Future<Isar> init({
     required List<CollectionSchema<dynamic>> schemas,
   }) async {
-    AppLogger.info('Isar', 'Initializing Isar database with ${schemas.length} schemas...');
+    AppLogger.info(
+        'Isar', 'Initializing Isar database with ${schemas.length} schemas...');
     if (Isar.instanceNames.contains('default')) {
       _isar = Isar.getInstance('default')!;
       _isInitialized = true;
@@ -37,7 +38,8 @@ class IsarService {
       _isar = await Isar.open(
         schemas,
         directory: dir.path,
-        inspector: kDebugMode, // Ensures Isar Inspector is active in debug builds
+        inspector:
+            kDebugMode, // Ensures Isar Inspector is active in debug builds
       );
       _isInitialized = true;
 
@@ -51,7 +53,8 @@ class IsarService {
 
       return _isar;
     } catch (e, stackTrace) {
-      AppLogger.error('Isar', 'Failed to initialize Isar database', e, stackTrace);
+      AppLogger.error(
+          'Isar', 'Failed to initialize Isar database', e, stackTrace);
       rethrow;
     }
   }

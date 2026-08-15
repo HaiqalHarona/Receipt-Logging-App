@@ -39,11 +39,15 @@ class _VerificationScreenState extends State<VerificationScreen> {
         initialList = extra;
       } else if (extra is List && extra.isNotEmpty) {
         // Backwards compatibility with Map payloads
-        initialList = extra.map((item) {
-          if (item is Receipt) return item;
-          if (item is Map) return Receipt.fromJson(item.cast<String, dynamic>());
-          return null;
-        }).whereType<Receipt>().toList();
+        initialList = extra
+            .map((item) {
+              if (item is Receipt) return item;
+              if (item is Map)
+                return Receipt.fromJson(item.cast<String, dynamic>());
+              return null;
+            })
+            .whereType<Receipt>()
+            .toList();
       } else if (extra is Receipt) {
         initialList = [extra];
       } else {
@@ -61,7 +65,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
       if (!mounted) return;
       AppSnackBar.show(
         context,
-        message: "Successfully saved ${_viewModel.receipts.length} receipt${_viewModel.receipts.length > 1 ? 's' : ''}!",
+        message:
+            "Successfully saved ${_viewModel.receipts.length} receipt${_viewModel.receipts.length > 1 ? 's' : ''}!",
       );
       context.go('/dashboard');
     });
@@ -108,7 +113,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
             ),
             body: SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Column(
                   children: [
                     if (totalCount > 1)
@@ -121,7 +127,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
                         onPrevious: _viewModel.previousReceipt,
                         onNext: _viewModel.nextReceipt,
                       ),
-
                     if (totalCount == 0)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 48),

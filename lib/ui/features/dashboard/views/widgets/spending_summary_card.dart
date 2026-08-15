@@ -29,12 +29,12 @@ class SpendingSummaryCard extends StatefulWidget {
 class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
   static const int _periodCount = 6;
   static const List<SpendingSummaryPeriod> _periods = [
-    SpendingSummaryPeriod.oneMonth,     // 0: 1m
-    SpendingSummaryPeriod.threeMonths,  // 1: 3m
-    SpendingSummaryPeriod.sixMonths,    // 2: 6m
+    SpendingSummaryPeriod.oneMonth, // 0: 1m
+    SpendingSummaryPeriod.threeMonths, // 1: 3m
+    SpendingSummaryPeriod.sixMonths, // 2: 6m
     SpendingSummaryPeriod.twelveMonths, // 3: 12m
-    SpendingSummaryPeriod.ytd,          // 4: YTD
-    SpendingSummaryPeriod.allTime,      // 5: All
+    SpendingSummaryPeriod.ytd, // 4: YTD
+    SpendingSummaryPeriod.allTime, // 5: All
   ];
 
   late final PageController _pageController;
@@ -72,7 +72,8 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
 
   @override
   Widget build(BuildContext context) {
-    final activeIndex = _targetIndexForTimeline(widget.viewModel.selectedTimeline);
+    final activeIndex =
+        _targetIndexForTimeline(widget.viewModel.selectedTimeline);
 
     if (_currentPage != activeIndex) {
       _currentPage = activeIndex;
@@ -102,7 +103,8 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
         width: double.infinity,
         child: PageView.builder(
           controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(), // Disabled manual swiping
+          physics:
+              const NeverScrollableScrollPhysics(), // Disabled manual swiping
           itemCount: _periodCount,
           itemBuilder: (context, realIndex) {
             final period = _periods[realIndex];
@@ -126,7 +128,8 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: widget.accent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
@@ -157,7 +160,8 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                 const SizedBox(height: 2),
 
                 // Row 3: Comparison Badge (Red if +%, Green if -%, Gray if 0%, Omitted for All-Time)
-                if (summary.percentageChange != null && summary.comparisonLabel != null) ...[
+                if (summary.percentageChange != null &&
+                    summary.comparisonLabel != null) ...[
                   _buildComparisonBadge(summary),
                   const SizedBox(height: 2),
                 ],
@@ -195,7 +199,9 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
 
     final IconData badgeIcon = isIncrease
         ? Icons.trending_up_rounded
-        : (isDecrease ? Icons.trending_down_rounded : Icons.trending_flat_rounded);
+        : (isDecrease
+            ? Icons.trending_down_rounded
+            : Icons.trending_flat_rounded);
 
     final String prefix = isIncrease ? '+' : '';
     final String badgeText = '$prefix${change.toStringAsFixed(1)}%';

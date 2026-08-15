@@ -8,15 +8,24 @@ class PaywallScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = NeumorphicTheme.isUsingDark(context);
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
-    final accent = isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
+    final textPrimary =
+        isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
+    final textSecondary =
+        isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final accent =
+        isDark ? AppTheme.darkAccentPinkishRed : AppTheme.lightAccentTeal;
 
     final features = [
       (icon: Icons.bolt_rounded, title: "Unlimited Vision AI Receipt Parsing"),
-      (icon: Icons.cloud_done_rounded, title: "Automatic Cloud Sync & Offsite Backup"),
+      (
+        icon: Icons.cloud_done_rounded,
+        title: "Automatic Cloud Sync & Offsite Backup"
+      ),
       (icon: Icons.bar_chart_rounded, title: "Advanced Analytics & CSV Export"),
-      (icon: Icons.auto_awesome_rounded, title: "Priority AI Assistant Queries"),
+      (
+        icon: Icons.auto_awesome_rounded,
+        title: "Priority AI Assistant Queries"
+      ),
     ];
 
     return NeumorphicBackground(
@@ -153,4 +162,3 @@ class PaywallScreen extends StatelessWidget {
     );
   }
 }
-

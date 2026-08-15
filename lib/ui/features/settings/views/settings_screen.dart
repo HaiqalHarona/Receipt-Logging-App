@@ -13,7 +13,8 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAliveClientMixin {
+class _SettingsScreenState extends State<SettingsScreen>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -21,7 +22,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
   Widget build(BuildContext context) {
     super.build(context);
     return AnimatedBuilder(
-      animation: Listenable.merge([AppThemeController.instance, CurrencyService.instance]),
+      animation: Listenable.merge(
+          [AppThemeController.instance, CurrencyService.instance]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -37,7 +39,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
             body: SafeArea(
               bottom: false,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 120),
+                padding: const EdgeInsets.only(
+                    left: 24, right: 24, top: 16, bottom: 120),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -63,7 +66,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
                     GestureDetector(
                       onTap: () => context.push('/customization'),
                       child: NeumorphicCardWidget(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
                         child: Row(
                           children: [
                             Expanded(
@@ -102,7 +106,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
 
                     // Appearance Mode Toggle (3-way: Dark · Light · Auto)
                     NeumorphicCardWidget(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       child: Row(
                         children: [
                           Text(
@@ -146,9 +151,11 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
 
                     // Currency Setting Card (Interactive Modal Selector)
                     GestureDetector(
-                      onTap: () => _showCurrencyPicker(context, textPrimary, textSecondary, accent),
+                      onTap: () => _showCurrencyPicker(
+                          context, textPrimary, textSecondary, accent),
                       child: NeumorphicCardWidget(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
                         child: Row(
                           children: [
                             Expanded(
@@ -175,7 +182,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: accent.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
@@ -197,7 +205,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
 
                     // Export Database Setting Card
                     NeumorphicCardWidget(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 16),
                       child: Row(
                         children: [
                           Expanded(
@@ -226,7 +235,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
                     GestureDetector(
                       onTap: () => context.push('/settings/db-viewer'),
                       child: NeumorphicCardWidget(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
                         child: Row(
                           children: [
                             Expanded(
@@ -289,7 +299,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
           color: isSelected ? accent.withValues(alpha: 0.12) : null,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
           border: isSelected
-              ? NeumorphicBorder(color: accent.withValues(alpha: 0.4), width: 1.0)
+              ? NeumorphicBorder(
+                  color: accent.withValues(alpha: 0.4), width: 1.0)
               : const NeumorphicBorder.none(),
         ),
         child: Padding(
@@ -308,7 +319,8 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+                  color:
+                      isSelected ? accent : textPrimary.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -317,7 +329,6 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
       ),
     );
   }
-
 
   void _showCurrencyPicker(
     BuildContext context,
@@ -356,10 +367,12 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
                 Flexible(
                   child: ListView(
                     shrinkWrap: true,
-                    children: CurrencyService.supportedCurrencies.entries.map((entry) {
+                    children: CurrencyService.supportedCurrencies.entries
+                        .map((entry) {
                       final code = entry.key;
                       final info = entry.value;
-                      final isSelected = code == CurrencyService.instance.currentCurrency;
+                      final isSelected =
+                          code == CurrencyService.instance.currentCurrency;
 
                       return ListTile(
                         onTap: () {
@@ -382,7 +395,9 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
                           "${info.code} — ${info.name}",
                           style: TextStyle(
                             color: textPrimary,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                         trailing: isSelected

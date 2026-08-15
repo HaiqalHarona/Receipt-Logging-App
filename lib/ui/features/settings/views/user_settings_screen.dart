@@ -55,10 +55,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     );
   }
 
-  Future<void> _showAddMobileBottomSheet(BuildContext context, Color accent, Color textPrimary, Color textSecondary) async {
+  Future<void> _showAddMobileBottomSheet(BuildContext context, Color accent,
+      Color textPrimary, Color textSecondary) async {
     AppLogger.info('UI', 'User opened Add Mobile modal');
-    final countryCodeController = TextEditingController(text: _profile?.countryCode ?? "+60");
-    final mobileController = TextEditingController(text: _profile?.mobileNumber ?? "");
+    final countryCodeController =
+        TextEditingController(text: _profile?.countryCode ?? "+60");
+    final mobileController =
+        TextEditingController(text: _profile?.mobileNumber ?? "");
     bool isSaving = false;
     String? errorMsg;
 
@@ -97,7 +100,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                     style: TextStyle(fontSize: 13, color: textSecondary),
                   ),
                   const SizedBox(height: 20),
-
                   Row(
                     children: [
                       // Country Code Input
@@ -116,10 +118,12 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             ),
                             const SizedBox(height: 4),
                             NeumorphicInputFieldWidget(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 2),
                               child: TextField(
                                 controller: countryCodeController,
-                                style: TextStyle(color: textPrimary, fontSize: 14),
+                                style:
+                                    TextStyle(color: textPrimary, fontSize: 14),
                                 decoration: const InputDecoration(
                                   hintText: "+60",
                                   border: InputBorder.none,
@@ -146,11 +150,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             ),
                             const SizedBox(height: 4),
                             NeumorphicInputFieldWidget(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 2),
                               child: TextField(
                                 controller: mobileController,
                                 keyboardType: TextInputType.phone,
-                                style: TextStyle(color: textPrimary, fontSize: 14),
+                                style:
+                                    TextStyle(color: textPrimary, fontSize: 14),
                                 decoration: const InputDecoration(
                                   hintText: "123456789",
                                   border: InputBorder.none,
@@ -162,17 +168,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       ),
                     ],
                   ),
-
                   if (errorMsg != null) ...[
                     const SizedBox(height: 10),
                     Text(
                       errorMsg!,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                      style: const TextStyle(
+                          color: Colors.redAccent, fontSize: 12),
                     ),
                   ],
-
                   const SizedBox(height: 24),
-
                   SizedBox(
                     width: double.infinity,
                     height: 48,
@@ -183,8 +187,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                               final cc = countryCodeController.text.trim();
                               final mn = mobileController.text.trim();
                               if (mn.isEmpty) {
-                                AppLogger.warning('UI', 'Mobile number save validation failed: empty mobile number');
-                                setModalState(() => errorMsg = "Please enter a mobile number.");
+                                AppLogger.warning('UI',
+                                    'Mobile number save validation failed: empty mobile number');
+                                setModalState(() =>
+                                    errorMsg = "Please enter a mobile number.");
                                 return;
                               }
                               AppLogger.info('UI', 'User saving mobile number');
@@ -193,13 +199,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                 errorMsg = null;
                               });
 
-                              final success = await AuthService.instance.updateMobileNumber(
+                              final success =
+                                  await AuthService.instance.updateMobileNumber(
                                 countryCode: cc.isEmpty ? "+60" : cc,
                                 mobileNumber: mn,
                               );
 
                               if (success && context.mounted) {
-                                AppLogger.info('UI', 'Mobile number updated successfully');
+                                AppLogger.info(
+                                    'UI', 'Mobile number updated successfully');
                                 Navigator.of(ctx).pop();
                                 _loadProfile(); // refresh cached profile state
                                 AppSnackBar.show(
@@ -207,10 +215,12 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                   message: "Mobile number updated!",
                                 );
                               } else {
-                                AppLogger.warning('UI', 'Mobile number update failed on backend');
+                                AppLogger.warning('UI',
+                                    'Mobile number update failed on backend');
                                 setModalState(() {
                                   isSaving = false;
-                                  errorMsg = "Failed to update mobile number. Please try again.";
+                                  errorMsg =
+                                      "Failed to update mobile number. Please try again.";
                                 });
                               }
                             },
@@ -219,7 +229,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
                               )
                             : const Text(
                                 "Save Mobile Number",
@@ -274,7 +285,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       await AuthService.instance.linkCurrentDevice(null);
 
       // 5. Rotate deviceToken for guest security while keeping persistent deviceId
-      await DeviceIdentityService.instance.rotateDeviceToken(BackendApiClient.instance);
+      await DeviceIdentityService.instance
+          .rotateDeviceToken(BackendApiClient.instance);
 
       // 6. Clear local user session credentials
       await AuthService.instance.clearSession();
@@ -292,7 +304,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       AppLogger.error('UI', 'Logout error during cloud sync: $e', e);
       AppSnackBar.show(
         context,
-        message: "Logout canceled: Cloud sync failed ($e). Data preserved locally.",
+        message:
+            "Logout canceled: Cloud sync failed ($e). Data preserved locally.",
         isError: true,
       );
     } finally {
@@ -309,9 +322,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     final textSecondary = controller.secondaryTextColor;
     final accent = controller.accentColor;
 
-    final username = _profile?.username ?? AuthService.instance.currentUsername ?? 'User';
+    final username =
+        _profile?.username ?? AuthService.instance.currentUsername ?? 'User';
     final userId = _profile?.id ?? AuthService.instance.currentUserId ?? '';
-    final email = _profile?.email ?? AuthService.instance.currentEmail ?? 'No email';
+    final email =
+        _profile?.email ?? AuthService.instance.currentEmail ?? 'No email';
     final countryCode = _profile?.countryCode;
     final mobileNumber = _profile?.mobileNumber;
     final hasMobile = mobileNumber != null && mobileNumber.isNotEmpty;
@@ -325,7 +340,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
               // Scrollable Content
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -337,7 +353,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             icon: Icons.arrow_back_rounded,
                             iconSize: 20,
                             onTap: () {
-                              AppLogger.info('UI', 'User tapped Back on UserSettingsScreen');
+                              AppLogger.info('UI',
+                                  'User tapped Back on UserSettingsScreen');
                               context.pop();
                             },
                           ),
@@ -349,7 +366,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                               color: textPrimary,
                             ),
                           ),
-                          const SizedBox(width: 40), // Spacer balancing back button
+                          const SizedBox(
+                              width: 40), // Spacer balancing back button
                         ],
                       ),
                       const SizedBox(height: 24),
@@ -370,164 +388,184 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             : Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                            // Row 1: Username
-                            Row(
-                              children: [
-                                Icon(Icons.account_circle_rounded, color: accent, size: 28),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    username,
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: textPrimary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Row 2: User ID + Copy to Clipboard Button
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    "User ID: $userId",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: textSecondary.withValues(alpha: 0.8),
-                                      fontFamily: 'monospace',
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => _copyUserIdToClipboard(userId),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: accent.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Icon(
-                                      Icons.copy_rounded,
-                                      size: 15,
-                                      color: accent,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Divider(height: 1, thickness: 0.5),
-                            ),
-
-                            // Row 3: Left (Email) & Right (Mobile)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Left Column — Email
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  // Row 1: Username
+                                  Row(
                                     children: [
-                                      Text(
-                                        "EMAIL",
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: textSecondary,
-                                          letterSpacing: 0.6,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        email,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: textPrimary,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-
-                                // Right Column — Mobile
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "MOBILE",
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: textSecondary,
-                                          letterSpacing: 0.6,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      if (hasMobile)
-                                        Text(
-                                          "${countryCode ?? '+60'} $mobileNumber",
+                                      Icon(Icons.account_circle_rounded,
+                                          color: accent, size: 28),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          username,
                                           style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
                                             color: textPrimary,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                        )
-                                      else
-                                        GestureDetector(
-                                          onTap: () => _showAddMobileBottomSheet(
-                                            context,
-                                            accent,
-                                            textPrimary,
-                                            textSecondary,
-                                          ),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: accent, width: 1),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(Icons.add_rounded, size: 14, color: accent),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  "Add",
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: accent,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
                                         ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                                  const SizedBox(height: 12),
+
+                                  // Row 2: User ID + Copy to Clipboard Button
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          "User ID: $userId",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: textSecondary.withValues(
+                                                alpha: 0.8),
+                                            fontFamily: 'monospace',
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      GestureDetector(
+                                        onTap: () =>
+                                            _copyUserIdToClipboard(userId),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                accent.withValues(alpha: 0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Icon(
+                                            Icons.copy_rounded,
+                                            size: 15,
+                                            color: accent,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Divider(height: 1, thickness: 0.5),
+                                  ),
+
+                                  // Row 3: Left (Email) & Right (Mobile)
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Left Column — Email
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              "EMAIL",
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: textSecondary,
+                                                letterSpacing: 0.6,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              email,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color: textPrimary,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+
+                                      // Right Column — Mobile
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              "MOBILE",
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: textSecondary,
+                                                letterSpacing: 0.6,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            if (hasMobile)
+                                              Text(
+                                                "${countryCode ?? '+60'} $mobileNumber",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: textPrimary,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              )
+                                            else
+                                              GestureDetector(
+                                                onTap: () =>
+                                                    _showAddMobileBottomSheet(
+                                                  context,
+                                                  accent,
+                                                  textPrimary,
+                                                  textSecondary,
+                                                ),
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            6),
+                                                    border: Border.all(
+                                                        color: accent,
+                                                        width: 1),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.add_rounded,
+                                                          size: 14,
+                                                          color: accent),
+                                                      const SizedBox(width: 2),
+                                                      Text(
+                                                        "Add",
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: accent,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                       ),
                     ],
                   ),
@@ -557,7 +595,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                           : const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
+                                Icon(Icons.logout_rounded,
+                                    color: Colors.redAccent, size: 20),
                                 SizedBox(width: 8),
                                 Text(
                                   "Log Out",

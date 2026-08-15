@@ -149,7 +149,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
                       Icon(Icons.pin_rounded, color: textSecondary, size: 20),
@@ -166,7 +167,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             letterSpacing: 4,
                           ),
                           onChanged: (_) {
-                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                            if (_errorMessage != null)
+                              setState(() => _errorMessage = null);
                           },
                           decoration: InputDecoration(
                             hintText: "123456",
@@ -187,7 +189,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   const SizedBox(height: 8),
                   Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    style:
+                        const TextStyle(color: Colors.redAccent, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 32),
@@ -203,7 +206,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.5, color: Colors.white),
                             )
                           : const Text(
                               "Verify & Continue",

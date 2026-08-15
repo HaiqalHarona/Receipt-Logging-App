@@ -114,8 +114,11 @@ class BackendApiClient {
       return response;
     } catch (e, st) {
       if (stopwatch.isRunning) stopwatch.stop();
-      AppLogger.error('HTTP',
-          '<-- ERROR $methodUpper $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+      AppLogger.error(
+          'HTTP',
+          '<-- ERROR $methodUpper $path (${stopwatch.elapsedMilliseconds}ms)',
+          e,
+          st);
       rethrow;
     }
   }
@@ -219,7 +222,10 @@ class BackendApiClient {
     final uri = Uri.parse('${ApiConfig.baseUrl}/devices/link');
 
     final Map<String, String> headers;
-    if (username != null && username.isNotEmpty && userToken != null && userToken.isNotEmpty) {
+    if (username != null &&
+        username.isNotEmpty &&
+        userToken != null &&
+        userToken.isNotEmpty) {
       headers = ApiConfig.buildLinkBridgeHeaders(
         deviceName: deviceName,
         deviceToken: deviceToken,
@@ -250,7 +256,6 @@ class BackendApiClient {
     return DeviceRecordDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
   }
-
 
   /// Soft-deletes calling device registration record.
   Future<bool> deleteDeviceProfile({
@@ -693,7 +698,8 @@ class BackendApiClient {
     final Map<String, dynamic> bodyPayload = {
       'conversation_id': conversationId,
       'message': message,
-      if (conversationHistory != null) 'conversation_history': conversationHistory,
+      if (conversationHistory != null)
+        'conversation_history': conversationHistory,
       if (recentReceipts != null) 'recent_receipts': recentReceipts,
     };
 

@@ -58,7 +58,8 @@ class _ScannerScreenState extends State<ScannerScreen>
       return;
     }
 
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
       cameraController.dispose();
       _isCameraInitialized = false;
     } else if (state == AppLifecycleState.resumed) {
@@ -116,7 +117,8 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _capturePhoto() async {
     AppLogger.info('UI', 'User tapped Capture Photo');
     if (_queuedImages.length >= 10) {
-      AppLogger.warning('UI', 'Capture photo blocked: maximum 10 receipts limit reached');
+      AppLogger.warning(
+          'UI', 'Capture photo blocked: maximum 10 receipts limit reached');
       _showToast("Maximum 10 receipts limit reached");
       return;
     }
@@ -132,7 +134,8 @@ class _ScannerScreenState extends State<ScannerScreen>
       }
     } else {
       AppLogger.warning('UI', 'Capture photo failed: Camera unavailable');
-      _showToast("Camera unavailable. Please choose an image from Gallery or pick a file.");
+      _showToast(
+          "Camera unavailable. Please choose an image from Gallery or pick a file.");
       return;
     }
 
@@ -153,7 +156,8 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _pickFromGallery() async {
     AppLogger.info('UI', 'User tapped Gallery picker (bulkMode: $_isBulkMode)');
     if (_queuedImages.length >= 10) {
-      AppLogger.warning('UI', 'Gallery picker blocked: maximum 10 receipts limit reached');
+      AppLogger.warning(
+          'UI', 'Gallery picker blocked: maximum 10 receipts limit reached');
       _showToast("Maximum 10 receipts limit reached");
       return;
     }
@@ -171,7 +175,8 @@ class _ScannerScreenState extends State<ScannerScreen>
         }
       }
     } else {
-      final XFile? single = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? single =
+          await _picker.pickImage(source: ImageSource.gallery);
       if (single != null) {
         _queuedImages.clear();
         _queuedImages.add(single);
@@ -190,7 +195,8 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _processQueueAndNavigate() async {
     if (_queuedImages.isEmpty) return;
 
-    AppLogger.info('UI', 'Starting OCR processing for ${_queuedImages.length} receipt image(s)');
+    AppLogger.info('UI',
+        'Starting OCR processing for ${_queuedImages.length} receipt image(s)');
     setState(() {
       _isProcessing = true;
       _processingStep = 1;
@@ -227,7 +233,8 @@ class _ScannerScreenState extends State<ScannerScreen>
         _isProcessing = false;
       });
 
-      AppLogger.info('UI', 'OCR processing completed: ${parsedReceipts.length} receipt(s) parsed');
+      AppLogger.info('UI',
+          'OCR processing completed: ${parsedReceipts.length} receipt(s) parsed');
       if (parsedReceipts.isNotEmpty) {
         context.push('/verification', extra: parsedReceipts);
       }
@@ -251,7 +258,8 @@ class _ScannerScreenState extends State<ScannerScreen>
           children: [
             Icon(Icons.error_outline_rounded, color: Colors.redAccent),
             SizedBox(width: 8),
-            Text('Scan Failure', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('Scan Failure',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ],
         ),
         content: Text(
@@ -307,7 +315,8 @@ class _ScannerScreenState extends State<ScannerScreen>
                         accent: accent,
                         textSecondary: textSecondary,
                         onSingleSelect: () {
-                          AppLogger.info('UI', 'User selected Single Scan mode');
+                          AppLogger.info(
+                              'UI', 'User selected Single Scan mode');
                           setState(() {
                             _isBulkMode = false;
                             _queuedImages.clear();
@@ -348,7 +357,8 @@ class _ScannerScreenState extends State<ScannerScreen>
                         onCapture: _capturePhoto,
                         onProcessQueue: _processQueueAndNavigate,
                         onManualEntry: () {
-                          AppLogger.info('UI', 'User tapped Manual entry on ScannerScreen');
+                          AppLogger.info('UI',
+                              'User tapped Manual entry on ScannerScreen');
                           _queuedImages.clear();
                           _queuedImages.add(XFile(''));
                           _processQueueAndNavigate();

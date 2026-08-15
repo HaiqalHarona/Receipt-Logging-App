@@ -65,21 +65,25 @@ class _LoginScreenState extends State<LoginScreen> {
     List<Receipt> receipts = ReceiptRepository.instance.receipts;
     if (IsarService.isInitialized) {
       try {
-        final models = await IsarService.isar.receiptIsarModels.where().findAll();
+        final models =
+            await IsarService.isar.receiptIsarModels.where().findAll();
         receipts = models.map((m) => m.toDomain()).toList();
-        AppLogger.info('UI', '_hasLocalGuestData direct Isar query found ${receipts.length} receipts');
+        AppLogger.info('UI',
+            '_hasLocalGuestData direct Isar query found ${receipts.length} receipts');
       } catch (e) {
         AppLogger.error('UI', 'Error querying Isar in _hasLocalGuestData', e);
       }
     }
 
     final hasGuestReceipts = receipts.any((r) => !_isUuid(r.id));
-    final hasGuestConversations = ConversationRepository.instance.conversations.any((c) => !_isUuid(c.id));
+    final hasGuestConversations = ConversationRepository.instance.conversations
+        .any((c) => !_isUuid(c.id));
     return hasGuestReceipts || hasGuestConversations;
   }
 
   Future<void> _purgeLocalGuestData() async {
-    AppLogger.info('UI', 'Purging local guest data before logging in to existing account...');
+    AppLogger.info('UI',
+        'Purging local guest data before logging in to existing account...');
     await ReceiptRepository.instance.clearAll();
     await ConversationRepository.instance.clearAll();
     await ChatMessageRepository.instance.clearAll();
@@ -100,13 +104,16 @@ class _LoginScreenState extends State<LoginScreen> {
             final canOverride = inputText.trim() == 'Override Data';
             return Dialog(
               backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               child: Neumorphic(
                 style: NeumorphicStyle(
                   depth: 0,
-                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+                  boxShape:
+                      NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
                   color: NeumorphicTheme.baseColor(dialogContext),
-                  border: NeumorphicBorder(color: Colors.red.shade700, width: 2.0),
+                  border:
+                      NeumorphicBorder(color: Colors.red.shade700, width: 2.0),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -116,7 +123,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 28),
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.red.shade700, size: 28),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -152,11 +160,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       Neumorphic(
                         style: NeumorphicStyle(
                           depth: -3,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(10)),
                           color: NeumorphicTheme.baseColor(dialogContext),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
                           child: TextField(
                             onChanged: (val) {
                               setDialogState(() {
@@ -166,7 +176,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(color: textPrimary, fontSize: 14),
                             decoration: InputDecoration(
                               hintText: 'Override Data',
-                              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
+                              hintStyle: TextStyle(
+                                  color: textSecondary.withValues(alpha: 0.5)),
                               border: InputBorder.none,
                             ),
                           ),
@@ -187,19 +198,27 @@ class _LoginScreenState extends State<LoginScreen> {
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red.shade700,
-                              disabledBackgroundColor: Colors.red.shade900.withValues(alpha: 0.4),
+                              disabledBackgroundColor:
+                                  Colors.red.shade900.withValues(alpha: 0.4),
                               disabledForegroundColor: Colors.white38,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
-                                side: canOverride ? BorderSide.none : BorderSide(color: Colors.red.shade900, width: 1),
+                                side: canOverride
+                                    ? BorderSide.none
+                                    : BorderSide(
+                                        color: Colors.red.shade900, width: 1),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                             ),
-                            onPressed: canOverride ? () => Navigator.of(ctx).pop(true) : null,
+                            onPressed: canOverride
+                                ? () => Navigator.of(ctx).pop(true)
+                                : null,
                             child: const Text(
                               "Override Data",
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -227,9 +246,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // Basic field validation — show same generic error to avoid enumeration
     if (identifier.isEmpty || password.isEmpty) {
-      AppLogger.warning('UI', 'Login validation failed: empty identifier or password');
+      AppLogger.warning(
+          'UI', 'Login validation failed: empty identifier or password');
       setState(() {
-        _errorMessage = 'Invalid username, email, or password. Please try again.';
+        _errorMessage =
+            'Invalid username, email, or password. Please try again.';
       });
       return;
     }
@@ -247,7 +268,8 @@ class _LoginScreenState extends State<LoginScreen> {
         AppLogger.warning('UI', 'Login failed: user response null');
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Invalid username, email, or password. Please try again.';
+          _errorMessage =
+              'Invalid username, email, or password. Please try again.';
         });
         return;
       }
@@ -258,10 +280,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Check if local unsynced guest data exists AFTER successful login and device linking
       if (await _hasLocalGuestData()) {
-        AppLogger.info('UI', 'User authenticated. Local guest data detected. Prompting override warning modal...');
+        AppLogger.info('UI',
+            'User authenticated. Local guest data detected. Prompting override warning modal...');
         final confirmed = await _showGuestOverrideWarningModal();
         if (!confirmed) {
-          AppLogger.info('UI', 'User canceled override modal. Unlinking device and clearing session...');
+          AppLogger.info('UI',
+              'User canceled override modal. Unlinking device and clearing session...');
           await AuthService.instance.linkCurrentDevice(null);
           await AuthService.instance.clearSession();
           if (mounted) {
@@ -300,7 +324,8 @@ class _LoginScreenState extends State<LoginScreen> {
           isError: true,
         );
       }
-      AppLogger.error('UI', 'Login ApiException: ${e.statusCode} - ${e.message}', e);
+      AppLogger.error(
+          'UI', 'Login ApiException: ${e.statusCode} - ${e.message}', e);
     } catch (e) {
       const msg = 'Unable to connect. Please check your internet connection.';
       setState(() {
@@ -401,10 +426,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
-                      Icon(Icons.person_rounded, color: textSecondary, size: 20),
+                      Icon(Icons.person_rounded,
+                          color: textSecondary, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -413,11 +440,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.emailAddress,
                           autocorrect: false,
                           onChanged: (_) {
-                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                            if (_errorMessage != null)
+                              setState(() => _errorMessage = null);
                           },
                           decoration: InputDecoration(
                             hintText: "Enter your username or email",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -439,7 +469,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
                       Icon(Icons.lock_rounded, color: textSecondary, size: 20),
@@ -450,11 +481,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: _obscurePassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           onChanged: (_) {
-                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                            if (_errorMessage != null)
+                              setState(() => _errorMessage = null);
                           },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -466,7 +500,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
                         },
                         child: Icon(
-                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscurePassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
                           color: textSecondary,
                           size: 20,
                         ),
@@ -480,15 +516,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (_errorMessage != null) ...[
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4), width: 1),
+                      border: Border.all(
+                          color: Colors.redAccent.withValues(alpha: 0.4),
+                          width: 1),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
+                        const Icon(Icons.error_outline_rounded,
+                            color: Colors.redAccent, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(

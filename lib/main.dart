@@ -55,7 +55,6 @@ void main() async {
   runApp(const ReceiptLoggerApp());
 }
 
-
 class ReceiptLoggerApp extends StatelessWidget {
   const ReceiptLoggerApp({super.key});
 

@@ -32,7 +32,8 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
   }
 
   Color get _previewAccent =>
-      HSLColor.fromAHSL(1.0, _hue, _sat.clamp(0.0, 1.0), _lit.clamp(0.0, 1.0)).toColor();
+      HSLColor.fromAHSL(1.0, _hue, _sat.clamp(0.0, 1.0), _lit.clamp(0.0, 1.0))
+          .toColor();
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +84,9 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                           const SizedBox(height: 28),
 
                           // ── Section: Theme Mode ──────────────────────────────
-                          _SectionLabel(label: 'APPEARANCE MODE', textSecondary: textSecondary),
+                          _SectionLabel(
+                              label: 'APPEARANCE MODE',
+                              textSecondary: textSecondary),
                           const SizedBox(height: 12),
                           NeumorphicCardWidget(
                             padding: const EdgeInsets.all(16),
@@ -93,10 +96,12 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                   child: _ModeChip(
                                     icon: Icons.dark_mode_rounded,
                                     label: 'Dark',
-                                    isSelected: controller.themeMode == ThemeMode.dark,
+                                    isSelected:
+                                        controller.themeMode == ThemeMode.dark,
                                     accent: accent,
                                     textPrimary: textPrimary,
-                                    onTap: () => controller.setThemeMode(ThemeMode.dark),
+                                    onTap: () =>
+                                        controller.setThemeMode(ThemeMode.dark),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -104,10 +109,12 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                   child: _ModeChip(
                                     icon: Icons.light_mode_rounded,
                                     label: 'Light',
-                                    isSelected: controller.themeMode == ThemeMode.light,
+                                    isSelected:
+                                        controller.themeMode == ThemeMode.light,
                                     accent: accent,
                                     textPrimary: textPrimary,
-                                    onTap: () => controller.setThemeMode(ThemeMode.light),
+                                    onTap: () => controller
+                                        .setThemeMode(ThemeMode.light),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -115,10 +122,12 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                   child: _ModeChip(
                                     icon: Icons.phone_android_rounded,
                                     label: 'Auto',
-                                    isSelected: controller.themeMode == ThemeMode.system,
+                                    isSelected: controller.themeMode ==
+                                        ThemeMode.system,
                                     accent: accent,
                                     textPrimary: textPrimary,
-                                    onTap: () => controller.setThemeMode(ThemeMode.system),
+                                    onTap: () => controller
+                                        .setThemeMode(ThemeMode.system),
                                   ),
                                 ),
                               ],
@@ -128,7 +137,9 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
 
                           // ── Section: Colour Palette Presets ─────────────────
                           _SectionLabel(
-                            label: isDark ? 'DARK MODE PRESETS' : 'LIGHT MODE PRESETS',
+                            label: isDark
+                                ? 'DARK MODE PRESETS'
+                                : 'LIGHT MODE PRESETS',
                             textSecondary: textSecondary,
                           ),
                         ],
@@ -146,10 +157,17 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                         itemBuilder: (context, index) {
                           final presets = AppThemeController.currentPresets;
                           final preset = presets[index];
-                          final isSelected = controller.selectedPresetIndex == index;
-                          final previewBase   = isDark ? preset.darkBaseColor   : preset.lightBaseColor;
-                          final previewAccent = isDark ? preset.darkAccentColor : preset.lightAccentColor;
-                          final previewText   = isDark ? preset.darkTextColor   : preset.lightTextColor;
+                          final isSelected =
+                              controller.selectedPresetIndex == index;
+                          final previewBase = isDark
+                              ? preset.darkBaseColor
+                              : preset.lightBaseColor;
+                          final previewAccent = isDark
+                              ? preset.darkAccentColor
+                              : preset.lightAccentColor;
+                          final previewText = isDark
+                              ? preset.darkTextColor
+                              : preset.lightTextColor;
 
                           return GestureDetector(
                             onTap: () {
@@ -173,7 +191,8 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                 ),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -218,14 +237,15 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                       ),
                     ),
                     const SizedBox(height: 28),
-
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // ── Section: Custom Accent Colour ────────────────────
-                          _SectionLabel(label: 'BUTTON & ACCENT COLOR', textSecondary: textSecondary),
+                          _SectionLabel(
+                              label: 'BUTTON & ACCENT COLOR',
+                              textSecondary: textSecondary),
                           const SizedBox(height: 12),
                           NeumorphicCardWidget(
                             padding: const EdgeInsets.all(20),
@@ -240,14 +260,17 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                         depth: -4,
                                         intensity: 0.9,
                                         color: _previewAccent,
-                                        boxShape: const NeumorphicBoxShape.circle(),
+                                        boxShape:
+                                            const NeumorphicBoxShape.circle(),
                                       ),
-                                      child: const SizedBox(width: 52, height: 52),
+                                      child:
+                                          const SizedBox(width: 52, height: 52),
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Custom Accent',
@@ -274,19 +297,28 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                 const SizedBox(height: 20),
 
                                 // Hue slider with rainbow gradient
-                                _SliderLabel(label: 'Hue', value: '${_hue.round()}°', accent: accent, textSecondary: textSecondary),
+                                _SliderLabel(
+                                    label: 'Hue',
+                                    value: '${_hue.round()}°',
+                                    accent: accent,
+                                    textSecondary: textSecondary),
                                 const SizedBox(height: 4),
                                 _HueSlider(
                                   value: _hue,
                                   onChanged: (v) {
                                     setState(() => _hue = v);
-                                    controller.updateCustomAccentColor(_previewAccent);
+                                    controller.updateCustomAccentColor(
+                                        _previewAccent);
                                   },
                                 ),
                                 const SizedBox(height: 14),
 
                                 // Saturation slider
-                                _SliderLabel(label: 'Saturation', value: '${(_sat * 100).round()}%', accent: accent, textSecondary: textSecondary),
+                                _SliderLabel(
+                                    label: 'Saturation',
+                                    value: '${(_sat * 100).round()}%',
+                                    accent: accent,
+                                    textSecondary: textSecondary),
                                 const SizedBox(height: 4),
                                 SliderTheme(
                                   data: _sliderTheme(context, accent),
@@ -296,14 +328,19 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                     max: 1.0,
                                     onChanged: (v) {
                                       setState(() => _sat = v);
-                                      controller.updateCustomAccentColor(_previewAccent);
+                                      controller.updateCustomAccentColor(
+                                          _previewAccent);
                                     },
                                   ),
                                 ),
                                 const SizedBox(height: 14),
 
                                 // Lightness slider
-                                _SliderLabel(label: 'Lightness', value: '${(_lit * 100).round()}%', accent: accent, textSecondary: textSecondary),
+                                _SliderLabel(
+                                    label: 'Lightness',
+                                    value: '${(_lit * 100).round()}%',
+                                    accent: accent,
+                                    textSecondary: textSecondary),
                                 const SizedBox(height: 4),
                                 SliderTheme(
                                   data: _sliderTheme(context, accent),
@@ -313,7 +350,8 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                     max: 0.9,
                                     onChanged: (v) {
                                       setState(() => _lit = v);
-                                      controller.updateCustomAccentColor(_previewAccent);
+                                      controller.updateCustomAccentColor(
+                                          _previewAccent);
                                     },
                                   ),
                                 ),
@@ -330,7 +368,8 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                     },
                                     color: accent.withValues(alpha: 0.15),
                                     borderRadius: 10,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
                                     child: Center(
                                       child: Text(
                                         'Reset to Preset',
@@ -349,7 +388,9 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                           const SizedBox(height: 28),
 
                           // ── Section: Neumorphic Depth ────────────────────────
-                          _SectionLabel(label: 'NEUMORPHIC DEPTH', textSecondary: textSecondary),
+                          _SectionLabel(
+                              label: 'NEUMORPHIC DEPTH',
+                              textSecondary: textSecondary),
                           const SizedBox(height: 12),
                           NeumorphicCardWidget(
                             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -357,7 +398,8 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Shadow Depth',
@@ -381,7 +423,10 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    Text('Flat', style: TextStyle(fontSize: 11, color: textSecondary)),
+                                    Text('Flat',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: textSecondary)),
                                     Expanded(
                                       child: SliderTheme(
                                         data: _sliderTheme(context, accent),
@@ -390,11 +435,15 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                                           min: 3.0,
                                           max: 10.0,
                                           divisions: 14,
-                                          onChanged: (v) => controller.setDepth(v),
+                                          onChanged: (v) =>
+                                              controller.setDepth(v),
                                         ),
                                       ),
                                     ),
-                                    Text('Deep', style: TextStyle(fontSize: 11, color: textSecondary)),
+                                    Text('Deep',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: textSecondary)),
                                   ],
                                 ),
                               ],
@@ -403,19 +452,44 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                           const SizedBox(height: 28),
 
                           // ── Section: Font Scale ──────────────────────────────
-                          _SectionLabel(label: 'TEXT SIZE', textSecondary: textSecondary),
+                          _SectionLabel(
+                              label: 'TEXT SIZE', textSecondary: textSecondary),
                           const SizedBox(height: 12),
                           NeumorphicCardWidget(
                             padding: const EdgeInsets.all(16),
                             child: Row(
                               children: [
-                                Expanded(child: _FontScaleChip(label: 'S', scale: 0.85, controller: controller, accent: accent, textPrimary: textPrimary)),
+                                Expanded(
+                                    child: _FontScaleChip(
+                                        label: 'S',
+                                        scale: 0.85,
+                                        controller: controller,
+                                        accent: accent,
+                                        textPrimary: textPrimary)),
                                 const SizedBox(width: 8),
-                                Expanded(child: _FontScaleChip(label: 'M', scale: 1.0,  controller: controller, accent: accent, textPrimary: textPrimary)),
+                                Expanded(
+                                    child: _FontScaleChip(
+                                        label: 'M',
+                                        scale: 1.0,
+                                        controller: controller,
+                                        accent: accent,
+                                        textPrimary: textPrimary)),
                                 const SizedBox(width: 8),
-                                Expanded(child: _FontScaleChip(label: 'L', scale: 1.15, controller: controller, accent: accent, textPrimary: textPrimary)),
+                                Expanded(
+                                    child: _FontScaleChip(
+                                        label: 'L',
+                                        scale: 1.15,
+                                        controller: controller,
+                                        accent: accent,
+                                        textPrimary: textPrimary)),
                                 const SizedBox(width: 8),
-                                Expanded(child: _FontScaleChip(label: 'XL', scale: 1.3, controller: controller, accent: accent, textPrimary: textPrimary)),
+                                Expanded(
+                                    child: _FontScaleChip(
+                                        label: 'XL',
+                                        scale: 1.3,
+                                        controller: controller,
+                                        accent: accent,
+                                        textPrimary: textPrimary)),
                               ],
                             ),
                           ),
@@ -495,7 +569,8 @@ class _ModeChip extends StatelessWidget {
           color: isSelected ? accent.withValues(alpha: 0.12) : null,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
           border: isSelected
-              ? NeumorphicBorder(color: accent.withValues(alpha: 0.4), width: 1.0)
+              ? NeumorphicBorder(
+                  color: accent.withValues(alpha: 0.4), width: 1.0)
               : const NeumorphicBorder.none(),
         ),
         child: Padding(
@@ -514,7 +589,8 @@ class _ModeChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+                  color:
+                      isSelected ? accent : textPrimary.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -554,7 +630,8 @@ class _FontScaleChip extends StatelessWidget {
           color: isSelected ? accent.withValues(alpha: 0.12) : null,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
           border: isSelected
-              ? NeumorphicBorder(color: accent.withValues(alpha: 0.4), width: 1.0)
+              ? NeumorphicBorder(
+                  color: accent.withValues(alpha: 0.4), width: 1.0)
               : const NeumorphicBorder.none(),
         ),
         child: Padding(
@@ -596,7 +673,9 @@ class _SliderLabel extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: TextStyle(fontSize: 12, color: textSecondary)),
-        Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accent)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.bold, color: accent)),
       ],
     );
   }
@@ -646,8 +725,10 @@ class _HueSlider extends StatelessWidget {
                   activeTrackColor: Colors.transparent,
                   inactiveTrackColor: Colors.transparent,
                   thumbColor: HSLColor.fromAHSL(1.0, value, 1.0, 0.5).toColor(),
-                  overlayColor: HSLColor.fromAHSL(0.15, value, 1.0, 0.5).toColor(),
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+                  overlayColor:
+                      HSLColor.fromAHSL(0.15, value, 1.0, 0.5).toColor(),
+                  thumbShape:
+                      const RoundSliderThumbShape(enabledThumbRadius: 9),
                 ),
                 child: Slider(
                   value: value,

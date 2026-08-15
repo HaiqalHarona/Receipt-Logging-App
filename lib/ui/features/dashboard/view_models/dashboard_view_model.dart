@@ -11,22 +11,22 @@ import '../../../../cloud/services/auth_service.dart';
 
 /// Timeline options for the dashboard spending graph.
 enum TimelineFilter {
-  thisMonth,    // 1m (This Month daily breakdown)
-  threeMonths,  // 3mo
-  sixMonths,    // 6mo
+  thisMonth, // 1m (This Month daily breakdown)
+  threeMonths, // 3mo
+  sixMonths, // 6mo
   twelveMonths, // 12mo
-  ytd,          // YTD (Year-to-date)
-  allTime,      // All (since first receipt)
+  ytd, // YTD (Year-to-date)
+  allTime, // All (since first receipt)
 }
 
 /// Period options for the Spending Summary Carousel (6 elements).
 enum SpendingSummaryPeriod {
-  oneMonth,     // 1m
-  threeMonths,  // 3m
-  sixMonths,    // 6m
+  oneMonth, // 1m
+  threeMonths, // 3m
+  sixMonths, // 6m
   twelveMonths, // 12m
-  ytd,          // YTD
-  allTime,      // All
+  ytd, // YTD
+  allTime, // All
 }
 
 /// Data payload for a single slide in the Spending Summary Carousel.
@@ -113,10 +113,13 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   bool get isLoggedIn => AuthService.instance.isLoggedIn ? true : _isLoggedIn;
-  String? get username => AuthService.instance.isLoggedIn ? (AuthService.instance.currentUsername ?? _username) : (_isLoggedIn ? _username : null);
+  String? get username => AuthService.instance.isLoggedIn
+      ? (AuthService.instance.currentUsername ?? _username)
+      : (_isLoggedIn ? _username : null);
   String? get avatarImagePath => _avatarImagePath;
 
-  void setLoginState({required bool isLoggedIn, String? username, String? avatarImagePath}) {
+  void setLoginState(
+      {required bool isLoggedIn, String? username, String? avatarImagePath}) {
     _isLoggedIn = isLoggedIn;
     _username = username;
     _avatarImagePath = avatarImagePath;
@@ -164,7 +167,8 @@ class DashboardViewModel extends ChangeNotifier {
 
   /// Formatted total spending string (e.g. '$185.40' or '¥24,800').
   String get formattedTotalSpent {
-    return _currencyService.format(totalSpent, fromCurrencyCode: _currencyService.currentCurrency);
+    return _currencyService.format(totalSpent,
+        fromCurrencyCode: _currencyService.currentCurrency);
   }
 
   /// Latest 5 receipts for quick dashboard preview ordered by createdAt descending (latest to earliest).
@@ -215,33 +219,38 @@ class DashboardViewModel extends ChangeNotifier {
         case SpendingSummaryPeriod.oneMonth:
           includeCurrent = parsed.year == now.year && parsed.month == now.month;
           final prevMonth = DateTime(now.year, now.month - 1, 1);
-          includePrev = parsed.year == prevMonth.year && parsed.month == prevMonth.month;
+          includePrev =
+              parsed.year == prevMonth.year && parsed.month == prevMonth.month;
           break;
 
         case SpendingSummaryPeriod.threeMonths:
           final currentLimit = DateTime(now.year, now.month - 2, 1);
           final prevStart = DateTime(now.year, now.month - 5, 1);
           includeCurrent = !parsed.isBefore(currentLimit);
-          includePrev = !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
+          includePrev =
+              !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
           break;
 
         case SpendingSummaryPeriod.sixMonths:
           final currentLimit = DateTime(now.year, now.month - 5, 1);
           final prevStart = DateTime(now.year, now.month - 11, 1);
           includeCurrent = !parsed.isBefore(currentLimit);
-          includePrev = !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
+          includePrev =
+              !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
           break;
 
         case SpendingSummaryPeriod.twelveMonths:
           final currentLimit = DateTime(now.year, now.month - 11, 1);
           final prevStart = DateTime(now.year, now.month - 23, 1);
           includeCurrent = !parsed.isBefore(currentLimit);
-          includePrev = !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
+          includePrev =
+              !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
           break;
 
         case SpendingSummaryPeriod.ytd:
           includeCurrent = parsed.year == now.year && parsed.month <= now.month;
-          includePrev = parsed.year == (now.year - 1) && parsed.month <= now.month;
+          includePrev =
+              parsed.year == (now.year - 1) && parsed.month <= now.month;
           break;
 
         case SpendingSummaryPeriod.allTime:
@@ -298,7 +307,8 @@ class DashboardViewModel extends ChangeNotifier {
       }
     }
 
-    final formatted = _currencyService.format(total, fromCurrencyCode: _currencyService.currentCurrency);
+    final formatted = _currencyService.format(total,
+        fromCurrencyCode: _currencyService.currentCurrency);
     final subtitle = "($count transactions) record(s) found.";
 
     return SpendingSummaryData(
@@ -325,7 +335,8 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   /// Calculates monthly spending points for a given [TimelineFilter] and caches the result.
-  List<MonthlySpendingPoint> getMonthlySpendingHistory([TimelineFilter? filter]) {
+  List<MonthlySpendingPoint> getMonthlySpendingHistory(
+      [TimelineFilter? filter]) {
     final target = filter ?? _selectedTimeline;
     if (_timelineCache.containsKey(target)) {
       return _timelineCache[target]!;
@@ -342,13 +353,18 @@ class DashboardViewModel extends ChangeNotifier {
 
     if (filter == TimelineFilter.thisMonth) {
       final currentDay = now.day;
-      final Map<int, double> dayBuckets = { for (int i = 1; i <= currentDay; i++) i: 0.0 };
+      final Map<int, double> dayBuckets = {
+        for (int i = 1; i <= currentDay; i++) i: 0.0
+      };
 
       for (final receipt in _repository.receipts) {
         final parsed = _parseDateString(receipt.date);
         if (parsed == null) continue;
-        if (parsed.year == now.year && parsed.month == now.month && parsed.day <= currentDay) {
-          final converted = _currencyService.convert(receipt.amount, receipt.currency);
+        if (parsed.year == now.year &&
+            parsed.month == now.month &&
+            parsed.day <= currentDay) {
+          final converted =
+              _currencyService.convert(receipt.amount, receipt.currency);
           dayBuckets[parsed.day] = (dayBuckets[parsed.day] ?? 0.0) + converted;
         }
       }
@@ -394,7 +410,9 @@ class DashboardViewModel extends ChangeNotifier {
             }
           }
         }
-        int diffMonths = ((now.year - earliest.year) * 12) + (now.month - earliest.month) + 1;
+        int diffMonths = ((now.year - earliest.year) * 12) +
+            (now.month - earliest.month) +
+            1;
         if (diffMonths < 3) diffMonths = 3;
         months.addAll(_buildMonthRange(now, diffMonths));
         break;
@@ -451,8 +469,18 @@ class DashboardViewModel extends ChangeNotifier {
   /// Parses receipt date strings stored as `"MMM DD, YYYY"` (e.g. `"Aug 01, 2026"`).
   static DateTime? _parseDateString(String dateStr) {
     const months = {
-      'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
-      'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
+      'Jan': 1,
+      'Feb': 2,
+      'Mar': 3,
+      'Apr': 4,
+      'May': 5,
+      'Jun': 6,
+      'Jul': 7,
+      'Aug': 8,
+      'Sep': 9,
+      'Oct': 10,
+      'Nov': 11,
+      'Dec': 12,
     };
     try {
       final parts = dateStr.trim().split(RegExp(r'[,\s]+'));

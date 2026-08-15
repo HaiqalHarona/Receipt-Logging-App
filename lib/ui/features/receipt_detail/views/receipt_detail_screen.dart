@@ -86,13 +86,18 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
     for (final item in r.lineItems) {
       final qty = item.quantity ?? 1.0;
       final origTotal = item.totalPrice ?? 0.0;
-      final origUnit = item.unitPrice ?? (qty > 0 ? origTotal / qty : origTotal);
+      final origUnit =
+          item.unitPrice ?? (qty > 0 ? origTotal / qty : origTotal);
 
-      final convertedUnit = CurrencyService.instance.convert(origUnit, r.currency);
-      final convertedTotal = CurrencyService.instance.convert(origTotal, r.currency);
+      final convertedUnit =
+          CurrencyService.instance.convert(origUnit, r.currency);
+      final convertedTotal =
+          CurrencyService.instance.convert(origTotal, r.currency);
 
-      final formattedUnit = CurrencyService.instance.format(convertedUnit, fromCurrencyCode: targetCurrency);
-      final formattedTotal = CurrencyService.instance.format(convertedTotal, fromCurrencyCode: targetCurrency);
+      final formattedUnit = CurrencyService.instance
+          .format(convertedUnit, fromCurrencyCode: targetCurrency);
+      final formattedTotal = CurrencyService.instance
+          .format(convertedTotal, fromCurrencyCode: targetCurrency);
 
       list.add(ConvertedLineItem(
         unitPrice: convertedUnit,
@@ -118,7 +123,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
     );
     setState(() {
       _receipt = updated;
-      _convertedItemsCache.clear(); // Clear cache to recalculate for updated receipt
+      _convertedItemsCache
+          .clear(); // Clear cache to recalculate for updated receipt
     });
   }
 
@@ -167,7 +173,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.red.shade400, size: 36),
+                Icon(Icons.warning_amber_rounded,
+                    color: Colors.red.shade400, size: 36),
                 const SizedBox(height: 12),
                 Text(
                   'Delete Receipt?',
@@ -192,7 +199,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                         style: NeumorphicStyle(
                           depth: 3,
                           color: controller.currentBaseColor,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(12)),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
@@ -211,7 +219,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                         onPressed: () async {
                           Navigator.of(ctx).pop();
                           if (_receipt != null) {
-                            await ReceiptRepository.instance.deleteReceipt(_receipt!.id);
+                            await ReceiptRepository.instance
+                                .deleteReceipt(_receipt!.id);
                           }
                           if (!mounted) return;
                           AppSnackBar.show(
@@ -224,7 +233,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                         style: NeumorphicStyle(
                           depth: 3,
                           color: Colors.red.shade400,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(12)),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: const Text(
@@ -250,7 +260,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([AppThemeController.instance, CurrencyService.instance]),
+      animation: Listenable.merge(
+          [AppThemeController.instance, CurrencyService.instance]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -274,16 +285,21 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                       color: baseColor,
                     ),
                     padding: const EdgeInsets.all(8),
-                    child: Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: textPrimary),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 16, color: textPrimary),
                   ),
                 ),
                 title: Text(
                   'Receipt Details',
-                  style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(
+                      color: textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18),
                 ),
               ),
               body: Center(
-                child: Text('No receipt selected.', style: TextStyle(color: textSecondary)),
+                child: Text('No receipt selected.',
+                    style: TextStyle(color: textSecondary)),
               ),
             ),
           );
@@ -291,7 +307,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
 
         final r = _receipt!;
         final categoryColor = CategoryUtils.getCategoryColor(r.category);
-        final formattedPrice = CurrencyService.instance.format(r.amount, fromCurrencyCode: r.currency);
+        final formattedPrice = CurrencyService.instance
+            .format(r.amount, fromCurrencyCode: r.currency);
         final convertedItems = _getConvertedLineItems(r);
         final allDetailTags = r.category
             .split(',')
@@ -315,12 +332,16 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                     color: baseColor,
                   ),
                   padding: const EdgeInsets.all(8),
-                  child: Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: textPrimary),
+                  child: Icon(Icons.arrow_back_ios_new_rounded,
+                      size: 16, color: textPrimary),
                 ),
               ),
               title: Text(
                 'Receipt Details',
-                style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(
+                    color: textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18),
               ),
               centerTitle: true,
               actions: [
@@ -330,7 +351,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                   child: Center(
                     child: PopupMenuButton<_MenuAction>(
                       onSelected: (action) => _handleMenuAction(action, r),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       color: baseColor,
                       elevation: 6,
                       icon: Neumorphic(
@@ -340,16 +362,22 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                           color: baseColor,
                         ),
                         padding: const EdgeInsets.all(8),
-                        child: Icon(Icons.more_vert_rounded, color: textPrimary, size: 18),
+                        child: Icon(Icons.more_vert_rounded,
+                            color: textPrimary, size: 18),
                       ),
                       itemBuilder: (ctx) => [
                         PopupMenuItem<_MenuAction>(
                           value: _MenuAction.copyId,
                           child: Row(
                             children: [
-                              Icon(Icons.content_copy_rounded, size: 16, color: accent),
+                              Icon(Icons.content_copy_rounded,
+                                  size: 16, color: accent),
                               const SizedBox(width: 10),
-                              Text('Copy Receipt ID', style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                              Text('Copy Receipt ID',
+                                  style: TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
@@ -359,7 +387,11 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                             children: [
                               Icon(Icons.code_rounded, size: 16, color: accent),
                               const SizedBox(width: 10),
-                              Text('Copy as JSON', style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                              Text('Copy as JSON',
+                                  style: TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
@@ -368,9 +400,14 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                           value: _MenuAction.delete,
                           child: Row(
                             children: [
-                              Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red.shade400),
+                              Icon(Icons.delete_outline_rounded,
+                                  size: 16, color: Colors.red.shade400),
                               const SizedBox(width: 10),
-                              Text('Delete Receipt', style: TextStyle(color: Colors.red.shade400, fontSize: 13, fontWeight: FontWeight.bold)),
+                              Text('Delete Receipt',
+                                  style: TextStyle(
+                                      color: Colors.red.shade400,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
@@ -382,7 +419,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
             ),
             body: SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Column(
                   children: [
                     // ── Header Card ─────────────────────────────────────────
@@ -391,7 +429,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                         depth: 4,
                         intensity: 0.8,
                         color: baseColor,
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+                        boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(20)),
                       ),
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -475,15 +514,18 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                               spacing: 6,
                               runSpacing: 6,
                               children: allDetailTags.map((tag) {
-                                final tagColor = CategoryUtils.getCategoryColor(tag);
+                                final tagColor =
+                                    CategoryUtils.getCategoryColor(tag);
                                 return Neumorphic(
                                   style: NeumorphicStyle(
                                     depth: -2,
                                     intensity: 0.8,
                                     color: tagColor.withValues(alpha: 0.2),
-                                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                                    boxShape: NeumorphicBoxShape.roundRect(
+                                        BorderRadius.circular(12)),
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -519,13 +561,16 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                   depth: 3,
                                   intensity: 0.8,
                                   color: baseColor,
-                                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+                                  boxShape: NeumorphicBoxShape.roundRect(
+                                      BorderRadius.circular(8)),
                                 ),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.edit_rounded, size: 14, color: accent),
+                                    Icon(Icons.edit_rounded,
+                                        size: 14, color: accent),
                                     const SizedBox(width: 4),
                                     Text(
                                       'Edit',
@@ -552,7 +597,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                         depth: 4,
                         intensity: 0.8,
                         color: baseColor,
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+                        boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(20)),
                       ),
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -581,14 +627,14 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: 14),
-
                           if (r.lineItems.isEmpty)
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               child: Center(
                                 child: Text(
                                   'No line items recorded.',
-                                  style: TextStyle(fontSize: 13, color: textSecondary),
+                                  style: TextStyle(
+                                      fontSize: 13, color: textSecondary),
                                 ),
                               ),
                             )
@@ -599,23 +645,30 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                               columnWidths: const {
                                 0: FlexColumnWidth(3.0), // Description
                                 1: FlexColumnWidth(1.0), // Qty
-                                2: FlexColumnWidth(1.8), // Unit Price (Converted)
-                                3: FlexColumnWidth(1.8), // Total Price (Converted)
+                                2: FlexColumnWidth(
+                                    1.8), // Unit Price (Converted)
+                                3: FlexColumnWidth(
+                                    1.8), // Total Price (Converted)
                               },
                               children: [
                                 // Table Header Row
                                 TableRow(
                                   children: [
-                                    _buildTableHeader('Item', textSecondary, TextAlign.left),
-                                    _buildTableHeader('Qty', textSecondary, TextAlign.center),
-                                    _buildTableHeader('Unit', textSecondary, TextAlign.right),
-                                    _buildTableHeader('Total', textSecondary, TextAlign.right),
+                                    _buildTableHeader(
+                                        'Item', textSecondary, TextAlign.left),
+                                    _buildTableHeader(
+                                        'Qty', textSecondary, TextAlign.center),
+                                    _buildTableHeader(
+                                        'Unit', textSecondary, TextAlign.right),
+                                    _buildTableHeader('Total', textSecondary,
+                                        TextAlign.right),
                                   ],
                                 ),
 
                                 // Spacing row
                                 TableRow(
-                                  children: List.generate(4, (_) => const SizedBox(height: 8)),
+                                  children: List.generate(
+                                      4, (_) => const SizedBox(height: 8)),
                                 ),
 
                                 // Table Data Rows with Cached Converted Currency
@@ -623,12 +676,15 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                   final item = r.lineItems[idx];
                                   final converted = convertedItems[idx];
                                   final qty = item.quantity ?? 1.0;
-                                  final qtyStr = qty % 1 == 0 ? qty.toInt().toString() : qty.toStringAsFixed(1);
+                                  final qtyStr = qty % 1 == 0
+                                      ? qty.toInt().toString()
+                                      : qty.toStringAsFixed(1);
 
                                   return TableRow(
                                     children: [
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
                                         child: Text(
                                           item.description,
                                           style: TextStyle(
@@ -639,7 +695,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
                                         child: Text(
                                           qtyStr,
                                           textAlign: TextAlign.center,
@@ -650,7 +707,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
                                         child: Text(
                                           converted.formattedUnitPrice,
                                           textAlign: TextAlign.right,
@@ -661,7 +719,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
                                         child: Text(
                                           converted.formattedTotalPrice,
                                           textAlign: TextAlign.right,
@@ -677,11 +736,11 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                 }),
                               ],
                             ),
-
                           const SizedBox(height: 16),
-                          Divider(color: textSecondary.withValues(alpha: 0.15), height: 1),
+                          Divider(
+                              color: textSecondary.withValues(alpha: 0.15),
+                              height: 1),
                           const SizedBox(height: 12),
-
                           _buildSummaryRow(
                             'Grand Total',
                             formattedPrice,
@@ -704,7 +763,9 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
   }
 
   Widget _buildCircleImageContent(Receipt r, Color categoryColor) {
-    if (r.imagePath != null && r.imagePath!.isNotEmpty && File(r.imagePath!).existsSync()) {
+    if (r.imagePath != null &&
+        r.imagePath!.isNotEmpty &&
+        File(r.imagePath!).existsSync()) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(40),
         child: Image.file(

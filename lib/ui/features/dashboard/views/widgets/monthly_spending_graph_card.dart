@@ -29,7 +29,8 @@ class MonthlySpendingGraphCard extends StatefulWidget {
   });
 
   @override
-  State<MonthlySpendingGraphCard> createState() => _MonthlySpendingGraphCardState();
+  State<MonthlySpendingGraphCard> createState() =>
+      _MonthlySpendingGraphCardState();
 }
 
 class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
@@ -40,7 +41,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
   static const double _paddingTop = 10.0;
   static const double _paddingBottom = 22.0;
 
-  void _handleTapUp(TapUpDetails details, Size size, List<MonthlySpendingPoint> points) {
+  void _handleTapUp(
+      TapUpDetails details, Size size, List<MonthlySpendingPoint> points) {
     if (points.isEmpty) return;
 
     final plotLeft = _paddingLeft;
@@ -50,7 +52,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
     final plotWidth = plotRight - plotLeft;
     final plotHeight = plotBottom - plotTop;
 
-    final maxAmount = points.map((p) => p.amount).reduce((a, b) => a > b ? a : b);
+    final maxAmount =
+        points.map((p) => p.amount).reduce((a, b) => a > b ? a : b);
     final yRange = maxAmount > 0 ? maxAmount : 1.0;
     final n = points.length;
 
@@ -151,7 +154,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
       style: NeumorphicStyle(
         depth: 4,
         intensity: 0.75,
-        boxShape: NeumorphicBoxShape.roundRect(const BorderRadius.all(Radius.circular(18))),
+        boxShape: NeumorphicBoxShape.roundRect(
+            const BorderRadius.all(Radius.circular(18))),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
@@ -194,9 +198,11 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
                       depth: 3,
                       intensity: 0.8,
                       color: NeumorphicTheme.baseColor(context),
-                      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(10)),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: SizedBox(
                       width: 84,
                       height: 24,
@@ -243,7 +249,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
                 builder: (context, constraints) {
                   final canvasSize = Size(constraints.maxWidth, 120);
                   return GestureDetector(
-                    onTapUp: (details) => _handleTapUp(details, canvasSize, points),
+                    onTapUp: (details) =>
+                        _handleTapUp(details, canvasSize, points),
                     behavior: HitTestBehavior.opaque,
                     child: CustomPaint(
                       size: canvasSize,
@@ -335,7 +342,8 @@ class _LineGraphPainter extends CustomPainter {
     );
 
     // ── Compute Y range ───────────────────────────────────────────────────
-    final maxAmount = points.map((p) => p.amount).reduce((a, b) => a > b ? a : b);
+    final maxAmount =
+        points.map((p) => p.amount).reduce((a, b) => a > b ? a : b);
     final yRange = maxAmount > 0 ? maxAmount : 1.0;
 
     // ── Map each data point to canvas coordinates ─────────────────────────
@@ -353,8 +361,10 @@ class _LineGraphPainter extends CustomPainter {
       ..strokeWidth = 0.8
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawLine(Offset(plotLeft, plotBottom), Offset(plotRight, plotBottom), axisPaint);
-    canvas.drawLine(Offset(plotLeft, plotTop), Offset(plotLeft, plotBottom), axisPaint);
+    canvas.drawLine(
+        Offset(plotLeft, plotBottom), Offset(plotRight, plotBottom), axisPaint);
+    canvas.drawLine(
+        Offset(plotLeft, plotTop), Offset(plotLeft, plotBottom), axisPaint);
 
     // ── Line path ─────────────────────────────────────────────────────────
     final linePaint = Paint()

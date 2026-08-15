@@ -8,8 +8,10 @@ class AppTheme {
 
   // Dark Theme Tokens (Classic Charcoal & Neon Emerald Accent)
   static const Color darkBackground = Color(0xFF1E1E1E);
-  static const Color darkCardBackground = Color(0xFF1E1E1E); // Camouflage Rule: exact same hex
-  static const Color darkAccentPinkishRed = Color(0xFF00FF85); // #00FF85 Neon Emerald Accent
+  static const Color darkCardBackground =
+      Color(0xFF1E1E1E); // Camouflage Rule: exact same hex
+  static const Color darkAccentPinkishRed =
+      Color(0xFF00FF85); // #00FF85 Neon Emerald Accent
   static const Color darkTextPrimary = Color(0xFFE0E0E0);
   static const Color darkTextSecondary = Color(0xFFA0A0A0);
 
@@ -41,7 +43,6 @@ class AppTheme {
     );
   }
 
-
   /// Light Neumorphic Theme with Crisp Legibility & Soft Shadows
   static NeumorphicThemeData get lightNeumorphicTheme {
     return NeumorphicThemeData(
@@ -60,8 +61,6 @@ class AppTheme {
     );
   }
 }
-
-
 
 /// ── Reusable Neumorphic UI Components ──────────────────────────────────────
 
@@ -101,9 +100,12 @@ class NeumorphicCardWidget extends StatelessWidget {
         depth: depth,
         intensity: intensity,
         color: cardColor,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
+        boxShape:
+            NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
         border: NeumorphicBorder(
-          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.black.withValues(alpha: 0.03),
           width: 0.8,
         ),
       ),
@@ -162,7 +164,8 @@ class NeumorphicButtonWidget extends StatelessWidget {
           color: effectiveColor,
           depth: effectiveDepth,
           intensity: isDisabled ? 0.85 : 0.9,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
+          boxShape:
+              NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
           border: NeumorphicBorder(
             color: isDisabled
                 ? Colors.black.withValues(alpha: 0.35)
@@ -170,7 +173,8 @@ class NeumorphicButtonWidget extends StatelessWidget {
             width: 1.0,
           ),
         ),
-        padding: padding ?? const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding:
+            padding ?? const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: child,
       ),
     );
@@ -199,14 +203,18 @@ class NeumorphicInputFieldWidget extends StatelessWidget {
     final bg = controller.currentBaseColor;
 
     return Neumorphic(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       style: NeumorphicStyle(
         depth: depth,
         intensity: 0.9,
         color: bg,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
+        boxShape:
+            NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
         border: NeumorphicBorder(
-          color: isDark ? Colors.black.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.05),
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.4)
+              : Colors.black.withValues(alpha: 0.05),
           width: 1.0,
         ),
       ),
@@ -248,7 +256,9 @@ class NeumorphicIconBadge extends StatelessWidget {
         boxShape: const NeumorphicBoxShape.circle(),
         color: base,
         border: NeumorphicBorder(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.6),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.6),
           width: 0.8,
         ),
       ),
@@ -271,5 +281,3 @@ class NeumorphicIconBadge extends StatelessWidget {
     return widget;
   }
 }
-
-

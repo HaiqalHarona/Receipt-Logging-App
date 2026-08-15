@@ -57,7 +57,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   void _initControllers() {
     _merchantController = TextEditingController(text: widget.receipt.merchant);
     _dateController = TextEditingController(text: widget.receipt.date);
-    _amountController = TextEditingController(text: widget.receipt.amount.toStringAsFixed(2));
+    _amountController =
+        TextEditingController(text: widget.receipt.amount.toStringAsFixed(2));
     _selectedCurrency = widget.receipt.currency;
     // Parse comma-separated categories from the stored field and sanitize each token
     _selectedCategories = widget.receipt.category
@@ -81,7 +82,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
 
   void _recalculateTotalFromLineItems() {
     if (!_isAutoCalculate) return;
-    final double total = _lineItems.fold(0.0, (sum, item) => sum + item.lineTotal);
+    final double total =
+        _lineItems.fold(0.0, (sum, item) => sum + item.lineTotal);
     _amountController.text = total.toStringAsFixed(2);
   }
 
@@ -102,7 +104,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
     // Format legacy string items list to stay synchronized with lineItems
     final List<String> legacyItems = _lineItems.map((li) {
       final baseP = li.effectiveUnitPrice;
-      final priceStr = baseP > 0 ? ' - $_selectedCurrency ${baseP.toStringAsFixed(2)}' : '';
+      final priceStr =
+          baseP > 0 ? ' - $_selectedCurrency ${baseP.toStringAsFixed(2)}' : '';
       return '${li.description}$priceStr';
     }).toList();
 
@@ -127,8 +130,18 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
       // Try to parse existing date text (e.g. "Aug 01, 2026")
       final parts = _dateController.text.split(' ');
       final months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       if (parts.length == 3) {
         final month = months.indexOf(parts[0]) + 1;
@@ -149,10 +162,21 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
     );
     if (picked != null) {
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
-      final formatted = '${months[picked.month - 1]} ${picked.day.toString().padLeft(2, '0')}, ${picked.year}';
+      final formatted =
+          '${months[picked.month - 1]} ${picked.day.toString().padLeft(2, '0')}, ${picked.year}';
       setState(() {
         _dateController.text = formatted;
       });
@@ -179,9 +203,13 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
             ),
             child: TextField(
               controller: _merchantController,
-              style: TextStyle(color: widget.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  color: widget.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600),
               decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 border: InputBorder.none,
               ),
               onChanged: (_) => _notifyChange(),
@@ -204,17 +232,21 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                         depth: -3,
                         intensity: 0.85,
                         color: NeumorphicTheme.baseColor(context),
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                        boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(12)),
                       ),
                       child: TextField(
                         controller: _dateController,
                         readOnly: true,
                         onTap: _pickDate,
-                        style: TextStyle(color: widget.textPrimary, fontSize: 15),
+                        style:
+                            TextStyle(color: widget.textPrimary, fontSize: 15),
                         decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 14),
                           border: InputBorder.none,
-                          suffixIcon: Icon(Icons.calendar_today_rounded, size: 16, color: widget.textSecondary),
+                          suffixIcon: Icon(Icons.calendar_today_rounded,
+                              size: 16, color: widget.textSecondary),
                         ),
                       ),
                     ),
@@ -241,8 +273,11 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                           value: _selectedCurrency,
                           isExpanded: true,
                           dropdownColor: NeumorphicTheme.baseColor(context),
-                          style: TextStyle(color: widget.textPrimary, fontWeight: FontWeight.bold),
-                          items: CurrencyService.supportedCurrencies.keys.map((code) {
+                          style: TextStyle(
+                              color: widget.textPrimary,
+                              fontWeight: FontWeight.bold),
+                          items: CurrencyService.supportedCurrencies.keys
+                              .map((code) {
                             return DropdownMenuItem(
                               value: code,
                               child: Text(code),
@@ -265,7 +300,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
           const SizedBox(height: 16),
 
           // Amount Field
-          _buildLabel("Amount (${CurrencyService.supportedCurrencies[_selectedCurrency]?.symbol ?? '\$'})"),
+          _buildLabel(
+              "Amount (${CurrencyService.supportedCurrencies[_selectedCurrency]?.symbol ?? '\$'})"),
           const SizedBox(height: 6),
           Neumorphic(
             style: NeumorphicStyle(
@@ -277,13 +313,18 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
             child: TextField(
               controller: _amountController,
               readOnly: _isAutoCalculate,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
               ],
-              style: TextStyle(color: widget.accent, fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: widget.accent,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold),
               decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 border: InputBorder.none,
               ),
               onChanged: (_) => _notifyChange(),
@@ -298,9 +339,12 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
               Row(
                 children: [
                   Icon(
-                    _isAutoCalculate ? Icons.auto_awesome_rounded : Icons.edit_note_rounded,
+                    _isAutoCalculate
+                        ? Icons.auto_awesome_rounded
+                        : Icons.edit_note_rounded,
                     size: 16,
-                    color: _isAutoCalculate ? widget.accent : widget.textSecondary,
+                    color:
+                        _isAutoCalculate ? widget.accent : widget.textSecondary,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -308,7 +352,9 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: _isAutoCalculate ? widget.accent : widget.textSecondary,
+                      color: _isAutoCalculate
+                          ? widget.accent
+                          : widget.textSecondary,
                     ),
                   ),
                 ],
@@ -318,7 +364,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                 style: NeumorphicSwitchStyle(
                   activeTrackColor: widget.accent.withValues(alpha: 0.3),
                   activeThumbColor: widget.accent,
-                  inactiveThumbColor: widget.textSecondary.withValues(alpha: 0.5),
+                  inactiveThumbColor:
+                      widget.textSecondary.withValues(alpha: 0.5),
                 ),
                 onChanged: (val) {
                   setState(() {
@@ -355,7 +402,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                 depth: -3,
                 intensity: 0.85,
                 color: NeumorphicTheme.baseColor(context),
-                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+                boxShape:
+                    NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
@@ -366,7 +414,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                             'Select categories...',
                             style: TextStyle(
                               fontSize: 13.5,
-                              color: widget.textSecondary.withValues(alpha: 0.6),
+                              color:
+                                  widget.textSecondary.withValues(alpha: 0.6),
                               fontStyle: FontStyle.italic,
                             ),
                           )
@@ -374,15 +423,20 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                             spacing: 6,
                             runSpacing: 6,
                             children: _selectedCategories.map((cat) {
-                              final catColor = CategoryUtils.getCategoryColor(cat);
-                              final catIcon = CategoryUtils.getCategoryIcon(cat);
+                              final catColor =
+                                  CategoryUtils.getCategoryColor(cat);
+                              final catIcon =
+                                  CategoryUtils.getCategoryIcon(cat);
 
                               return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
                                   color: catColor.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: catColor.withValues(alpha: 0.4), width: 0.8),
+                                  border: Border.all(
+                                      color: catColor.withValues(alpha: 0.4),
+                                      width: 0.8),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
