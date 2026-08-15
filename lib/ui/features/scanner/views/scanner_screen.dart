@@ -7,8 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
-import '../../../../domain/models/receipt.dart';
-import '../../../../services/ocr_service.dart';
+import '../../../../services/scan_batch_controller.dart';
 import '../../../../services/app_logger_service.dart';
 
 /// Vision Receipt Scanner Screen
@@ -31,8 +30,6 @@ class _ScannerScreenState extends State<ScannerScreen>
   bool _isFlashOn = false;
   bool _isBulkMode = false;
   final List<XFile> _queuedImages = [];
-  bool _isProcessing = false;
-  int _processingStep = 1;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -190,82 +187,14 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _processQueueAndNavigate() async {
     if (_queuedImages.isEmpty) return;
 
-    AppLogger.info('UI', 'Starting OCR processing for ${_queuedImages.length} receipt image(s)');
-    setState(() {
-      _isProcessing = true;
-      _processingStep = 1;
-    });
+    AppLogger.info('UI', 'Submitting ${_queuedImages.length} image(s) to async batch scan pipeline');
 
-    final List<Receipt> parsedReceipts = [];
-    try {
-      for (int i = 0; i < _queuedImages.length; i++) {
-        setState(() {
-          _processingStep = i + 1;
-        });
-        final results = await OcrService.instance.processImages(
-          [_queuedImages[i].path],
-          onFallbackMessage: (msg) {
-            AppLogger.warning('UI', 'OCR fallback message: $msg');
-            if (mounted) {
-              AppSnackBar.show(
-                context,
-                message: msg,
-                isError: true,
-                duration: const Duration(seconds: 5),
-              );
-            }
-          },
-        );
-        if (results.isNotEmpty) {
-          parsedReceipts.add(results.first);
-        }
-      }
-
-      if (!mounted) return;
-
-      setState(() {
-        _isProcessing = false;
-      });
-
-      AppLogger.info('UI', 'OCR processing completed: ${parsedReceipts.length} receipt(s) parsed');
-      if (parsedReceipts.isNotEmpty) {
-        context.push('/verification', extra: parsedReceipts);
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isProcessing = false;
-      });
-
-      AppLogger.error('UI', 'OCR processing failed with error', e);
-      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
-    }
-  }
-
-  void _showErrorDialog(String errorMessage) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.error_outline_rounded, color: Colors.redAccent),
-            SizedBox(width: 8),
-            Text('Scan Failure', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ],
-        ),
-        content: Text(
-          'Failed to scan receipt image:\n\n$errorMessage',
-          style: const TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+    // Delegate to ScanBatchController which:
+    //  1. POSTs images to /scan/parse-many (HTTP 202)
+    //  2. Navigates user to /dashboard
+    //  3. Opens SSE stream
+    //  4. Shows & updates the persistent ScanProgressSnackBar
+    await ScanBatchController.instance.startBatchScan(_queuedImages);
   }
 
   void _showToast(String message) {
@@ -356,13 +285,6 @@ class _ScannerScreenState extends State<ScannerScreen>
                       ),
                     ],
                   ),
-                  if (_isProcessing)
-                    _ProcessingOverlayModal(
-                      processingStep: _processingStep,
-                      totalCount: _queuedImages.length,
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                    ),
                 ],
               ),
             ),
@@ -903,57 +825,6 @@ class _ScannerBottomControls extends StatelessWidget {
   }
 }
 
-/// Extracted Fullscreen Vision AI Batch Processing Modal Overlay
-class _ProcessingOverlayModal extends StatelessWidget {
-  final int processingStep;
-  final int totalCount;
-  final Color textPrimary;
-  final Color textSecondary;
-
-  const _ProcessingOverlayModal({
-    required this.processingStep,
-    required this.totalCount,
-    required this.textPrimary,
-    required this.textSecondary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black.withValues(alpha: 0.75),
-      child: Center(
-        child: NeumorphicCardWidget(
-          padding: const EdgeInsets.all(24),
-          margin: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 20),
-              Text(
-                "Analyzing Receipt $processingStep of $totalCount",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Extracting items & totals with Gemini Vision AI...",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _ScannerBracketsPainter extends CustomPainter {
   final Color color;

@@ -6,6 +6,7 @@
 ///     [registerDevice]      — POST /api/v1/devices/register (unauthenticated bootstrap)
 ///     [fetchDeviceProfile]  — GET  /api/v1/devices/me
 ///     [linkDevice]          — POST /api/v1/devices/link
+///     [rotateDeviceToken]   — POST /api/v1/devices/rotate-token
 ///     [deleteDeviceProfile] — DELETE /api/v1/devices/me
 ///
 ///   User Auth & Account:
@@ -13,13 +14,21 @@
 ///     [loginUser]           — POST /api/v1/user/login (public authentication)
 ///     [fetchUserProfile]    — GET  /api/v1/user/me
 ///     [deleteUserProfile]   — DELETE /api/v1/user/me
+///     [resetPasswordInitiate] — POST /api/v1/user/reset-password-initiate
+///     [resetPasswordOtp]    — POST /api/v1/user/reset-password-otp
+///     [confirmPasswordReset] — POST /api/v1/user/password-reset-new
 ///
-///   Receipt Scanning (AI OCR):
-///     [parseReceiptImage]   — POST /api/v1/scan/parse (multipart image upload)
+///   Receipt Scanning (AI OCR & Async Bulk Queue):
+///     [parseManyReceiptImages] — POST /api/v1/scan/parse-many (1–10 images, returns batch_id)
+///     [getBatchStatus]         — GET  /api/v1/scan/parse-many/{batch_id}
+///     [streamBatchStatus]      — GET  /api/v1/scan/parse-many/{batch_id}/stream (SSE event stream)
+///     [parseReceiptImage]   — [DEPRECATED] POST /api/v1/scan/parse
 ///
 ///   Receipt CRUD:
 ///     [saveReceipt]         — POST   /api/v1/receipts/create
+///     [saveReceiptBatch]    — POST   /api/v1/receipts/batch
 ///     [fetchReceipts]       — GET    /api/v1/receipts/
+///     [getReceipt]          — GET    /api/v1/receipts/{id}
 ///     [deleteReceipt]       — DELETE /api/v1/receipts/{id}
 ///
 ///   AI Chat:
@@ -443,9 +452,145 @@ class BackendApiClient {
 
   // ── RECEIPT SCANNING (AI OCR) ────────────────────────────────────────────────
 
-  /// Sends a receipt image to Gemini 3.6 Flash Vision API via the backend.
+  /// Submits 1–10 receipt image files for async background Vision AI parsing.
   ///
-  /// Requires X-Request-Type header ('user' or 'guest').
+  /// Returns HTTP 202 Accepted with a [BulkJobCreateResponseDto] containing
+  /// a [batchId] that callers use to poll or stream batch status via
+  /// [streamBatchStatus].
+  Future<BulkJobCreateResponseDto> parseManyReceiptImages({
+    required List<({List<int> bytes, String filename})> imageFiles,
+    required String requestType,
+    String? deviceName,
+    String? deviceToken,
+    String? username,
+    String? userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/scan/parse-many');
+    final request = http.MultipartRequest('POST', uri);
+
+    final headers = ApiConfig.buildScanHeaders(
+      requestType: requestType,
+      deviceName: deviceName,
+      deviceToken: deviceToken,
+      username: username,
+      userToken: userToken,
+    );
+    // Remove Content-Type — multipart sets its own boundary.
+    headers.remove('Content-Type');
+    request.headers.addAll(headers);
+
+    for (final f in imageFiles) {
+      final ext = f.filename.split('.').last.toLowerCase();
+      final mimeType = (ext == 'png') ? 'image/png' : 'image/jpeg';
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'files',
+          f.bytes,
+          filename: f.filename,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+    }
+
+    final path = uri.path;
+    AppLogger.debug('HTTP', '--> POST $path (parse-many, ${imageFiles.length} files)');
+    final stopwatch = Stopwatch()..start();
+    try {
+      final streamed = await _http.send(request).timeout(ApiConfig.timeout);
+      final response = await http.Response.fromStream(streamed);
+      stopwatch.stop();
+      AppLogger.info('HTTP',
+          '<-- ${response.statusCode} POST $path (${stopwatch.elapsedMilliseconds}ms)');
+
+      _assertStatus(response, 202);
+      return BulkJobCreateResponseDto.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (e, st) {
+      if (stopwatch.isRunning) stopwatch.stop();
+      AppLogger.error('HTTP',
+          '<-- ERROR POST $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+      rethrow;
+    }
+  }
+
+  /// Opens a server-sent events (SSE) stream to GET /scan/parse-many/{batchId}/stream.
+  ///
+  /// Returns a [Stream<String>] of raw SSE text lines. The [http.Client] is
+  /// owned by the stream and disposed automatically when the stream ends,
+  /// either naturally (server closes after `batch_complete`) or via
+  /// [StreamSubscription.cancel].
+  ///
+  /// Callers should store the returned [StreamSubscription] and call
+  /// `.cancel()` to abort the stream early (e.g., when the user taps Cancel).
+  Stream<String> openBatchStream({
+    required String batchId,
+    required String requestType,
+    String? deviceName,
+    String? deviceToken,
+    String? username,
+    String? userToken,
+  }) {
+    final queryParams = <String, String>{'request_type': requestType};
+    if (requestType == 'guest') {
+      if (deviceName != null) queryParams['device_name'] = deviceName;
+      if (deviceToken != null) queryParams['device_token'] = deviceToken;
+    } else {
+      if (username != null) queryParams['username'] = username;
+      if (userToken != null) queryParams['user_token'] = userToken;
+    }
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}/scan/parse-many/$batchId/stream')
+        .replace(queryParameters: queryParams);
+
+    return _openSseStream(uri);
+  }
+
+  Stream<String> _openSseStream(Uri uri) async* {
+    AppLogger.debug('HTTP', '--> GET ${uri.path} (SSE stream)');
+
+    // Each SSE stream owns its own Client so cancelling does not affect other
+    // in-flight requests. Disposed in the finally block.
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', uri);
+      request.headers['Accept'] = 'text/event-stream';
+      request.headers['Cache-Control'] = 'no-cache';
+
+      final response = await client.send(request);
+      AppLogger.info('HTTP', '<-- ${response.statusCode} GET ${uri.path} (SSE)');
+
+      if (response.statusCode != 200) {
+        final body = await response.stream.bytesToString();
+        throw ApiException(body, statusCode: response.statusCode);
+      }
+
+      await for (final chunk in response.stream.toStringStream()) {
+        yield chunk;
+      }
+      // Stream completed normally (server closed after batch_complete).
+      AppLogger.debug('HTTP', '<-- DONE GET ${uri.path} (SSE)');
+    } on http.ClientException catch (e) {
+      // The backend closes the TCP connection immediately after emitting
+      // batch_complete. This is the expected server-side teardown and
+      // should NOT propagate as a fatal error — the caller decides whether
+      // to treat connection-close as normal based on _isTerminalEventReceived.
+      AppLogger.debug(
+        'HTTP',
+        '<-- SSE socket closed (${e.message}) — treating as stream end',
+      );
+      // Do NOT rethrow; yielding nothing here ends the stream normally.
+    } catch (e, st) {
+      AppLogger.error('HTTP', '<-- ERROR GET ${uri.path} (SSE)', e, st);
+      rethrow;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// [DEPRECATED] Sends a single receipt image to Gemini 3.6 Flash Vision API synchronously.
+  ///
+  /// Callers should migrate to [parseManyReceiptImages] (which supports 1–10 images).
+  @Deprecated('Use parseManyReceiptImages instead')
   Future<ReceiptDto?> parseReceiptImage({
     required List<int> imageBytes,
     required String filename,

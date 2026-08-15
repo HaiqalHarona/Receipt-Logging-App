@@ -1,7 +1,6 @@
 // File: lib/services/ocr_service.dart
 
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'app_logger_service.dart';
 import '../data/mappers/line_item_mapper.dart';
@@ -14,9 +13,9 @@ import 'api/backend_api_client.dart';
 /// Service responsible for sending receipt images to the backend parser endpoint
 /// and transforming raw API responses into clean [Receipt] Domain Models.
 ///
-/// Delegates the HTTP call to [BackendApiClient.parseReceiptImage] which
-/// sends a multipart/form-data request to `POST /api/v1/scan/parse`
-/// with required `X-Device-ID` and `X-Device-Token` headers.
+/// Delegates the HTTP call to [BackendApiClient.parseManyReceiptImages] which
+/// sends a multipart/form-data request to `POST /api/v1/scan/parse-many` (1–10 images)
+/// with required `X-Request-Type` scoped headers (`guest` vs `user`).
 class OcrService {
   OcrService._();
   static final OcrService instance = OcrService._();

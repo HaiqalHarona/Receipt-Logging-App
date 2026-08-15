@@ -3,7 +3,7 @@
 ## Overview
 The **Receipt Logger** codebase follows Flutter architecture best practices, leveraging a **Feature-First / Layered Architecture** with **Riverpod 2.x** for state management, **Isar 3.x** for offline-first local storage, **flutter_neumorphic_plus** for the design system, **http** for Vision AI backend integration, and **GoRouter** for declarative navigation.
 
-For the full 9-screen scope breakdown and 20-endpoint backend matrix, see [PROJECT_SCOPE.md](file:///C:/mobile-development/receipt_logging_app/PROJECT_SCOPE.md).
+For the full 9-screen scope breakdown and 23-endpoint backend matrix, see [PROJECT_SCOPE.md](file:///C:/mobile-development/receipt_logging_app/PROJECT_SCOPE.md).
 
 ---
 

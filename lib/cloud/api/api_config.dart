@@ -33,7 +33,7 @@ class ApiConfig {
   static String get deviceToken => DeviceIdentityService.instance.deviceToken;
 
   /// Default request timeout — Gemini vision can take ~3s.
-  static const Duration timeout = Duration(seconds: 30);
+  static const Duration timeout = Duration(seconds: 40);
 
   /// Builds device-scoped headers (GET /devices/me, DELETE /devices/me).
   static Map<String, String> buildDeviceHeaders({

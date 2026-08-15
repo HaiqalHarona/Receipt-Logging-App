@@ -63,6 +63,7 @@ class ReceiptLoggerApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Receipt Logger',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       routerConfig: appRouter,
       builder: (context, child) {
         return AnimatedBuilder(

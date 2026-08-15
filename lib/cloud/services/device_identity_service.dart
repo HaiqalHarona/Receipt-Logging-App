@@ -9,7 +9,6 @@
 //    Stored locally on device and sent in X-Device-Token for API requests.
 // 3. Registers device with backend via `POST /api/v1/devices/register` on boot.
 
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../services/app_logger_service.dart';
