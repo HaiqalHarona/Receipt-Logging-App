@@ -1,28 +1,28 @@
-# Receipt Logger Backend
+# Receipt Logger Backend — API Specification
 
-An AI-powered FastAPI backend service for receipt scanning, structured data extraction using **Google Gemini 3.6 Flash Vision AI**, session-scoped identity security, and cloud database synchronization for the **Receipt Logger** mobile application.
+An AI-powered FastAPI backend service for receipt scanning, structured data extraction using Google Gemini 3.6 Flash Vision AI, session-scoped identity security, and cloud database synchronization for the Receipt Logger mobile application.
 
 ---
 
-## 🚀 Application Summary
+## Application Summary
 
-The **Receipt Logger Backend** provides high-speed, intelligent multimodal receipt parsing and data management for the privacy-first mobile client. It accepts receipt image uploads, processes them directly with Gemini 3.6 Flash Vision AI using strict structured Pydantic schemas, and returns validated JSON containing merchant info, line items, totals, dates, and categories in ~1.5 seconds. It also provides a full set of session-scoped CRUD endpoints for storing and managing receipts in Supabase with cryptographic device fingerprint verification (`X-Device-Token`).
+The Receipt Logger Backend provides multimodal receipt parsing and data management for the privacy-first mobile client. It accepts receipt image uploads, processes them directly with Gemini 3.6 Flash Vision AI using strict structured Pydantic schemas, and returns validated JSON containing merchant info, line items, totals, dates, and categories. It also provides a full set of session-scoped CRUD endpoints for storing and managing receipts in Supabase with cryptographic device fingerprint verification (`X-Device-Token`).
 
 ### Key Technology Stack
 - **Framework**: FastAPI (Python 3.10+) with Uvicorn ASGI server
-- **Auth & Security**: `src/Auth/` package (`Identity` model, `X-Device-Token` verification via constant-time `secrets.compare_digest`)
+- **Auth and Security**: `src/Auth/` package (`Identity` model, `X-Device-Token` verification via constant-time `secrets.compare_digest`)
 - **AI Extraction**: `google-genai` SDK (`gemini-3.6-flash` Multimodal Vision)
 - **Data Validation**: Pydantic v2 schemas (`Receipt`, `LineItem`, `ScanResponse`, `ReceiptRecord`, `UserRecord`, `DeviceRecord`)
-- **Cloud Database & Storage**: Supabase (`supabase-py` `AsyncClient`) for Postgres DB, Storage, and Vector search
+- **Cloud Database and Storage**: Supabase (`supabase-py` `AsyncClient`) for Postgres DB, Storage, and Vector search
 - **Architecture**: Layered Architecture with per-model repository pattern (`src/Models/Receipts/`, `src/Models/Users/`, `src/Models/Devices/`)
-- **Configuration**: Pydantic `BaseSettings` & `python-dotenv`
+- **Configuration**: Pydantic `BaseSettings` and `python-dotenv`
 
 ---
 
-## ✨ Features Breakdown
+## Features Breakdown
 
 ### Implemented Features
-- **Device Registration & Token Verification** (`/api/v1/devices`):
+- **Device Registration and Token Verification** (`/api/v1/devices`):
   - `POST /api/v1/devices/register`: Idempotent registration of hardware `device_id` and secret `device_token`.
   - `GET /api/v1/devices/me`: Retrieves current device registration record.
   - `POST /api/v1/devices/link`: Links/unlinks current device to a user account.
@@ -41,11 +41,11 @@ The **Receipt Logger Backend** provides high-speed, intelligent multimodal recei
   - `POST /api/v1/receipts/batch`: Batch-creates up to 100 receipts bound to session identity in a single Supabase call.
   - `DELETE /api/v1/receipts/{receipt_id}`: Soft-deletes a receipt by setting `deleted_at` timestamp.
 - **Explicit HTTP 422 Error Handling**: Custom exception handlers in `main.py` intercept any request payload schema mismatches or invalid data types and return clean `HTTP 422 Unprocessable Entity` responses.
-- **Health Check & Diagnostics** (`GET /api/v1/health/`): Returns API operational status and environment setting.
+- **Health Check and Diagnostics** (`GET /api/v1/health/`): Returns API operational status and environment setting.
 
 ---
 
-## 🛠️ Header Authentication Contract
+## Header Authentication Contract
 
 All protected endpoints require the following HTTP headers:
 
@@ -57,11 +57,9 @@ All protected endpoints require the following HTTP headers:
 
 ---
 
-## 🏃 Running the Application
+## Running the Application
 
-### Option A: Using the PowerShell Script (Recommended for Windows)
-
-Run the included `run.ps1` script to start the server on port **8085**:
+### Option A: Using PowerShell (Windows)
 
 ```powershell
 .\run.ps1
@@ -77,7 +75,7 @@ uvicorn main:app --host 0.0.0.0 --port 8085 --reload
 
 ---
 
-## 🌐 API Documentation & Interactive Docs
+## API Documentation and Interactive Docs
 
 Once running, access the interactive API documentation at:
 - **Swagger UI**: [http://localhost:8085/docs](http://localhost:8085/docs)
