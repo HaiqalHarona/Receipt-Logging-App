@@ -24,7 +24,6 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
       animation: Listenable.merge([AppThemeController.instance, CurrencyService.instance]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
-        final isDark = controller.themeMode == ThemeMode.dark;
         final textPrimary = controller.textColor;
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;
@@ -101,74 +100,44 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
                     ),
                     const SizedBox(height: 16),
 
-                    // Appearance Mode Toggle
+                    // Appearance Mode Toggle (3-way: Dark · Light · Auto)
                     NeumorphicCardWidget(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            "Appearance Mode",
+                            'Appearance',
                             style: TextStyle(
                               fontSize: 14,
                               color: textPrimary,
                             ),
                           ),
-                          NeumorphicToggle(
-                            height: 32,
-                            width: 140,
-                            selectedIndex: isDark ? 0 : 1,
-                            thumb: Neumorphic(
-                              style: NeumorphicStyle(
-                                depth: 4,
-                                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-                                color: accent,
-                              ),
-                            ),
-                            style: const NeumorphicToggleStyle(
-                              backgroundColor: Colors.transparent,
-                            ),
-                            children: [
-                              ToggleElement(
-                                background: Center(
-                                  child: Text(
-                                    "Dark",
-                                    style: TextStyle(color: textPrimary, fontSize: 12),
-                                  ),
-                                ),
-                                foreground: Center(
-                                  child: Text(
-                                    "Dark",
-                                    style: TextStyle(
-                                      color: isDark ? Colors.black : Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              ToggleElement(
-                                background: Center(
-                                  child: Text(
-                                    "Light",
-                                    style: TextStyle(color: textPrimary, fontSize: 12),
-                                  ),
-                                ),
-                                foreground: Center(
-                                  child: Text(
-                                    "Light",
-                                    style: TextStyle(
-                                      color: !isDark ? Colors.white : Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            onChanged: (val) {
-                              controller.setThemeMode(val == 0 ? ThemeMode.dark : ThemeMode.light);
-                            },
+                          const Spacer(),
+                          _buildModeChip(
+                            icon: Icons.dark_mode_rounded,
+                            label: 'Dark',
+                            mode: ThemeMode.dark,
+                            controller: controller,
+                            accent: accent,
+                            textPrimary: textPrimary,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildModeChip(
+                            icon: Icons.light_mode_rounded,
+                            label: 'Light',
+                            mode: ThemeMode.light,
+                            controller: controller,
+                            accent: accent,
+                            textPrimary: textPrimary,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildModeChip(
+                            icon: Icons.phone_android_rounded,
+                            label: 'Auto',
+                            mode: ThemeMode.system,
+                            controller: controller,
+                            accent: accent,
+                            textPrimary: textPrimary,
                           ),
                         ],
                       ),
@@ -301,6 +270,54 @@ class _SettingsScreenState extends State<SettingsScreen> with AutomaticKeepAlive
       },
     );
   }
+
+  Widget _buildModeChip({
+    required IconData icon,
+    required String label,
+    required ThemeMode mode,
+    required AppThemeController controller,
+    required Color accent,
+    required Color textPrimary,
+  }) {
+    final isSelected = controller.themeMode == mode;
+    return GestureDetector(
+      onTap: () => controller.setThemeMode(mode),
+      child: Neumorphic(
+        style: NeumorphicStyle(
+          depth: isSelected ? -3 : 4,
+          intensity: 0.85,
+          color: isSelected ? accent.withValues(alpha: 0.12) : null,
+          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+          border: isSelected
+              ? NeumorphicBorder(color: accent.withValues(alpha: 0.4), width: 1.0)
+              : const NeumorphicBorder.none(),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   void _showCurrencyPicker(
     BuildContext context,

@@ -30,6 +30,7 @@ void main() async {
   await DeviceIdentityService.instance.init(BackendApiClient.instance);
   await AuthService.instance.init();
   await CloudSyncService.instance.syncOnLogin();
+  await AppThemeController.instance.loadPersistedTheme();
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     bool isDebug = false;
@@ -75,7 +76,7 @@ class ReceiptLoggerApp extends StatelessWidget {
               accentColor: controller.accentColor,
               variantColor: controller.currentBaseColor,
               lightSource: LightSource.topLeft,
-              depth: 5,
+              depth: controller.neuDepth,
               intensity: 0.88,
               shadowDarkColor: controller.shadowDarkColor,
               shadowLightColor: controller.shadowLightColor,
@@ -90,7 +91,7 @@ class ReceiptLoggerApp extends StatelessWidget {
               accentColor: controller.accentColor,
               variantColor: controller.currentBaseColor,
               lightSource: LightSource.topLeft,
-              depth: 6,
+              depth: controller.neuDepth,
               intensity: 0.80,
               shadowDarkColor: controller.shadowDarkColor,
               shadowLightColor: controller.shadowLightColor,
@@ -104,7 +105,12 @@ class ReceiptLoggerApp extends StatelessWidget {
               themeMode: controller.themeMode,
               darkTheme: customDarkTheme,
               theme: customLightTheme,
-              child: child!,
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(controller.fontScale),
+                ),
+                child: child!,
+              ),
             );
           },
         );

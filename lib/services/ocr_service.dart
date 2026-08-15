@@ -1,7 +1,6 @@
 // File: lib/services/ocr_service.dart
 
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'app_logger_service.dart';
 import '../data/mappers/line_item_mapper.dart';
