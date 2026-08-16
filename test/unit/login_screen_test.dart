@@ -1,6 +1,5 @@
 // File: test/unit/login_screen_test.dart
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:reciept_logging/ui/features/auth/views/login_screen.dart';

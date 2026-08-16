@@ -1,12 +1,10 @@
 // File: test/unit/signup_and_forgot_password_test.dart
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:reciept_logging/ui/features/auth/views/signup_screen.dart';
 import 'package:reciept_logging/ui/features/auth/views/forgot_password_screen.dart';
 import 'package:reciept_logging/ui/features/auth/views/otp_verification_screen.dart';
-import 'package:reciept_logging/ui/features/auth/views/reset_password_screen.dart';
 import 'package:reciept_logging/ui/core/theme/app_theme.dart';
 
 void main() {
