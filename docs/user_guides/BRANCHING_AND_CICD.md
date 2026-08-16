@@ -88,9 +88,10 @@ The automated pipeline is defined in [`.github/workflows/ci.yml`](file:///.githu
 
 | Job Name | Trigger Events | Steps Executed | Artifacts Generated |
 |---|---|---|---|
-| **`analyze-and-test`** | • Pull Request to `master`, `main`, `develop`<br>• Push to `master`, `main`, `develop`<br>• Manual `workflow_dispatch` | 1. Set up Java 17 and Flutter SDK (stable)<br>2. Generate CI `.env`<br>3. `flutter pub get`<br>4. `dart format --output=none --set-exit-if-changed .`<br>5. `flutter analyze`<br>6. `flutter test --coverage` | `coverage-report` (`lcov.info`) |
-| **`build-android`** | • Push to `master`, `main`, `develop`<br>• Manual `workflow_dispatch`<br>*(Requires `analyze-and-test` to pass)* | 1. Set up Java 17 and Flutter SDK<br>2. Inject environment secrets<br>3. `flutter build apk --release` | `android-release-apk` (`app-release.apk`) |
-| **`build-web`** | • Push to `master`, `main`, `develop`<br>• Manual `workflow_dispatch`<br>*(Requires `analyze-and-test` to pass)* | 1. Set up Flutter SDK<br>2. Inject environment secrets<br>3. `flutter build web --release` | `web-release-bundle` (`build/web`) |
+| **`analyze-and-test`** | • Pull Request to `master`, `main`, `develop`<br>• Push to `master`, `main`, `develop`<br>• Manual `workflow_dispatch` | 1. Set up Java 17 and Flutter SDK (stable)<br>2. Generate CI `.env`<br>3. `flutter pub get`<br>4. `dart format --output=none --set-exit-if-changed lib test`<br>5. `flutter analyze`<br>6. `flutter test --coverage` | `coverage-report` (`lcov.info`) |
+| **`build-android`** | • Push on Release Tag (`v*.*.*`)<br>• Manual `workflow_dispatch`<br>*(Requires `analyze-and-test` to pass)* | 1. Set up Java 17 and Flutter SDK<br>2. Inject environment secrets<br>3. `flutter build apk --release --no-tree-shake-icons` | `android-release-apk` (`app-release.apk`) |
+| **`build-ios`** | • Push on Release Tag (`v*.*.*`)<br>• Manual `workflow_dispatch`<br>*(Requires `analyze-and-test` to pass)* | 1. Set up macOS runner & Flutter SDK<br>2. Inject environment secrets<br>3. `flutter build ios --release --no-codesign --no-tree-shake-icons` | `ios-release-app` (`Runner.app`) |
+| **`build-web`** | • Push on Release Tag (`v*.*.*`)<br>• Manual `workflow_dispatch`<br>*(Requires `analyze-and-test` to pass)* | 1. Set up Flutter SDK<br>2. Inject environment secrets<br>3. `flutter build web --release` | `web-release-bundle` (`build/web`) |
 
 ---
 
@@ -100,7 +101,7 @@ Before opening a pull request, run the following validation suite locally:
 
 ```bash
 # 1. Format verification
-dart format --output=none --set-exit-if-changed .
+dart format --output=none --set-exit-if-changed lib test
 
 # 2. Static analysis
 flutter analyze
