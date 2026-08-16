@@ -624,6 +624,9 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                   final converted = convertedItems[idx];
                                   final qty = item.quantity ?? 1.0;
                                   final qtyStr = qty % 1 == 0 ? qty.toInt().toString() : qty.toStringAsFixed(1);
+                                  final isDiscount = (item.totalPrice != null && item.totalPrice! < 0) ||
+                                      (item.unitPrice != null && item.unitPrice! < 0);
+                                  const discountColor = Color(0xFF34C759);
 
                                   return TableRow(
                                     children: [
@@ -634,7 +637,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
-                                            color: textPrimary,
+                                            color: isDiscount ? discountColor : textPrimary,
                                           ),
                                         ),
                                       ),
@@ -645,7 +648,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: textSecondary,
+                                            color: isDiscount ? discountColor : textSecondary,
                                           ),
                                         ),
                                       ),
@@ -656,7 +659,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                           textAlign: TextAlign.right,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: textSecondary,
+                                            color: isDiscount ? discountColor : textSecondary,
                                           ),
                                         ),
                                       ),
@@ -668,7 +671,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
-                                            color: textPrimary,
+                                            color: isDiscount ? discountColor : textPrimary,
                                           ),
                                         ),
                                       ),

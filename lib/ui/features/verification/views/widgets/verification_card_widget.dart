@@ -1,5 +1,6 @@
 // File: lib/ui/features/verification/views/widgets/verification_card_widget.dart
 
+import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../../domain/models/line_item.dart';
@@ -88,7 +89,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
 
   void _recalculateTotalFromLineItems() {
     if (!_isAutoCalculate) return;
-    final double total = _lineItems.fold(0.0, (sum, item) => sum + item.lineTotal);
+    final double sum = _lineItems.fold(0.0, (acc, item) => acc + item.lineTotal);
+    final double total = math.max(0.0, sum);
     _amountController.text = total.toStringAsFixed(2);
   }
 
@@ -109,7 +111,7 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
     // Format legacy string items list to stay synchronized with lineItems
     final List<String> legacyItems = _lineItems.map((li) {
       final baseP = li.effectiveUnitPrice;
-      final priceStr = baseP > 0 ? ' - $_selectedCurrency ${baseP.toStringAsFixed(2)}' : '';
+      final priceStr = baseP != 0 ? ' - $_selectedCurrency ${baseP.toStringAsFixed(2)}' : '';
       return '${li.description}$priceStr';
     }).toList();
 

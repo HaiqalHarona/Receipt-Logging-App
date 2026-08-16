@@ -218,12 +218,15 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
 
   Widget _buildRow(LineItem item, int index) {
     final basePrice = item.effectiveUnitPrice;
+    final isDiscount = basePrice < 0;
     final qtyStr = item.quantity != null
         ? (item.quantity! % 1 == 0
             ? item.quantity!.toInt().toString()
             : item.quantity!.toStringAsFixed(1))
         : '—';
-    final amtStr = basePrice > 0 ? basePrice.toStringAsFixed(2) : '—';
+    final amtStr = basePrice != 0
+        ? (isDiscount ? '-${basePrice.abs().toStringAsFixed(2)}' : basePrice.toStringAsFixed(2))
+        : '—';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -248,7 +251,11 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
           Expanded(
             child: Text(
               item.description,
-              style: TextStyle(fontSize: 13, color: widget.textPrimary),
+              style: TextStyle(
+                fontSize: 13,
+                color: widget.textPrimary,
+                fontWeight: isDiscount ? FontWeight.w600 : FontWeight.normal,
+              ),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
             ),
@@ -262,7 +269,7 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: widget.accent,
+                color: isDiscount ? const Color(0xFF34C759) : widget.accent,
               ),
             ),
           ),
@@ -324,7 +331,7 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
     );
     final basePrice = widget.item.effectiveUnitPrice;
     _amtController = TextEditingController(
-      text: basePrice > 0 ? basePrice.toStringAsFixed(2) : '',
+      text: basePrice != 0 ? basePrice.toStringAsFixed(2) : '',
     );
   }
 
@@ -392,7 +399,7 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
               const SizedBox(height: 6),
               _buildNeumorphicField(
                 controller: _descController,
-                hint: 'e.g. Coffee Latte',
+                hint: 'e.g. Coffee Latte or Discount Voucher',
                 keyboardType: TextInputType.text,
                 textPrimary: widget.textPrimary,
                 base: base,
@@ -430,9 +437,9 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
                         const SizedBox(height: 6),
                         _buildNeumorphicField(
                           controller: _amtController,
-                          hint: 'e.g. 4.50',
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          formatter: FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                          hint: 'e.g. 4.50 or -2.50',
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                          formatter: FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d{0,2}')),
                           textPrimary: widget.accent,
                           base: base,
                           isBold: true,
