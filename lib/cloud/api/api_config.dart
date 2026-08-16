@@ -10,7 +10,8 @@ class ApiConfig {
   /// Base URL for backend read dynamically from .env.
   /// Defaults to localhost:8085 for Desktop/Web/iOS, with 10.0.2.2 for Android emulator.
   static String get baseUrl {
-    final configured = dotenv.get('API_BASE_URL', fallback: 'http://localhost:8085/api/v1');
+    final configured =
+        dotenv.get('API_BASE_URL', fallback: 'http://localhost:8085/api/v1');
     // if (defaultTargetPlatform == TargetPlatform.android && configured.contains('localhost')) {
     //   return configured.replaceAll('localhost', '10.0.2.2');
     // }

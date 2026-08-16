@@ -17,7 +17,8 @@ class CategoryFilterBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<CategoryFilterBottomSheet> createState() => _CategoryFilterBottomSheetState();
+  State<CategoryFilterBottomSheet> createState() =>
+      _CategoryFilterBottomSheetState();
 }
 
 class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
@@ -134,14 +135,18 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
                         depth: isSelected ? -3 : 3,
                         intensity: 0.8,
                         color: isSelected ? accent : baseColor,
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                        boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(12)),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isSelected ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
+                            isSelected
+                                ? Icons.check_circle_rounded
+                                : Icons.add_circle_outline_rounded,
                             size: 16,
                             color: isSelected ? Colors.white : textSecondary,
                           ),
@@ -150,7 +155,9 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
                             cat,
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
                               color: isSelected ? Colors.white : textPrimary,
                             ),
                           ),
@@ -177,7 +184,8 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
                 depth: 4,
                 intensity: 0.85,
                 color: accent,
-                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
+                boxShape:
+                    NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
               ),
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: const Center(

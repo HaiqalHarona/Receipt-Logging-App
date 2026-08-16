@@ -20,7 +20,8 @@ import '../../features/scanner/views/scanner_screen.dart';
 import '../../../cloud/services/auth_service.dart';
 import '../../../../services/scan_batch_controller.dart';
 
-Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widget child}) {
+Page<dynamic> _buildNeumorphicPage(
+    {required GoRouterState state, required Widget child}) {
   return CustomTransitionPage<void>(
     key: state.pageKey,
     child: child,
@@ -58,7 +59,8 @@ final GoRouter appRouter = GoRouter(
     final isLoggedIn = AuthService.instance.isLoggedIn;
     final isScanning = ScanBatchController.instance.isScanning;
     final path = state.matchedLocation;
-    final isAuthRoute = path == '/login' || path == '/signup' || path == '/auth';
+    final isAuthRoute =
+        path == '/login' || path == '/signup' || path == '/auth';
 
     if (isScanning && path == '/scanner') {
       return '/dashboard';
@@ -79,53 +81,65 @@ final GoRouter appRouter = GoRouter(
       routes: [
         GoRoute(
           path: '/dashboard',
-          pageBuilder: (context, state) => const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SizedBox.shrink()),
         ),
         GoRoute(
           path: '/history',
-          pageBuilder: (context, state) => const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SizedBox.shrink()),
         ),
         GoRoute(
           path: '/ai-assistant',
-          pageBuilder: (context, state) => const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SizedBox.shrink()),
         ),
         GoRoute(
           path: '/settings',
-          pageBuilder: (context, state) => const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SizedBox.shrink()),
         ),
       ],
     ),
     GoRoute(
       path: '/verification',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const VerificationScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const VerificationScreen()),
     ),
     GoRoute(
       path: '/receipt-detail',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ReceiptDetailScreen()),
+      pageBuilder: (context, state) => _buildNeumorphicPage(
+          state: state, child: const ReceiptDetailScreen()),
     ),
     GoRoute(
       path: '/analytics',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const AnalyticsScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const AnalyticsScreen()),
     ),
     GoRoute(
       path: '/paywall',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const PaywallScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const PaywallScreen()),
     ),
     GoRoute(
       path: '/auth',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const AuthScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const AuthScreen()),
     ),
     GoRoute(
       path: '/login',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const LoginScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const LoginScreen()),
     ),
     GoRoute(
       path: '/signup',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const SignUpScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const SignUpScreen()),
     ),
     GoRoute(
       path: '/forgot-password',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ForgotPasswordScreen()),
+      pageBuilder: (context, state) => _buildNeumorphicPage(
+          state: state, child: const ForgotPasswordScreen()),
     ),
     GoRoute(
       path: '/verify-otp',
@@ -155,19 +169,23 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/customization',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const CustomizationScreen()),
+      pageBuilder: (context, state) => _buildNeumorphicPage(
+          state: state, child: const CustomizationScreen()),
     ),
     GoRoute(
       path: '/settings/db-viewer',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const DbViewerScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const DbViewerScreen()),
     ),
     GoRoute(
       path: '/user-settings',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const UserSettingsScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const UserSettingsScreen()),
     ),
     GoRoute(
       path: '/scanner',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ScannerScreen()),
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const ScannerScreen()),
     ),
   ],
 );

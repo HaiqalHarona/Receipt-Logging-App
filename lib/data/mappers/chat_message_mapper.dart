@@ -48,7 +48,8 @@ extension ChatMessageDtoMapper on ChatMessageDto {
       conversationId: conversationId,
       sender: sender,
       content: content,
-      createdAt: DateTime.tryParse(createdAt)?.toUtc() ?? DateTime.now().toUtc(),
+      createdAt:
+          DateTime.tryParse(createdAt)?.toUtc() ?? DateTime.now().toUtc(),
     );
   }
 }

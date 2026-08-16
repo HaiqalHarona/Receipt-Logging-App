@@ -1,10 +1,10 @@
-# Receipt Logger Backend
+# Receipt Logger Backend — API Specification
 
-An AI-powered FastAPI backend service for receipt scanning, structured data extraction using **Google Gemini 3.6 Flash Vision AI**, session-scoped identity security, and cloud database synchronization for the **Receipt Logger** mobile application.
+An AI-powered FastAPI backend service for receipt scanning, structured data extraction using Google Gemini 3.6 Flash Vision AI, session-scoped identity security, and cloud database synchronization for the Receipt Logger mobile application.
 
 ---
 
-## 🚀 Application Summary
+## Application Summary
 
 The **Receipt Logger Backend** provides high-speed, intelligent multimodal receipt parsing and data management for the privacy-first mobile client. It accepts receipt image uploads, processes them asynchronously with Gemini 3.6 Flash Vision AI using strict structured Pydantic schemas, and manages batch parsing jobs in Redis with real-time Server-Sent Events (SSE) streaming updates. It also provides a full set of session-scoped CRUD endpoints for storing and managing receipts in Supabase with cryptographic device fingerprint verification (`X-Device-Token`) and scoped authentication (`X-Request-Type`).
 
@@ -16,11 +16,11 @@ The **Receipt Logger Backend** provides high-speed, intelligent multimodal recei
 - **Data Validation**: Pydantic v2 schemas (`Receipt`, `LineItem`, `ScanResponse`, `BulkJobCreateResponse`, `BulkBatchStatusResponse`, `ReceiptRecord`, `UserRecord`, `DeviceRecord`)
 - **Cloud Database & Storage**: Supabase (`supabase-py` `AsyncClient`) for Postgres DB, Storage, and Vector search
 - **Architecture**: Layered Architecture with per-model repository pattern (`src/Models/Receipts/`, `src/Models/Users/`, `src/Models/Devices/`)
-- **Configuration**: Pydantic `BaseSettings` & `python-dotenv`
+- **Configuration**: Pydantic `BaseSettings` and `python-dotenv`
 
 ---
 
-## ✨ Features Breakdown
+## Features Breakdown
 
 ### Implemented Features
 - **Device Registration & Token Management** (`/api/v1/devices`):
@@ -55,7 +55,7 @@ The **Receipt Logger Backend** provides high-speed, intelligent multimodal recei
   - `POST /api/v1/chat/query`: Sends user query to Gemini 3.6 Flash with RAG receipt context.
   - `DELETE /api/v1/chat/{conversation_id}`: Soft-deletes conversation.
 - **Explicit HTTP 422 Error Handling**: Custom exception handlers in `main.py` intercept any request payload schema mismatches or invalid data types and return clean `HTTP 422 Unprocessable Entity` responses.
-- **Health Check & Diagnostics** (`GET /api/v1/health/`): Returns API operational status and environment setting.
+- **Health Check and Diagnostics** (`GET /api/v1/health/`): Returns API operational status and environment setting.
 
 ---
 
@@ -98,7 +98,7 @@ uvicorn main:app --host 0.0.0.0 --port 8085 --reload
 
 ---
 
-## 🌐 API Documentation & Interactive Docs
+## API Documentation and Interactive Docs
 
 Once running, access the interactive API documentation at:
 - **Swagger UI**: [http://localhost:8085/docs](http://localhost:8085/docs)

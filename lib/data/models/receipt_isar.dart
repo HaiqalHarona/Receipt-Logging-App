@@ -82,7 +82,11 @@ class ReceiptIsarModel {
       ..date = receipt.date
       ..totalAmount = receipt.amount
       ..currency = receipt.currency
-      ..category = receipt.category.split(',').map((c) => CategoryUtils.sanitize(c)).where((c) => c.isNotEmpty).join(', ')
+      ..category = receipt.category
+          .split(',')
+          .map((c) => CategoryUtils.sanitize(c))
+          .where((c) => c.isNotEmpty)
+          .join(', ')
       ..imagePath = receipt.imagePath
       ..createdAt = receipt.createdAt ?? DateTime.now()
       ..items = receipt.items

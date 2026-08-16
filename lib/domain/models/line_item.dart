@@ -43,8 +43,10 @@ class LineItem {
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
     final qty = (json['quantity'] as num?)?.toDouble();
-    final unitP = (json['unit_price'] as num?)?.toDouble() ?? (json['unitPrice'] as num?)?.toDouble();
-    final totalP = (json['total_price'] as num?)?.toDouble() ?? (json['totalPrice'] as num?)?.toDouble();
+    final unitP = (json['unit_price'] as num?)?.toDouble() ??
+        (json['unitPrice'] as num?)?.toDouble();
+    final totalP = (json['total_price'] as num?)?.toDouble() ??
+        (json['totalPrice'] as num?)?.toDouble();
     return LineItem(
       description: (json['description'] as String?) ?? '',
       quantity: qty,

@@ -412,4 +412,3 @@ class NotchedPillBorderPainter extends CustomPainter {
         oldDelegate.smoothRadius != smoothRadius;
   }
 }
-

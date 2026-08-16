@@ -18,7 +18,9 @@ class AppSnackBar {
     final controller = AppThemeController.instance;
     final backgroundColor = isError
         ? Colors.red.shade900
-        : (controller.isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFF1C1C1E));
+        : (controller.isDarkMode
+            ? const Color(0xFF2C2C2E)
+            : const Color(0xFF1C1C1E));
     final timerColor = isError ? Colors.redAccent : controller.accentColor;
 
     final snackBar = SnackBar(
@@ -95,12 +97,15 @@ class _AppSnackBarWidgetState extends State<_AppSnackBarWidget>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 14, right: 6, top: 10, bottom: 10),
+              padding: const EdgeInsets.only(
+                  left: 14, right: 6, top: 10, bottom: 10),
               child: Row(
                 children: [
                   widget.customIcon ??
                       Icon(
-                        widget.isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+                        widget.isError
+                            ? Icons.error_outline_rounded
+                            : Icons.check_circle_outline_rounded,
                         color: widget.timerColor,
                         size: 20,
                       ),
@@ -117,10 +122,12 @@ class _AppSnackBarWidgetState extends State<_AppSnackBarWidget>
                   ),
                   InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    onTap: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                    onTap: () =>
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar(),
                     child: const Padding(
                       padding: EdgeInsets.all(6),
-                      child: Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+                      child: Icon(Icons.close_rounded,
+                          color: Colors.white70, size: 18),
                     ),
                   ),
                 ],

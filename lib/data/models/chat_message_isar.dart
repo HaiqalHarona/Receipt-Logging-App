@@ -48,7 +48,8 @@ class ChatMessageIsarModel {
       ..conversationId = dto.conversationId
       ..sender = dto.sender
       ..content = dto.content
-      ..createdAt = DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now();
+      ..createdAt =
+          DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now();
   }
 
   /// Convert back to a network DTO for optimistic UI state.
@@ -65,9 +66,11 @@ class ChatMessageIsarModel {
 
 // ── SAFE QUERY EXTENSIONS ────────────────────────────────────────────────────
 
-extension ChatMessageIsarQueryFilters
-    on QueryBuilder<ChatMessageIsarModel, ChatMessageIsarModel, QFilterCondition> {
+extension ChatMessageIsarQueryFilters on QueryBuilder<ChatMessageIsarModel,
+    ChatMessageIsarModel, QFilterCondition> {
   /// Filter messages belonging to a specific conversation UUID.
-  QueryBuilder<ChatMessageIsarModel, ChatMessageIsarModel, QAfterFilterCondition>
-      byConversation(String convId) => conversationIdEqualTo(convId);
+  QueryBuilder<ChatMessageIsarModel, ChatMessageIsarModel,
+      QAfterFilterCondition> byConversation(
+          String convId) =>
+      conversationIdEqualTo(convId);
 }

@@ -52,8 +52,8 @@ class ChatQueryResponseDto {
   factory ChatQueryResponseDto.fromJson(Map<String, dynamic> json) {
     return ChatQueryResponseDto(
       conversationId: (json['conversation_id'] as String?) ?? '',
-      userMessage: ChatMessageDto.fromJson(
-          json['user_message'] as Map<String, dynamic>),
+      userMessage:
+          ChatMessageDto.fromJson(json['user_message'] as Map<String, dynamic>),
       assistantMessage: ChatMessageDto.fromJson(
           json['assistant_message'] as Map<String, dynamic>),
     );

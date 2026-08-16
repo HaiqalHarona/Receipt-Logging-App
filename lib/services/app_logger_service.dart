@@ -35,17 +35,20 @@ class AppLogger {
         await docFile.writeAsString('', mode: FileMode.append);
         _resolvedLogPath = docFile.path;
       } catch (e) {
-        debugPrint('⚠️ [AppLogger] File logging disabled (no writable path available): $e');
+        debugPrint(
+            '⚠️ [AppLogger] File logging disabled (no writable path available): $e');
         enableFileLogging = false;
       }
     }
 
     if (_resolvedLogPath != null) {
-      debugPrint('📝 [AppLogger] File logging initialized at: $_resolvedLogPath');
+      debugPrint(
+          '📝 [AppLogger] File logging initialized at: $_resolvedLogPath');
     }
   }
 
-  void _log(LogLevel level, String tag, String message, [Object? error, StackTrace? stackTrace]) {
+  void _log(LogLevel level, String tag, String message,
+      [Object? error, StackTrace? stackTrace]) {
     final now = DateTime.now();
     final timeStr =
         "${now.year}-${_twoDigits(now.month)}-${_twoDigits(now.day)} "
@@ -75,7 +78,8 @@ class AppLogger {
         if (stackTrace != null) {
           buffer.writeln("   ↳ StackTrace: $stackTrace");
         }
-        file.writeAsStringSync(buffer.toString(), mode: FileMode.append, flush: true);
+        file.writeAsStringSync(buffer.toString(),
+            mode: FileMode.append, flush: true);
       } catch (e) {
         // Exception shield: silently catch any FileSystemException so app runtime never crashes
       }
@@ -94,7 +98,8 @@ class AppLogger {
     instance._log(LogLevel.warning, tag, message, error);
   }
 
-  static void error(String tag, String message, [Object? error, StackTrace? stackTrace]) {
+  static void error(String tag, String message,
+      [Object? error, StackTrace? stackTrace]) {
     instance._log(LogLevel.error, tag, message, error, stackTrace);
   }
 

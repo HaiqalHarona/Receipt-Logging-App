@@ -14,7 +14,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAliveClientMixin {
+class _DashboardScreenState extends State<DashboardScreen>
+    with AutomaticKeepAliveClientMixin {
   final DashboardViewModel _viewModel = DashboardViewModel();
 
   @override
@@ -45,7 +46,8 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
               bottom: false,
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 120),
+                padding: const EdgeInsets.only(
+                    left: 24, right: 24, top: 16, bottom: 120),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -87,19 +89,25 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                         if (_viewModel.isLoggedIn)
                           GestureDetector(
                             onTap: () => context.push('/user-settings'),
-                            child: _buildAvatarWidget(_viewModel.avatarImagePath, accent, textSecondary, controller),
+                            child: _buildAvatarWidget(
+                                _viewModel.avatarImagePath,
+                                accent,
+                                textSecondary,
+                                controller),
                           )
                         else
                           NeumorphicButtonWidget(
                             color: Colors.transparent,
                             borderRadius: 10,
                             depth: 4,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             onPressed: () => context.push('/login'),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.login_rounded, size: 13, color: accent),
+                                Icon(Icons.login_rounded,
+                                    size: 13, color: accent),
                                 const SizedBox(width: 4),
                                 Text(
                                   "Login",
@@ -185,7 +193,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         boxShape: const NeumorphicBoxShape.circle(),
         color: base,
         border: NeumorphicBorder(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.6),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.6),
           width: 0.8,
         ),
       ),
@@ -205,13 +215,15 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
         return Image.network(
           path,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(Icons.person_rounded, color: accent, size: 22),
+          errorBuilder: (_, __, ___) =>
+              Icon(Icons.person_rounded, color: accent, size: 22),
         );
       } else {
         return Image.file(
           File(path),
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(Icons.person_rounded, color: accent, size: 22),
+          errorBuilder: (_, __, ___) =>
+              Icon(Icons.person_rounded, color: accent, size: 22),
         );
       }
     }

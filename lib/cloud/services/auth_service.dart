@@ -68,7 +68,10 @@ class AuthService extends ChangeNotifier {
       _countryCode = prefs.getString(_keyCountryCode);
       _mobileNumber = prefs.getString(_keyMobileNumber);
 
-      if (_userId != null && _userId!.isNotEmpty && _username != null && _email != null) {
+      if (_userId != null &&
+          _userId!.isNotEmpty &&
+          _username != null &&
+          _email != null) {
         _cachedProfile = UserRecordDto(
           id: _userId!,
           username: _username!,
@@ -79,7 +82,8 @@ class AuthService extends ChangeNotifier {
         );
       }
 
-      AppLogger.info('AuthService', 'Session loaded: userId=$_userId, username=$_username');
+      AppLogger.info('AuthService',
+          'Session loaded: userId=$_userId, username=$_username');
       notifyListeners();
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to load session', e, st);
@@ -97,12 +101,14 @@ class AuthService extends ChangeNotifier {
 
     // Return cached profile if already present with complete details
     if (_cachedProfile != null && _cachedProfile!.id.isNotEmpty) {
-      AppLogger.info('AuthService', 'Served profile from cache for: ${_cachedProfile!.username}');
+      AppLogger.info('AuthService',
+          'Served profile from cache for: ${_cachedProfile!.username}');
       return _cachedProfile;
     }
 
     try {
-      AppLogger.info('AuthService', 'Fetching profile from backend for username: $_username');
+      AppLogger.info('AuthService',
+          'Fetching profile from backend for username: $_username');
       final fetched = await BackendApiClient.instance.fetchUserProfile(
         username: _username!,
         userToken: _userToken!,
@@ -112,7 +118,8 @@ class AuthService extends ChangeNotifier {
       await _persistProfile(fetched);
       return _cachedProfile;
     } catch (e, st) {
-      AppLogger.error('AuthService', 'Failed to fetch profile from backend', e, st);
+      AppLogger.error(
+          'AuthService', 'Failed to fetch profile from backend', e, st);
       return _cachedProfile;
     }
   }
@@ -136,7 +143,8 @@ class AuthService extends ChangeNotifier {
       _countryCode = updated.countryCode;
       _mobileNumber = updated.mobileNumber;
       await _persistProfile(updated);
-      AppLogger.info('AuthService', 'Mobile number updated in backend and cache: +$countryCode $mobileNumber');
+      AppLogger.info('AuthService',
+          'Mobile number updated in backend and cache: +$countryCode $mobileNumber');
       notifyListeners();
       return true;
     } catch (e, st) {
@@ -233,10 +241,10 @@ class AuthService extends ChangeNotifier {
         userToken: token.isNotEmpty ? token : null,
         migrateData: migrateData,
       );
-      AppLogger.info('AuthService', 'Device identity updated with backend (username: ${user?.username})');
+      AppLogger.info('AuthService',
+          'Device identity updated with backend (username: ${user?.username})');
     } catch (e) {
       AppLogger.warning('AuthService', 'Device linking deferred', e);
     }
   }
 }
-

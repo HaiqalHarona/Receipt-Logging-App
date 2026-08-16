@@ -68,12 +68,14 @@ class CloudSyncService {
     final username = AuthService.instance.currentUsername;
     final token = AuthService.instance.currentUserToken;
     if (username == null || token == null) {
-      AppLogger.warning('CloudSync', 'fetchMoreReceipts skipped: username or token null');
+      AppLogger.warning(
+          'CloudSync', 'fetchMoreReceipts skipped: username or token null');
       return 0;
     }
 
     try {
-      AppLogger.info('CloudSync', 'Executing fetchReceipts for user $username (offset: $offset, limit: $limit)...');
+      AppLogger.info('CloudSync',
+          'Executing fetchReceipts for user $username (offset: $offset, limit: $limit)...');
       final recordDtos = await BackendApiClient.instance.fetchReceipts(
         username: username,
         userToken: token,
@@ -86,19 +88,23 @@ class CloudSyncService {
         return 0;
       }
 
-      final domainReceipts = recordDtos.map((record) => _recordDtoToDomain(record)).toList();
+      final domainReceipts =
+          recordDtos.map((record) => _recordDtoToDomain(record)).toList();
       await ReceiptRepository.instance.saveAllReceipts(domainReceipts);
-      AppLogger.info('CloudSync', 'Loaded ${domainReceipts.length} receipts into Isar DB (offset: $offset)');
+      AppLogger.info('CloudSync',
+          'Loaded ${domainReceipts.length} receipts into Isar DB (offset: $offset)');
       return domainReceipts.length;
     } catch (e, st) {
-      AppLogger.error('CloudSync', 'fetchMoreReceipts failed with exception', e, st);
+      AppLogger.error(
+          'CloudSync', 'fetchMoreReceipts failed with exception', e, st);
       return 0;
     }
   }
 
   /// Lazy loads message history for [conversationId] via `GET /chat/history`
   /// if local messages in Isar DB are missing/empty.
-  Future<void> ensureChatHistoryLoaded(String conversationId, {int limit = 50}) async {
+  Future<void> ensureChatHistoryLoaded(String conversationId,
+      {int limit = 50}) async {
     final username = AuthService.instance.currentUsername;
     final token = AuthService.instance.currentUserToken;
     if (username == null || token == null) return;
@@ -113,9 +119,11 @@ class CloudSyncService {
       );
 
       if (messageDtos.isNotEmpty) {
-        final domainMessages = messageDtos.map((dto) => dto.toDomain()).toList();
+        final domainMessages =
+            messageDtos.map((dto) => dto.toDomain()).toList();
         await ChatMessageRepository.instance.saveBatch(domainMessages);
-        AppLogger.info('CloudSync', 'Loaded ${domainMessages.length} messages for conversation $conversationId');
+        AppLogger.info('CloudSync',
+            'Loaded ${domainMessages.length} messages for conversation $conversationId');
       }
     } catch (e, st) {
       AppLogger.error('CloudSync', 'ensureChatHistoryLoaded error', e, st);

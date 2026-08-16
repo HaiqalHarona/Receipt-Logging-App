@@ -48,8 +48,10 @@ class ConversationIsarModel {
     return ConversationIsarModel()
       ..conversationId = dto.id
       ..title = dto.title
-      ..createdAt = DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now()
-      ..updatedAt = DateTime.tryParse(dto.updatedAt)?.toLocal() ?? DateTime.now();
+      ..createdAt =
+          DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now()
+      ..updatedAt =
+          DateTime.tryParse(dto.updatedAt)?.toLocal() ?? DateTime.now();
   }
 
   /// Convert back to a network DTO for API calls.
@@ -66,9 +68,9 @@ class ConversationIsarModel {
 
 // ── SAFE QUERY EXTENSIONS ────────────────────────────────────────────────────
 
-extension ConversationIsarQueryFilters
-    on QueryBuilder<ConversationIsarModel, ConversationIsarModel, QFilterCondition> {
+extension ConversationIsarQueryFilters on QueryBuilder<ConversationIsarModel,
+    ConversationIsarModel, QFilterCondition> {
   /// Filter active (non-deleted) conversations only.
-  QueryBuilder<ConversationIsarModel, ConversationIsarModel, QAfterFilterCondition>
-      activeOnly() => deletedAtIsNull();
+  QueryBuilder<ConversationIsarModel, ConversationIsarModel,
+      QAfterFilterCondition> activeOnly() => deletedAtIsNull();
 }

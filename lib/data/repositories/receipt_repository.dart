@@ -30,7 +30,8 @@ class ReceiptRepository extends ChangeNotifier {
   List<Receipt> _receipts = [];
   bool _isInitialized = false;
 
-  bool get _isTestEnvironment => Platform.environment.containsKey('FLUTTER_TEST');
+  bool get _isTestEnvironment =>
+      Platform.environment.containsKey('FLUTTER_TEST');
 
   /// Returns an immutable list of all stored receipts.
   List<Receipt> get receipts {
@@ -48,22 +49,28 @@ class ReceiptRepository extends ChangeNotifier {
         await _migrateLegacyJsonIfNeeded();
         await _loadFromIsar();
         _isInitialized = true;
-        AppLogger.info('Isar', '[ReceiptRepository] Initialized successfully with ${_receipts.length} receipts.');
+        AppLogger.info('Isar',
+            '[ReceiptRepository] Initialized successfully with ${_receipts.length} receipts.');
       } catch (e, stackTrace) {
-        AppLogger.error('Isar', '[ReceiptRepository] Init error', e, stackTrace);
+        AppLogger.error(
+            'Isar', '[ReceiptRepository] Init error', e, stackTrace);
       }
     } else {
-      AppLogger.warning('Isar', '[ReceiptRepository] IsarService not initialized yet; deferring init.');
+      AppLogger.warning('Isar',
+          '[ReceiptRepository] IsarService not initialized yet; deferring init.');
     }
     notifyListeners();
   }
 
   /// Saves a single receipt to the Isar database.
   Future<void> saveReceipt(Receipt receipt) async {
-    final receiptToSave = receipt.createdAt != null ? receipt : receipt.copyWith(createdAt: DateTime.now());
+    final receiptToSave = receipt.createdAt != null
+        ? receipt
+        : receipt.copyWith(createdAt: DateTime.now());
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
-      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: saving receipt ${receiptToSave.id} (${receiptToSave.merchant})');
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: saving receipt ${receiptToSave.id} (${receiptToSave.merchant})');
       await isar.writeTxn(() async {
         final existing = await isar.receiptIsarModels
             .where()
@@ -78,7 +85,8 @@ class ReceiptRepository extends ChangeNotifier {
         }
         await isar.receiptIsarModels.put(model);
       });
-      AppLogger.debug('Isar', '[ReceiptRepository] Saved receipt ${receiptToSave.id} to Isar DB.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Saved receipt ${receiptToSave.id} to Isar DB.');
       await _loadFromIsar();
     } else {
       final index = _receipts.indexWhere((r) => r.id == receiptToSave.id);
@@ -87,7 +95,8 @@ class ReceiptRepository extends ChangeNotifier {
       } else {
         _receipts.insert(0, receiptToSave);
       }
-      AppLogger.debug('Isar', '[ReceiptRepository] Saved receipt ${receiptToSave.id} to in-memory store.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Saved receipt ${receiptToSave.id} to in-memory store.');
     }
     notifyListeners();
   }
@@ -96,10 +105,12 @@ class ReceiptRepository extends ChangeNotifier {
   Future<void> saveAllReceipts(List<Receipt> newReceipts) async {
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
-      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: batch saving ${newReceipts.length} receipts');
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: batch saving ${newReceipts.length} receipts');
       await isar.writeTxn(() async {
         for (final r in newReceipts) {
-          final receiptToSave = r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
+          final receiptToSave =
+              r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
           final existing = await isar.receiptIsarModels
               .where()
               .receiptIdEqualTo(receiptToSave.id)
@@ -114,19 +125,23 @@ class ReceiptRepository extends ChangeNotifier {
           await isar.receiptIsarModels.put(model);
         }
       });
-      AppLogger.debug('Isar', '[ReceiptRepository] Batch saved ${newReceipts.length} receipts to Isar DB.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Batch saved ${newReceipts.length} receipts to Isar DB.');
       await _loadFromIsar();
     } else {
       for (final r in newReceipts) {
-        final receiptToSave = r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
-        final index = _receipts.indexWhere((existing) => existing.id == receiptToSave.id);
+        final receiptToSave =
+            r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
+        final index =
+            _receipts.indexWhere((existing) => existing.id == receiptToSave.id);
         if (index >= 0) {
           _receipts[index] = receiptToSave;
         } else {
           _receipts.insert(0, receiptToSave);
         }
       }
-      AppLogger.debug('Isar', '[ReceiptRepository] Batch saved ${newReceipts.length} receipts to in-memory store.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Batch saved ${newReceipts.length} receipts to in-memory store.');
     }
     notifyListeners();
   }
@@ -144,21 +159,28 @@ class ReceiptRepository extends ChangeNotifier {
       final username = AuthService.instance.currentUsername;
       final userToken = AuthService.instance.currentUserToken;
       if (username != null && userToken != null) {
-        AppLogger.info('CloudSync', '[ReceiptRepository] Triggering backend DELETE /receipts/$id on Supabase...');
+        AppLogger.info('CloudSync',
+            '[ReceiptRepository] Triggering backend DELETE /receipts/$id on Supabase...');
         BackendApiClient.instance
             .deleteReceipt(
-              receiptId: id,
-              username: username,
-              userToken: userToken,
-            )
+          receiptId: id,
+          username: username,
+          userToken: userToken,
+        )
             .then((success) {
           if (success) {
-            AppLogger.info('CloudSync', '[ReceiptRepository] Cloud receipt $id deleted on Supabase.');
+            AppLogger.info('CloudSync',
+                '[ReceiptRepository] Cloud receipt $id deleted on Supabase.');
           } else {
-            AppLogger.warning('CloudSync', '[ReceiptRepository] Backend DELETE /receipts/$id returned false.');
+            AppLogger.warning('CloudSync',
+                '[ReceiptRepository] Backend DELETE /receipts/$id returned false.');
           }
         }).catchError((e, st) {
-          AppLogger.error('CloudSync', '[ReceiptRepository] Error executing DELETE /receipts/$id', e, st);
+          AppLogger.error(
+              'CloudSync',
+              '[ReceiptRepository] Error executing DELETE /receipts/$id',
+              e,
+              st);
         });
       }
     }
@@ -172,7 +194,8 @@ class ReceiptRepository extends ChangeNotifier {
     _deleteFromCloudIfSynced(id);
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
-      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: soft deleting receipt $id');
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: soft deleting receipt $id');
       await isar.writeTxn(() async {
         final existing = await isar.receiptIsarModels
             .where()
@@ -183,11 +206,13 @@ class ReceiptRepository extends ChangeNotifier {
           await isar.receiptIsarModels.put(existing);
         }
       });
-      AppLogger.debug('Isar', '[ReceiptRepository] Soft deleted receipt $id in Isar DB.');
+      AppLogger.debug(
+          'Isar', '[ReceiptRepository] Soft deleted receipt $id in Isar DB.');
       await _loadFromIsar();
     } else {
       _receipts.removeWhere((r) => r.id == id);
-      AppLogger.debug('Isar', '[ReceiptRepository] Soft deleted receipt $id from in-memory store.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Soft deleted receipt $id from in-memory store.');
     }
     notifyListeners();
   }
@@ -197,7 +222,8 @@ class ReceiptRepository extends ChangeNotifier {
     _deleteFromCloudIfSynced(id);
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
-      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: deleting receipt $id');
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: deleting receipt $id');
       await isar.writeTxn(() async {
         final existing = await isar.receiptIsarModels
             .where()
@@ -207,11 +233,13 @@ class ReceiptRepository extends ChangeNotifier {
           await isar.receiptIsarModels.delete(existing.id);
         }
       });
-      AppLogger.debug('Isar', '[ReceiptRepository] Permanently deleted receipt $id from Isar DB.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Permanently deleted receipt $id from Isar DB.');
       await _loadFromIsar();
     } else {
       _receipts.removeWhere((r) => r.id == id);
-      AppLogger.debug('Isar', '[ReceiptRepository] Permanently deleted receipt $id from in-memory store.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Permanently deleted receipt $id from in-memory store.');
     }
     notifyListeners();
   }
@@ -220,15 +248,18 @@ class ReceiptRepository extends ChangeNotifier {
   Future<void> clearAll() async {
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
-      AppLogger.info('Isar', '[ReceiptRepository] Transaction write: clearing receiptIsarModels collection');
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: clearing receiptIsarModels collection');
       await isar.writeTxn(() async {
         await isar.receiptIsarModels.clear();
       });
-      AppLogger.debug('Isar', '[ReceiptRepository] Cleared all receipts from Isar DB.');
+      AppLogger.debug(
+          'Isar', '[ReceiptRepository] Cleared all receipts from Isar DB.');
       await _loadFromIsar();
     } else {
       _receipts.clear();
-      AppLogger.debug('Isar', '[ReceiptRepository] Cleared all receipts from in-memory store.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Cleared all receipts from in-memory store.');
     }
     notifyListeners();
   }
@@ -252,10 +283,12 @@ class ReceiptRepository extends ChangeNotifier {
     try {
       final isar = IsarService.isar;
       final isarModels = await isar.receiptIsarModels.where().findAll();
-      AppLogger.debug('Isar', '[ReceiptRepository] Query result: fetched ${isarModels.length} receiptIsarModels from Isar DB.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Query result: fetched ${isarModels.length} receiptIsarModels from Isar DB.');
       _receipts = isarModels.map((m) => m.toDomain()).toList();
     } catch (e, stackTrace) {
-      AppLogger.error('Isar', '[ReceiptRepository] Load from Isar error', e, stackTrace);
+      AppLogger.error(
+          'Isar', '[ReceiptRepository] Load from Isar error', e, stackTrace);
       _receipts = [];
     }
   }
@@ -264,7 +297,8 @@ class ReceiptRepository extends ChangeNotifier {
     try {
       final isar = IsarService.isar;
       final count = await isar.receiptIsarModels.count();
-      AppLogger.debug('Isar', '[ReceiptRepository] Query result: receipt count in Isar DB is $count.');
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Query result: receipt count in Isar DB is $count.');
       if (count > 0) return; // Already has data in Isar
 
       final dir = await getApplicationDocumentsDirectory();
@@ -277,17 +311,20 @@ class ReceiptRepository extends ChangeNotifier {
             .where((r) => !r.id.startsWith('sample-'))
             .toList();
         if (legacyReceipts.isNotEmpty) {
-          AppLogger.info('Isar', '[ReceiptRepository] Transaction write: migrating ${legacyReceipts.length} legacy receipts to Isar DB');
+          AppLogger.info('Isar',
+              '[ReceiptRepository] Transaction write: migrating ${legacyReceipts.length} legacy receipts to Isar DB');
           await isar.writeTxn(() async {
             for (final r in legacyReceipts) {
               await isar.receiptIsarModels.put(ReceiptIsarModel.fromDomain(r));
             }
           });
-          AppLogger.debug('Isar', '[ReceiptRepository] Successfully migrated legacy receipts to Isar DB.');
+          AppLogger.debug('Isar',
+              '[ReceiptRepository] Successfully migrated legacy receipts to Isar DB.');
         }
       }
     } catch (e, stackTrace) {
-      AppLogger.error('Isar', '[ReceiptRepository] Migration error', e, stackTrace);
+      AppLogger.error(
+          'Isar', '[ReceiptRepository] Migration error', e, stackTrace);
     }
   }
 
@@ -308,11 +345,31 @@ class ReceiptRepository extends ChangeNotifier {
           'Paper Towels 6pk - \$14.99',
         ],
         lineItems: [
-          LineItem(description: 'Organic Milk 1 Gal', quantity: 1, unitPrice: 4.99, totalPrice: 4.99),
-          LineItem(description: 'Avocados Bag 5ct', quantity: 1, unitPrice: 5.49, totalPrice: 5.49),
-          LineItem(description: 'Almond Butter 16oz', quantity: 1, unitPrice: 7.99, totalPrice: 7.99),
-          LineItem(description: 'Greek Yogurt 32oz', quantity: 1, unitPrice: 6.29, totalPrice: 6.29),
-          LineItem(description: 'Paper Towels 6pk', quantity: 1, unitPrice: 14.99, totalPrice: 14.99),
+          LineItem(
+              description: 'Organic Milk 1 Gal',
+              quantity: 1,
+              unitPrice: 4.99,
+              totalPrice: 4.99),
+          LineItem(
+              description: 'Avocados Bag 5ct',
+              quantity: 1,
+              unitPrice: 5.49,
+              totalPrice: 5.49),
+          LineItem(
+              description: 'Almond Butter 16oz',
+              quantity: 1,
+              unitPrice: 7.99,
+              totalPrice: 7.99),
+          LineItem(
+              description: 'Greek Yogurt 32oz',
+              quantity: 1,
+              unitPrice: 6.29,
+              totalPrice: 6.29),
+          LineItem(
+              description: 'Paper Towels 6pk',
+              quantity: 1,
+              unitPrice: 14.99,
+              totalPrice: 14.99),
         ],
       ),
       Receipt(
@@ -326,7 +383,11 @@ class ReceiptRepository extends ChangeNotifier {
           'Regular Unleaded Fuel (14.25 Gal) - \$54.20',
         ],
         lineItems: [
-          LineItem(description: 'Regular Unleaded Fuel (14.25 Gal)', quantity: 1, unitPrice: 54.20, totalPrice: 54.20),
+          LineItem(
+              description: 'Regular Unleaded Fuel (14.25 Gal)',
+              quantity: 1,
+              unitPrice: 54.20,
+              totalPrice: 54.20),
         ],
       ),
       Receipt(
@@ -340,7 +401,11 @@ class ReceiptRepository extends ChangeNotifier {
           'Apple Pencil Pro - \$129.00',
         ],
         lineItems: [
-          LineItem(description: 'Apple Pencil Pro', quantity: 1, unitPrice: 129.00, totalPrice: 129.00),
+          LineItem(
+              description: 'Apple Pencil Pro',
+              quantity: 1,
+              unitPrice: 129.00,
+              totalPrice: 129.00),
         ],
       ),
       Receipt(
@@ -354,7 +419,11 @@ class ReceiptRepository extends ChangeNotifier {
           'Iced New Orleans Style Coffee - \$6.25',
         ],
         lineItems: [
-          LineItem(description: 'Iced New Orleans Style Coffee', quantity: 2, unitPrice: 6.25, totalPrice: 12.50),
+          LineItem(
+              description: 'Iced New Orleans Style Coffee',
+              quantity: 2,
+              unitPrice: 6.25,
+              totalPrice: 12.50),
         ],
       ),
       Receipt(
@@ -371,10 +440,26 @@ class ReceiptRepository extends ChangeNotifier {
           'Artisanal Sourdough Loaf - \$6.99',
         ],
         lineItems: [
-          LineItem(description: 'Wild Caught Salmon Fillets', quantity: 1, unitPrice: 28.50, totalPrice: 28.50),
-          LineItem(description: 'Organic Baby Spinach', quantity: 1, unitPrice: 3.99, totalPrice: 3.99),
-          LineItem(description: 'Free Range Large Eggs Dozen', quantity: 1, unitPrice: 7.49, totalPrice: 7.49),
-          LineItem(description: 'Artisanal Sourdough Loaf', quantity: 1, unitPrice: 6.99, totalPrice: 6.99),
+          LineItem(
+              description: 'Wild Caught Salmon Fillets',
+              quantity: 1,
+              unitPrice: 28.50,
+              totalPrice: 28.50),
+          LineItem(
+              description: 'Organic Baby Spinach',
+              quantity: 1,
+              unitPrice: 3.99,
+              totalPrice: 3.99),
+          LineItem(
+              description: 'Free Range Large Eggs Dozen',
+              quantity: 1,
+              unitPrice: 7.49,
+              totalPrice: 7.49),
+          LineItem(
+              description: 'Artisanal Sourdough Loaf',
+              quantity: 1,
+              unitPrice: 6.99,
+              totalPrice: 6.99),
         ],
       ),
     ];

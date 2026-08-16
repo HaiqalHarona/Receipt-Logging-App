@@ -48,7 +48,8 @@ class CategoryService extends ChangeNotifier {
   final List<CustomCategory> _customCategories = [];
   bool _isInitialized = false;
 
-  List<CustomCategory> get customCategories => List.unmodifiable(_customCategories);
+  List<CustomCategory> get customCategories =>
+      List.unmodifiable(_customCategories);
 
   bool get isMaxReached => _customCategories.length >= maxCustomCategories;
 
@@ -78,7 +79,8 @@ class CategoryService extends ChangeNotifier {
   }
 
   /// Adds a new custom category if limit is not reached and name is unique.
-  Future<bool> addCategory(String name, int colorValue, int iconCodePoint) async {
+  Future<bool> addCategory(
+      String name, int colorValue, int iconCodePoint) async {
     await init();
     final cleanName = CategoryUtils.sanitize(name).trim();
     if (cleanName.isEmpty) return false;
@@ -116,7 +118,8 @@ class CategoryService extends ChangeNotifier {
   Future<void> _saveToDisk() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String encoded = jsonEncode(_customCategories.map((c) => c.toJson()).toList());
+      final String encoded =
+          jsonEncode(_customCategories.map((c) => c.toJson()).toList());
       await prefs.setString(_storageKey, encoded);
     } catch (e) {
       debugPrint('[CategoryService] Error saving custom categories: $e');

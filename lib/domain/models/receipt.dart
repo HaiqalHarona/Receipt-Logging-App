@@ -78,10 +78,9 @@ class Receipt {
   }
 
   factory Receipt.fromJson(Map<String, dynamic> json) {
-    final parsedItems = (json['items'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        const <String>[];
+    final parsedItems =
+        (json['items'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            const <String>[];
 
     List<LineItem> parsedLineItems = [];
     if (json['lineItems'] is List) {
@@ -106,7 +105,8 @@ class Receipt {
     }
 
     return Receipt(
-      id: json['id'] as String? ?? 'receipt_${DateTime.now().millisecondsSinceEpoch}',
+      id: json['id'] as String? ??
+          'receipt_${DateTime.now().millisecondsSinceEpoch}',
       merchant: json['merchant'] as String? ?? 'Unknown Merchant',
       date: json['date'] as String? ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
@@ -126,7 +126,8 @@ class Receipt {
       double? price;
 
       // Match price pattern like "- $4.99" or "$4.99" or "4.99" at end of string
-      final priceMatch = RegExp(r'[-–—]?\s*\$?\s*(\d+(?:\.\d{1,2})?)\s*$').firstMatch(desc);
+      final priceMatch =
+          RegExp(r'[-–—]?\s*\$?\s*(\d+(?:\.\d{1,2})?)\s*$').firstMatch(desc);
       if (priceMatch != null) {
         price = double.tryParse(priceMatch.group(1) ?? '');
         desc = desc.substring(0, priceMatch.start).trim();

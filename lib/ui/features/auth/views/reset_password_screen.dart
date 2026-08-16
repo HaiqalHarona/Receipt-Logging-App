@@ -21,7 +21,8 @@ class ResetPasswordScreen extends StatefulWidget {
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -110,7 +111,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       padding: const EdgeInsets.only(top: 6, left: 4),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 13),
+          const Icon(Icons.error_outline_rounded,
+              color: Colors.redAccent, size: 13),
           const SizedBox(width: 5),
           Expanded(
             child: Text(
@@ -193,7 +195,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
                       Icon(Icons.lock_rounded, color: textSecondary, size: 20),
@@ -204,19 +207,25 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           obscureText: _obscurePassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           onChanged: (_) {
-                            if (_passwordError != null) setState(() => _passwordError = null);
+                            if (_passwordError != null)
+                              setState(() => _passwordError = null);
                           },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => setState(() => _obscurePassword = !_obscurePassword),
+                        onTap: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
                         child: Icon(
-                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscurePassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
                           color: textSecondary,
                           size: 20,
                         ),
@@ -239,10 +248,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
-                      Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
+                      Icon(Icons.lock_outline_rounded,
+                          color: textSecondary, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -250,19 +261,25 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           obscureText: _obscureConfirmPassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           onChanged: (_) {
-                            if (_confirmError != null) setState(() => _confirmError = null);
+                            if (_confirmError != null)
+                              setState(() => _confirmError = null);
                           },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                        onTap: () => setState(() =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword),
                         child: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
                           color: textSecondary,
                           size: 20,
                         ),
@@ -284,7 +301,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.5, color: Colors.white),
                             )
                           : const Text(
                               "Reset Password",

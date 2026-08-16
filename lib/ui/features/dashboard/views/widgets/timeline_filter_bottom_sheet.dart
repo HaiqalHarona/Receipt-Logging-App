@@ -16,12 +16,28 @@ class TimelineFilterBottomSheet extends StatelessWidget {
   });
 
   static const List<_TimelineOption> _options = [
-    _TimelineOption(filter: TimelineFilter.thisMonth, label: '1m', subtitle: 'This Month (Daily breakdown)'),
-    _TimelineOption(filter: TimelineFilter.threeMonths, label: '3mo', subtitle: 'Last 3 Months'),
-    _TimelineOption(filter: TimelineFilter.sixMonths, label: '6mo', subtitle: 'Last 6 Months'),
-    _TimelineOption(filter: TimelineFilter.twelveMonths, label: '12mo', subtitle: 'Last 12 Months'),
-    _TimelineOption(filter: TimelineFilter.ytd, label: 'YTD', subtitle: 'Year to Date'),
-    _TimelineOption(filter: TimelineFilter.allTime, label: 'All', subtitle: 'All-time (since first receipt)'),
+    _TimelineOption(
+        filter: TimelineFilter.thisMonth,
+        label: '1m',
+        subtitle: 'This Month (Daily breakdown)'),
+    _TimelineOption(
+        filter: TimelineFilter.threeMonths,
+        label: '3mo',
+        subtitle: 'Last 3 Months'),
+    _TimelineOption(
+        filter: TimelineFilter.sixMonths,
+        label: '6mo',
+        subtitle: 'Last 6 Months'),
+    _TimelineOption(
+        filter: TimelineFilter.twelveMonths,
+        label: '12mo',
+        subtitle: 'Last 12 Months'),
+    _TimelineOption(
+        filter: TimelineFilter.ytd, label: 'YTD', subtitle: 'Year to Date'),
+    _TimelineOption(
+        filter: TimelineFilter.allTime,
+        label: 'All',
+        subtitle: 'All-time (since first receipt)'),
   ];
 
   @override
@@ -74,7 +90,8 @@ class TimelineFilterBottomSheet extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: () => Navigator.of(context).pop(),
-                child: Icon(Icons.close_rounded, color: textSecondary, size: 20),
+                child:
+                    Icon(Icons.close_rounded, color: textSecondary, size: 20),
               ),
             ],
           ),
@@ -95,16 +112,20 @@ class TimelineFilterBottomSheet extends StatelessWidget {
                     depth: isSelected ? -2 : 3,
                     intensity: 0.8,
                     color: isSelected ? accent : baseColor,
-                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
+                    boxShape:
+                        NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
                       Container(
                         width: 44,
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.white.withValues(alpha: 0.2) : accent.withValues(alpha: 0.15),
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : accent.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

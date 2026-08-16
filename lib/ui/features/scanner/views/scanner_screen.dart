@@ -268,7 +268,8 @@ class _ScannerScreenState extends State<ScannerScreen>
                         accent: accent,
                         textSecondary: textSecondary,
                         onSingleSelect: () {
-                          AppLogger.info('UI', 'User selected Single Scan mode');
+                          AppLogger.info(
+                              'UI', 'User selected Single Scan mode');
                           setState(() {
                             _isBulkMode = false;
                             _queuedImages.clear();

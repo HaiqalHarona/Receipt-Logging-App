@@ -51,9 +51,11 @@ class DeviceIdentityService {
       if (_deviceId == null || _deviceId!.isEmpty) {
         _deviceId = 'dev_${uuid.v4()}';
         await prefs.setString(_keyDeviceId, _deviceId!);
-        AppLogger.info('DeviceIdentity', 'Generated new persistent deviceId: $_deviceId');
+        AppLogger.info(
+            'DeviceIdentity', 'Generated new persistent deviceId: $_deviceId');
       } else {
-        AppLogger.info('DeviceIdentity', 'Loaded existing persistent deviceId: $_deviceId');
+        AppLogger.info('DeviceIdentity',
+            'Loaded existing persistent deviceId: $_deviceId');
       }
 
       // Read or generate persistent deviceToken
@@ -70,9 +72,11 @@ class DeviceIdentityService {
           deviceId: _deviceId!,
           deviceToken: _deviceToken!,
         );
-        AppLogger.info('DeviceIdentity', 'Device registered with backend successfully');
+        AppLogger.info(
+            'DeviceIdentity', 'Device registered with backend successfully');
       } catch (e) {
-        AppLogger.warning('DeviceIdentity', 'Backend device registration deferred', e);
+        AppLogger.warning(
+            'DeviceIdentity', 'Backend device registration deferred', e);
       }
 
       _isInitialized = true;
@@ -113,23 +117,27 @@ class DeviceIdentityService {
           oldDeviceToken: oldToken,
           newDeviceToken: newToken,
         );
-        AppLogger.info('DeviceIdentity', 'Rotated device token with backend successfully');
+        AppLogger.info(
+            'DeviceIdentity', 'Rotated device token with backend successfully');
       } else {
         await apiClient.registerDevice(
           deviceId: _deviceId!,
           deviceToken: newToken,
         );
-        AppLogger.info('DeviceIdentity', 'Initial device token registered with backend');
+        AppLogger.info(
+            'DeviceIdentity', 'Initial device token registered with backend');
       }
 
       _deviceToken = newToken;
       await prefs.setString(_keyDeviceToken, _deviceToken!);
-      AppLogger.info('DeviceIdentity', 'Saved new deviceToken locally for deviceId: $_deviceId');
+      AppLogger.info('DeviceIdentity',
+          'Saved new deviceToken locally for deviceId: $_deviceId');
     } catch (e, st) {
       AppLogger.error('DeviceIdentity', 'Token rotation error', e, st);
     }
   }
 
   /// Alias for backward compatibility.
-  Future<void> resetToNewGuestDevice(BackendApiClient apiClient) => rotateDeviceToken(apiClient);
+  Future<void> resetToNewGuestDevice(BackendApiClient apiClient) =>
+      rotateDeviceToken(apiClient);
 }
