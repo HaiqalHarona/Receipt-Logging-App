@@ -18,6 +18,7 @@ import '../../features/settings/views/user_settings_screen.dart';
 import '../../features/scanner/views/scanner_screen.dart';
 
 import '../../../cloud/services/auth_service.dart';
+import '../../../../services/scan_batch_controller.dart';
 
 Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widget child}) {
   return CustomTransitionPage<void>(
@@ -29,6 +30,7 @@ Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widge
       final curvedAnimation = CurvedAnimation(
         parent: animation,
         curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
       );
       return FadeTransition(
         opacity: curvedAnimation,
@@ -47,12 +49,20 @@ final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
+  refreshListenable: Listenable.merge([
+    AuthService.instance,
+    ScanBatchController.instance,
+  ]),
   initialLocation: '/dashboard',
   redirect: (BuildContext context, GoRouterState state) {
     final isLoggedIn = AuthService.instance.isLoggedIn;
+    final isScanning = ScanBatchController.instance.isScanning;
     final path = state.matchedLocation;
     final isAuthRoute = path == '/login' || path == '/signup' || path == '/auth';
 
+    if (isScanning && path == '/scanner') {
+      return '/dashboard';
+    }
     if (isLoggedIn && isAuthRoute) {
       return '/dashboard';
     }

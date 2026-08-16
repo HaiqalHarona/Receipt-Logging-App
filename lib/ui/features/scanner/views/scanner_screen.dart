@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../../domain/models/receipt.dart';
+import '../../../../services/currency_service.dart';
 import '../../../../services/scan_batch_controller.dart';
 import '../../../../services/app_logger_service.dart';
 
@@ -29,6 +31,7 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   bool _isFlashOn = false;
   bool _isBulkMode = false;
+  bool _isSubmitting = false;
   final List<XFile> _queuedImages = [];
 
   final ImagePicker _picker = ImagePicker();
@@ -49,15 +52,11 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final CameraController? cameraController = _cameraController;
-
-    // App state changed before we got the chance to initialize.
     if (cameraController == null || !cameraController.value.isInitialized) {
       return;
     }
-
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive) {
       cameraController.dispose();
-      _isCameraInitialized = false;
     } else if (state == AppLifecycleState.resumed) {
       _initCamera();
     }
@@ -66,22 +65,27 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _initCamera() async {
     try {
       _cameras = await availableCameras();
-      if (_cameras != null && _cameras!.isNotEmpty) {
-        _cameraController = CameraController(
-          _cameras!.first,
-          ResolutionPreset.high,
-          enableAudio: false,
-        );
-        await _cameraController!.initialize();
-        if (mounted) {
-          setState(() {
-            _isCameraInitialized = true;
-          });
-          AppLogger.info('UI', 'Camera initialized successfully');
-        }
+      if (_cameras == null || _cameras!.isEmpty) {
+        AppLogger.warning('UI', 'No cameras available on this device');
+        return;
+      }
+
+      final camera = _cameras!.first;
+      _cameraController = CameraController(
+        camera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = true;
+        });
+        AppLogger.info('UI', 'Camera successfully initialized');
       }
     } catch (e) {
-      AppLogger.warning('UI', 'Camera init fallback (unavailable): $e');
+      AppLogger.error('UI', 'Failed to initialize camera', e);
     }
   }
 
@@ -94,86 +98,81 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   Future<void> _toggleFlash() async {
-    if (_cameraController != null && _isCameraInitialized) {
-      try {
-        _isFlashOn = !_isFlashOn;
-        await _cameraController!.setFlashMode(
-          _isFlashOn ? FlashMode.torch : FlashMode.off,
-        );
-        setState(() {});
-      } catch (_) {}
-    } else {
-      setState(() {
-        _isFlashOn = !_isFlashOn;
-      });
+    if (_cameraController == null || !_isCameraInitialized) return;
+    try {
+      if (_isFlashOn) {
+        await _cameraController!.setFlashMode(FlashMode.off);
+        setState(() => _isFlashOn = false);
+        AppLogger.info('UI', 'Camera flash turned OFF');
+      } else {
+        await _cameraController!.setFlashMode(FlashMode.torch);
+        setState(() => _isFlashOn = true);
+        AppLogger.info('UI', 'Camera flash turned ON');
+      }
+    } catch (e) {
+      AppLogger.error('UI', 'Error toggling camera flash', e);
     }
-    AppLogger.info('UI', 'User toggled flash (on: $_isFlashOn)');
   }
 
   Future<void> _capturePhoto() async {
-    AppLogger.info('UI', 'User tapped Capture Photo');
-    if (_queuedImages.length >= 10) {
-      AppLogger.warning('UI', 'Capture photo blocked: maximum 10 receipts limit reached');
-      _showToast("Maximum 10 receipts limit reached");
+    if (_cameraController == null || !_isCameraInitialized || _isSubmitting) return;
+
+    if (_isBulkMode && _queuedImages.length >= 10) {
+      _showToast("Maximum of 10 receipts reached for bulk scan.");
       return;
     }
 
-    XFile? capturedFile;
-    if (_cameraController != null && _isCameraInitialized) {
-      try {
-        capturedFile = await _cameraController!.takePicture();
-      } catch (e) {
-        AppLogger.error('UI', 'Failed to capture photo', e);
-        _showToast("Failed to capture photo. Please try again.");
-        return;
+    try {
+      final XFile photo = await _cameraController!.takePicture();
+      AppLogger.info('UI', 'Photo captured: ${photo.path}');
+
+      if (_isBulkMode) {
+        setState(() {
+          _queuedImages.add(photo);
+        });
+      } else {
+        await ScanBatchController.instance.startBatchScan([photo]);
       }
-    } else {
-      AppLogger.warning('UI', 'Capture photo failed: Camera unavailable');
-      _showToast("Camera unavailable. Please choose an image from Gallery or pick a file.");
-      return;
-    }
-
-    if (capturedFile.path.isEmpty) return;
-    final file = capturedFile;
-
-    if (_isBulkMode) {
-      setState(() {
-        _queuedImages.add(file);
-      });
-    } else {
-      _queuedImages.clear();
-      _queuedImages.add(file);
-      await _processQueueAndNavigate();
+    } catch (e) {
+      AppLogger.error('UI', 'Error capturing photo', e);
+      _showToast("Failed to capture image: $e");
     }
   }
 
   Future<void> _pickFromGallery() async {
-    AppLogger.info('UI', 'User tapped Gallery picker (bulkMode: $_isBulkMode)');
-    if (_queuedImages.length >= 10) {
-      AppLogger.warning('UI', 'Gallery picker blocked: maximum 10 receipts limit reached');
-      _showToast("Maximum 10 receipts limit reached");
-      return;
-    }
+    if (_isSubmitting) return;
 
-    if (_isBulkMode) {
-      final List<XFile> selected = await _picker.pickMultiImage();
-      if (selected.isNotEmpty) {
-        final remainingSlots = 10 - _queuedImages.length;
-        final toAdd = selected.take(remainingSlots).toList();
-        setState(() {
-          _queuedImages.addAll(toAdd);
-        });
-        if (selected.length > remainingSlots) {
-          _showToast("Only added $remainingSlots receipts (10 max limit)");
+    try {
+      if (_isBulkMode) {
+        final remaining = 10 - _queuedImages.length;
+        if (remaining <= 0) {
+          _showToast("Maximum of 10 receipts reached for bulk scan.");
+          return;
+        }
+
+        final List<XFile> pickedFiles = await _picker.pickMultiImage(
+          limit: remaining,
+        );
+
+        if (pickedFiles.isNotEmpty) {
+          setState(() {
+            _queuedImages.addAll(pickedFiles.take(remaining));
+          });
+          AppLogger.info('UI', 'Imported ${pickedFiles.length} image(s) into bulk queue');
+        }
+      } else {
+        final XFile? image = await _picker.pickImage(
+          source: ImageSource.gallery,
+        );
+
+        if (image != null) {
+          AppLogger.info('UI', 'Single image picked from gallery: ${image.path}');
+          await ScanBatchController.instance.startBatchScan([image]);
         }
       }
-    } else {
-      final XFile? single = await _picker.pickImage(source: ImageSource.gallery);
-      if (single != null) {
-        _queuedImages.clear();
-        _queuedImages.add(single);
-        await _processQueueAndNavigate();
-      }
+    } catch (e) {
+      AppLogger.error('UI', 'Error picking images from gallery', e);
+      _showToast("Failed to pick image: $e");
     }
   }
 
@@ -185,16 +184,49 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   Future<void> _processQueueAndNavigate() async {
-    if (_queuedImages.isEmpty) return;
+    if (_queuedImages.isEmpty || _isSubmitting) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
 
     AppLogger.info('UI', 'Submitting ${_queuedImages.length} image(s) to async batch scan pipeline');
 
-    // Delegate to ScanBatchController which:
-    //  1. POSTs images to /scan/parse-many (HTTP 202)
-    //  2. Navigates user to /dashboard
-    //  3. Opens SSE stream
-    //  4. Shows & updates the persistent ScanProgressSnackBar
-    await ScanBatchController.instance.startBatchScan(_queuedImages);
+    try {
+      await ScanBatchController.instance.startBatchScan(_queuedImages);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  void _handleManualEntry() {
+    AppLogger.info('UI', 'User tapped Manual entry on ScannerScreen');
+    final now = DateTime.now();
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final formattedDate =
+        '${months[now.month - 1]} ${now.day.toString().padLeft(2, '0')}, ${now.year}';
+    final currency = CurrencyService.instance.currentCurrency;
+
+    final manualReceipt = Receipt(
+      id: 'res-manual-${DateTime.now().millisecondsSinceEpoch}',
+      merchant: '',
+      date: formattedDate,
+      amount: 0.0,
+      currency: currency,
+      category: '',
+      imagePath: null,
+      items: const [],
+      lineItems: const [],
+    );
+
+    context.push('/verification', extra: [manualReceipt]);
   }
 
   void _showToast(String message) {
@@ -272,16 +304,12 @@ class _ScannerScreenState extends State<ScannerScreen>
                         accent: accent,
                         textSecondary: textSecondary,
                         isBulkMode: _isBulkMode,
+                        isProcessing: _isSubmitting,
                         queuedCount: _queuedImages.length,
                         onPickGallery: _pickFromGallery,
                         onCapture: _capturePhoto,
                         onProcessQueue: _processQueueAndNavigate,
-                        onManualEntry: () {
-                          AppLogger.info('UI', 'User tapped Manual entry on ScannerScreen');
-                          _queuedImages.clear();
-                          _queuedImages.add(XFile(''));
-                          _processQueueAndNavigate();
-                        },
+                        onManualEntry: _handleManualEntry,
                       ),
                     ],
                   ),
@@ -670,6 +698,7 @@ class _ScannerBottomControls extends StatelessWidget {
   final Color accent;
   final Color textSecondary;
   final bool isBulkMode;
+  final bool isProcessing;
   final int queuedCount;
   final VoidCallback onPickGallery;
   final VoidCallback onCapture;
@@ -681,6 +710,7 @@ class _ScannerBottomControls extends StatelessWidget {
     required this.accent,
     required this.textSecondary,
     required this.isBulkMode,
+    required this.isProcessing,
     required this.queuedCount,
     required this.onPickGallery,
     required this.onCapture,
@@ -703,10 +733,10 @@ class _ScannerBottomControls extends StatelessWidget {
           _buildSideButton(
             icon: Icons.photo_library_rounded,
             label: isBulkMode ? "Import" : "Gallery",
-            onTap: onPickGallery,
+            onTap: isProcessing ? () {} : onPickGallery,
           ),
           GestureDetector(
-            onTap: onCapture,
+            onTap: isProcessing ? null : onCapture,
             child: Neumorphic(
               style: NeumorphicStyle(
                 depth: 8,
@@ -725,7 +755,7 @@ class _ScannerBottomControls extends StatelessWidget {
                   height: 66,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: queuedCount >= 10 ? Colors.grey : accent,
+                    color: (queuedCount >= 10 || isProcessing) ? Colors.grey : accent,
                     boxShadow: [
                       BoxShadow(
                         color: accent.withValues(alpha: 0.4),
@@ -745,29 +775,38 @@ class _ScannerBottomControls extends StatelessWidget {
           ),
           if (isBulkMode && queuedCount > 0)
             GestureDetector(
-              onTap: onProcessQueue,
+              onTap: isProcessing ? null : onProcessQueue,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Neumorphic(
                     style: NeumorphicStyle(
-                      depth: 6,
-                      intensity: 0.9,
+                      depth: isProcessing ? -2 : 6,
+                      intensity: isProcessing ? 0.5 : 0.9,
                       boxShape: const NeumorphicBoxShape.circle(),
-                      color: accent,
+                      color: isProcessing ? accent.withValues(alpha: 0.7) : accent,
                     ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Icon(
-                        Icons.check_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: isProcessing
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Process ($queuedCount)",
+                    isProcessing ? "Processing…" : "Process ($queuedCount)",
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -781,7 +820,7 @@ class _ScannerBottomControls extends StatelessWidget {
             _buildSideButton(
               icon: Icons.keyboard_rounded,
               label: "Manual",
-              onTap: onManualEntry,
+              onTap: isProcessing ? () {} : onManualEntry,
             ),
         ],
       ),

@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../domain/models/receipt.dart';
+import '../../../../services/scan_batch_controller.dart';
 import '../view_models/verification_view_model.dart';
 import 'widgets/verification_card_widget.dart';
 
@@ -22,6 +23,13 @@ class VerificationScreen extends StatefulWidget {
 class _VerificationScreenState extends State<VerificationScreen> {
   final VerificationViewModel _viewModel = VerificationViewModel();
   bool _isInitialized = false;
+
+  @override
+  void dispose() {
+    ScanBatchController.instance.clearCompletedReceipts();
+    _viewModel.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -59,6 +67,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     if (_viewModel.receipts.isEmpty) return;
     _viewModel.saveAllReceipts(() {
       if (!mounted) return;
+      ScanBatchController.instance.clearCompletedReceipts();
       AppSnackBar.show(
         context,
         message: "Successfully saved ${_viewModel.receipts.length} receipt${_viewModel.receipts.length > 1 ? 's' : ''}!",
@@ -139,7 +148,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
                     else ...[
                       // Editable Receipt Card
                       VerificationCardWidget(
-                        receipt: currentReceipt!,
+                        key: ValueKey(currentReceipt!.id),
+                        receipt: currentReceipt,
                         onChanged: (updated) {
                           _viewModel.updateReceipt(updated);
                         },

@@ -49,9 +49,16 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   @override
   void didUpdateWidget(covariant VerificationCardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.receipt.id != widget.receipt.id) {
+    if (oldWidget.receipt.id != widget.receipt.id || oldWidget.receipt != widget.receipt) {
+      _disposeControllers();
       _initControllers();
     }
+  }
+
+  void _disposeControllers() {
+    _merchantController.dispose();
+    _dateController.dispose();
+    _amountController.dispose();
   }
 
   void _initControllers() {

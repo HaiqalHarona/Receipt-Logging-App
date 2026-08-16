@@ -40,7 +40,7 @@ The **Receipt Logger Backend** provides high-speed, intelligent multimodal recei
 - **Async Bulk Receipt Extraction & Streaming** (`/api/v1/scan`):
   - `POST /api/v1/scan/parse-many`: Accepts 1 to 10 receipt image files (`multipart/form-data`), enqueues background processing jobs, and returns `batch_id`.
   - `GET /api/v1/scan/parse-many/{batch_id}`: Retrieves job status (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`) and extracted JSON results (enforces batch ownership).
-  - `GET /api/v1/scan/parse-many/{batch_id}/stream`: Real-time SSE stream emitting `batch_complete` JSON events when extraction finishes (supports User & Guest modes).
+  - `GET /api/v1/scan/parse-many/{batch_id}/stream`: Real-time SSE stream emitting `progress` (`completed_jobs`/`total_jobs`) and `batch_complete` JSON events when extraction finishes (supports User & Guest modes).
   - `POST /api/v1/scan/parse` (`[DEPRECATED]`): Legacy synchronous single receipt parse endpoint.
 - **Session-Scoped Receipt CRUD Endpoints** (`/api/v1/receipts`):
   - `GET /api/v1/receipts/`: Retrieves all non-deleted receipts owned by session identity (user or guest device).

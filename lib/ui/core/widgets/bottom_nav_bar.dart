@@ -1,6 +1,8 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../services/scan_batch_controller.dart';
 import '../theme/theme_controller.dart';
+import 'scan_progress_snack_bar.dart';
 
 class AppBottomNavBar extends StatelessWidget {
   final String currentPath;
@@ -12,14 +14,19 @@ class AppBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder( 
-      animation: AppThemeController.instance,
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        ScanBatchController.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final isDark = controller.themeMode == ThemeMode.dark;
         final accent = controller.accentColor;
         final inactiveColor = controller.secondaryTextColor;
         final navBg = controller.currentBaseColor;
+        final isScanning = ScanBatchController.instance.isScanning;
+        final hasReceiptsToReview = ScanBatchController.instance.hasReceiptsToReview;
 
         final screenWidth = MediaQuery.of(context).size.width;
         final margin5Percent = screenWidth * 0.05;
@@ -93,13 +100,15 @@ class AppBottomNavBar extends StatelessWidget {
                   ),
                 ),
 
-                // Camera Action Button Layered Above App Bar
+                // Camera / Pencil Action Button Layered Above App Bar
                 Positioned(
                   top: -18,
                   child: _CenterScanFAB(
                     accent: accent,
                     navBg: navBg,
                     isDark: isDark,
+                    isScanning: isScanning,
+                    hasReceiptsToReview: hasReceiptsToReview,
                   ),
                 ),
               ],
@@ -115,30 +124,52 @@ class _CenterScanFAB extends StatelessWidget {
   final Color accent;
   final Color navBg;
   final bool isDark;
+  final bool isScanning;
+  final bool hasReceiptsToReview;
 
   const _CenterScanFAB({
     required this.accent,
     required this.navBg,
     required this.isDark,
+    required this.isScanning,
+    required this.hasReceiptsToReview,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
+    final disabledColor = isDark ? const Color(0xFF38383A) : Colors.grey.shade400;
+
+    VoidCallback? onTapHandler;
+    if (isScanning) {
+      onTapHandler = null;
+    } else if (hasReceiptsToReview) {
+      onTapHandler = () {
+        ScanProgressSnackBar.dismiss();
+        context.push('/verification', extra: ScanBatchController.instance.completedReceipts);
+      };
+    } else {
+      onTapHandler = () {
         context.push('/scanner');
-      },
+      };
+    }
+
+    final IconData fabIcon = isScanning
+        ? Icons.hourglass_top_rounded
+        : (hasReceiptsToReview ? Icons.edit_rounded : Icons.camera_alt_rounded);
+
+    return GestureDetector(
+      onTap: onTapHandler,
       behavior: HitTestBehavior.opaque,
       child: Neumorphic(
         style: NeumorphicStyle(
-          depth: 10,
-          intensity: 0.95,
+          depth: isScanning ? -3 : 10,
+          intensity: isScanning ? 0.4 : 0.95,
           boxShape: const NeumorphicBoxShape.circle(),
-          color: accent,
+          color: isScanning ? disabledColor : accent,
           border: NeumorphicBorder(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.5)
-                : Colors.white.withValues(alpha: 0.9),
+                ? (isScanning ? Colors.white12 : Colors.white.withValues(alpha: 0.5))
+                : (isScanning ? Colors.white24 : Colors.white.withValues(alpha: 0.9)),
             width: 2.5,
           ),
         ),
@@ -148,27 +179,32 @@ class _CenterScanFAB extends StatelessWidget {
           height: 58,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                accent,
-                accent.withValues(alpha: 0.85),
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: accent.withValues(alpha: 0.45),
-                blurRadius: 16,
-                spreadRadius: 2,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: isScanning ? disabledColor : null,
+            gradient: isScanning
+                ? null
+                : LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      accent,
+                      accent.withValues(alpha: 0.85),
+                    ],
+                  ),
+            boxShadow: isScanning
+                ? null
+                : [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.45),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
           ),
-          child: const Icon(
-            Icons.camera_alt_rounded,
-            color: Colors.white,
-            size: 28,
+          child: Icon(
+            fabIcon,
+            color: isScanning ? Colors.white70 : Colors.white,
+            size: isScanning ? 25 : 28,
           ),
         ),
       ),

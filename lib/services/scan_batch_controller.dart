@@ -21,7 +21,7 @@ import 'app_logger_service.dart';
 /// ```dart
 /// await ScanBatchController.instance.startBatchScan(images);
 /// ```
-class ScanBatchController {
+class ScanBatchController extends ChangeNotifier {
   ScanBatchController._();
   static final ScanBatchController instance = ScanBatchController._();
 
@@ -30,6 +30,9 @@ class ScanBatchController {
   // ── Active Batch State ────────────────────────────────────────────────────
 
   String? _activeBatchId;
+  Map<String, String> _activeImageMap = {};
+  List<XFile> _activeImages = [];
+  List<Receipt> _completedReceipts = [];
 
   /// Subscription to the active SSE stream. Cancelled on terminal events
   /// or when the user explicitly taps Cancel.
@@ -44,6 +47,20 @@ class ScanBatchController {
   /// True when a batch scan is currently in progress.
   bool get isScanning => _activeBatchId != null;
 
+  /// Successfully parsed receipts waiting for user verification.
+  List<Receipt> get completedReceipts => _completedReceipts;
+
+  /// True when a completed batch of receipts is ready to be reviewed.
+  bool get hasReceiptsToReview => _completedReceipts.isNotEmpty;
+
+  /// Clears stored review receipts and reverts the bottom nav FAB back to camera mode.
+  void clearCompletedReceipts() {
+    if (_completedReceipts.isNotEmpty) {
+      _completedReceipts = [];
+      notifyListeners();
+    }
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────
 
   /// Submits [images] to POST /scan/parse-many (1–10 files), navigates the user
@@ -54,6 +71,13 @@ class ScanBatchController {
     if (images.isEmpty) return;
 
     AppLogger.info('ScanBatch', 'Starting batch scan for ${images.length} image(s)');
+
+    _completedReceipts = [];
+    _activeImages = List.from(images);
+    _activeImageMap = {
+      for (final xf in images)
+        (xf.name.isNotEmpty ? xf.name : xf.path.split('/').last): xf.path,
+    };
 
     // ── Resolve identity credentials ─────────────────────────────────────
     final isUser = AuthService.instance.isLoggedIn &&
@@ -99,6 +123,7 @@ class ScanBatchController {
     }
 
     _activeBatchId = batchResponse.batchId;
+    notifyListeners();
     final total = batchResponse.totalJobs;
     AppLogger.info('ScanBatch', 'Batch created: ${batchResponse.batchId} ($total jobs)');
 
@@ -180,8 +205,9 @@ class ScanBatchController {
         AppLogger.error('ScanBatch', 'SSE stream error for batch $batchId', e);
         _activeBatchId = null;
         _sseSubscription = null;
+        notifyListeners();
         final msg = e is ApiException ? e.message : 'Scan connection lost.';
-        _showError(msg, null);
+        _showError(msg, _activeImages.isNotEmpty ? _activeImages : null);
       },
       onDone: () {
         AppLogger.info('ScanBatch', 'SSE stream closed for batch $batchId');
@@ -206,42 +232,99 @@ class ScanBatchController {
       _sseSubscription?.cancel();
       _sseSubscription = null;
       _activeBatchId = null;
+      notifyListeners();
 
       try {
         final json = jsonDecode(data) as Map<String, dynamic>;
         final dto = BulkBatchStatusResponseDto.fromJson(json);
-        final receipts = dto.successfulReceipts.map(_dtoToReceipt).toList();
+        final receipts = dto.completedJobsList
+            .map((job) => _jobToReceipt(job, _activeImageMap))
+            .toList();
+        final failedJobs = dto.failedJobsList;
 
         AppLogger.info(
-            'ScanBatch', 'Batch $batchId complete: ${receipts.length}/$total receipts parsed');
+            'ScanBatch', 'Batch $batchId complete: ${receipts.length}/$total receipts parsed, ${failedJobs.length} failed');
 
-        ScanProgressSnackBar.showComplete(
-          message: 'Scan complete! (${receipts.length}/$total receipt${receipts.length != 1 ? 's' : ''} ready)',
-          onReview: () {
-            appRouter.push('/verification', extra: receipts);
-          },
-        );
+        if (receipts.isEmpty) {
+          // All jobs failed
+          _completedReceipts = [];
+          notifyListeners();
+          final count = total > 0 ? total : dto.jobs.length;
+          final message = count == 1
+              ? (failedJobs.isNotEmpty && failedJobs.first.filename != null
+                  ? 'Scan failed for ${failedJobs.first.filename}. Please try again.'
+                  : 'Scan failed for receipt. Please try again.')
+              : 'Scan failed for $count receipts. Please try again.';
+
+          _showError(message, _activeImages.isNotEmpty ? _activeImages : null);
+        } else if (failedJobs.isNotEmpty) {
+          // Partial success: some completed, some failed
+          _completedReceipts = receipts;
+          notifyListeners();
+          final failedNames = failedJobs.map((j) => j.filename ?? 'receipt').join(', ');
+          final message =
+              '${receipts.length}/$total receipt${receipts.length != 1 ? 's' : ''} ready. Failed: $failedNames';
+
+          ScanProgressSnackBar.showComplete(
+            message: message,
+            onReview: () {
+              ScanProgressSnackBar.dismiss();
+              appRouter.push('/verification', extra: receipts);
+            },
+          );
+        } else {
+          // Full success: all jobs completed
+          _completedReceipts = receipts;
+          notifyListeners();
+          ScanProgressSnackBar.showComplete(
+            message:
+                'Scan complete! (${receipts.length}/$total receipt${receipts.length != 1 ? 's' : ''} ready)',
+            onReview: () {
+              ScanProgressSnackBar.dismiss();
+              appRouter.push('/verification', extra: receipts);
+            },
+          );
+        }
       } catch (e) {
         AppLogger.error('ScanBatch', 'Failed to parse batch_complete payload', e);
-        _showError('Scan completed but results could not be read.', null);
+        _completedReceipts = [];
+        notifyListeners();
+        _showError('Scan completed but results could not be read.', _activeImages.isNotEmpty ? _activeImages : null);
+      }
+    } else if (event == 'progress') {
+      try {
+        final json = jsonDecode(data) as Map<String, dynamic>;
+        final completed = (json['completed_jobs'] as int?) ?? 0;
+        final totalJobs = (json['total_jobs'] as int?) ?? total;
+        AppLogger.info('ScanBatch', 'Batch $batchId progress: $completed/$totalJobs completed');
+        ScanProgressSnackBar.show(
+          message: 'Scanning receipt${totalJobs > 1 ? 's' : ''} ($completed/$totalJobs)…',
+          onCancel: () => _cancel(),
+        );
+      } catch (e) {
+        AppLogger.warning('ScanBatch', 'Failed to parse progress event: $e');
       }
     } else if (event == 'timeout') {
       _isTerminalEventReceived = true;
       _sseSubscription?.cancel();
       _sseSubscription = null;
       _activeBatchId = null;
-      _showError('Scan timed out. Please try again.', null);
+      _completedReceipts = [];
+      notifyListeners();
+      _showError('Scan timed out. Please try again.', _activeImages.isNotEmpty ? _activeImages : null);
     } else if (event == 'error') {
       _isTerminalEventReceived = true;
       _sseSubscription?.cancel();
       _sseSubscription = null;
       _activeBatchId = null;
+      _completedReceipts = [];
+      notifyListeners();
       String errorMsg = 'Scan failed.';
       try {
         final json = jsonDecode(data) as Map<String, dynamic>;
         errorMsg = (json['error'] as String?) ?? errorMsg;
       } catch (_) {}
-      _showError(errorMsg, null);
+      _showError(errorMsg, _activeImages.isNotEmpty ? _activeImages : null);
     }
   }
 
@@ -255,6 +338,9 @@ class ScanBatchController {
     _sseSubscription = null;
     _activeBatchId = null;
     _isTerminalEventReceived = false;
+    _completedReceipts = [];
+    ScanProgressSnackBar.dismiss();
+    notifyListeners();
   }
 
   // ── Error Snack ───────────────────────────────────────────────────────────
@@ -268,10 +354,11 @@ class ScanBatchController {
     );
   }
 
-  // ── DTO → Domain mapper ───────────────────────────────────────────────────
+  // ── Job → Domain mapper ───────────────────────────────────────────────────
 
-  Receipt _dtoToReceipt(ReceiptDto dto) {
-    final id = 'res-${DateTime.now().millisecondsSinceEpoch}';
+  Receipt _jobToReceipt(BulkJobStatusDto job, Map<String, String> imagePathMap) {
+    final dto = job.data!;
+    final id = job.jobId.isNotEmpty ? job.jobId : 'res-${DateTime.now().millisecondsSinceEpoch}';
     final lineItems = dto.lineItems.map((li) => li.toDomain()).toList();
     final items = dto.lineItems.map((li) {
       final parts = <String>[li.description];
@@ -283,6 +370,8 @@ class ScanBatchController {
       return parts.join(' — ');
     }).toList();
 
+    final imagePath = job.filename != null ? imagePathMap[job.filename] : null;
+
     return Receipt(
       id: id,
       merchant: dto.merchantName,
@@ -290,7 +379,7 @@ class ScanBatchController {
       amount: dto.totalAmount,
       currency: dto.currency,
       category: _normaliseCategory(dto.category),
-      imagePath: null,
+      imagePath: imagePath,
       items: items,
       lineItems: lineItems,
     );

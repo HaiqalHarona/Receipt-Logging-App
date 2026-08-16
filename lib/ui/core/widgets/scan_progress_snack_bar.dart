@@ -19,6 +19,9 @@ import '../theme/theme_controller.dart';
 class ScanProgressSnackBar {
   ScanProgressSnackBar._();
 
+  static final ValueNotifier<_ScanSnackBarConfig?> _activeConfigNotifier =
+      ValueNotifier<_ScanSnackBarConfig?>(null);
+
   // ── Public API ─────────────────────────────────────────────────────────────
 
   /// Shows the **scanning** state SnackBar.
@@ -64,6 +67,7 @@ class ScanProgressSnackBar {
   }
 
   static void dismiss({BuildContext? context}) {
+    _activeConfigNotifier.value = null;
     final messenger = (context != null && context.mounted)
         ? ScaffoldMessenger.of(context)
         : rootScaffoldMessengerKey.currentState;
@@ -78,7 +82,13 @@ class ScanProgressSnackBar {
         : rootScaffoldMessengerKey.currentState;
     if (messenger == null) return;
 
-    // Immediately remove existing SnackBar to instantly transition without animation delay
+    if (_activeConfigNotifier.value != null) {
+      // SnackBar already showing — smoothly update in-place without recreating widget
+      _activeConfigNotifier.value = config;
+      return;
+    }
+
+    _activeConfigNotifier.value = config;
     messenger.removeCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
@@ -89,7 +99,7 @@ class ScanProgressSnackBar {
         // Persist indefinitely — user must dismiss explicitly.
         duration: const Duration(days: 1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        content: _ScanProgressSnackBarWidget(config: config),
+        content: const _ScanProgressSnackBarWidget(),
       ),
     );
   }
@@ -140,8 +150,7 @@ class _ScanSnackBarConfig {
 // ── Widget ─────────────────────────────────────────────────────────────────────
 
 class _ScanProgressSnackBarWidget extends StatefulWidget {
-  const _ScanProgressSnackBarWidget({required this.config});
-  final _ScanSnackBarConfig config;
+  const _ScanProgressSnackBarWidget();
 
   @override
   State<_ScanProgressSnackBarWidget> createState() => _ScanProgressSnackBarWidgetState();
@@ -158,7 +167,7 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    if (widget.config.isScanning) {
+    if (ScanProgressSnackBar._activeConfigNotifier.value?.isScanning ?? false) {
       _pulseController.repeat(reverse: true);
     }
   }
@@ -171,69 +180,82 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
 
   @override
   Widget build(BuildContext context) {
-    final config = widget.config;
-    final controller = AppThemeController.instance;
+    return ValueListenableBuilder<_ScanSnackBarConfig?>(
+      valueListenable: ScanProgressSnackBar._activeConfigNotifier,
+      builder: (context, dynamicConfig, _) {
+        if (dynamicConfig == null) return const SizedBox.shrink();
+        final config = dynamicConfig;
 
-    final Color bg = config.isError
-        ? Colors.red.shade900
-        : (controller.isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFF1C1C1E));
-    final Color accent = config.isError
-        ? Colors.redAccent
-        : config.isComplete
-            ? Colors.greenAccent.shade400
-            : controller.accentColor;
+        if (config.isScanning && !_pulseController.isAnimating) {
+          _pulseController.repeat(reverse: true);
+        } else if (!config.isScanning && _pulseController.isAnimating) {
+          _pulseController.stop();
+        }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        color: bg,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 14, right: 6, top: 10, bottom: 10),
-              child: Row(
-                children: [
-                  // Leading icon
-                  _LeadingIcon(config: config, pulseController: _pulseController, accent: accent),
-                  const SizedBox(width: 10),
+        final controller = AppThemeController.instance;
 
-                  // Message
-                  Expanded(
-                    child: Text(
-                      config.message,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
+        final Color bg = config.isError
+            ? Colors.red.shade900
+            : (controller.isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFF1C1C1E));
+        final Color accent = config.isError
+            ? Colors.redAccent
+            : config.isComplete
+                ? Colors.greenAccent.shade400
+                : controller.accentColor;
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            color: bg,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 6, top: 10, bottom: 10),
+                  child: Row(
+                    children: [
+                      // Leading icon
+                      _LeadingIcon(config: config, pulseController: _pulseController, accent: accent),
+                      const SizedBox(width: 10),
+
+                      // Message
+                      Expanded(
+                        child: Text(
+                          config.message,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
 
-                  // Action button: Cancel / Review / Retry
-                  _ActionButton(config: config, accent: accent, context: context),
+                      // Action button: Cancel / Review / Retry
+                      _ActionButton(config: config, accent: accent, context: context),
 
-                  // Close 'X' button
-                  InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () => ScaffoldMessenger.of(context).removeCurrentSnackBar(),
-                    child: const Padding(
-                      padding: EdgeInsets.all(6),
-                      child: Icon(Icons.close_rounded, color: Colors.white54, size: 18),
-                    ),
+                      // Close 'X' button
+                      InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => ScanProgressSnackBar.dismiss(),
+                        child: const Padding(
+                          padding: EdgeInsets.all(6),
+                          child: Icon(Icons.close_rounded, color: Colors.white54, size: 18),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+
+                // Bottom indicator line: pulsing for scanning, solid for complete/error
+                _BottomIndicator(config: config, accent: accent, pulseController: _pulseController),
+              ],
             ),
-
-            // Bottom indicator line: pulsing for scanning, solid for complete/error
-            _BottomIndicator(config: config, accent: accent, pulseController: _pulseController),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -289,19 +311,18 @@ class _ActionButton extends StatelessWidget {
     if (config.isScanning && config.onCancel != null) {
       label = 'Cancel';
       handler = () {
+        ScanProgressSnackBar.dismiss();
         config.onCancel!();
-        ScaffoldMessenger.of(context).removeCurrentSnackBar();
       };
     } else if (config.isComplete && config.onReview != null) {
       label = 'Review';
       handler = () {
-        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+        ScanProgressSnackBar.dismiss();
         config.onReview!();
       };
     } else if (config.isError && config.onRetry != null) {
       label = 'Retry';
       handler = () {
-        ScaffoldMessenger.of(context).removeCurrentSnackBar();
         config.onRetry!();
       };
     }
