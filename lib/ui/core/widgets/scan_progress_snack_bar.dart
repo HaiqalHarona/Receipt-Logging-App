@@ -122,19 +122,22 @@ class _ScanSnackBarConfig {
     required String message,
     required VoidCallback onCancel,
   }) =>
-      _ScanSnackBarConfig(state: _ScanState.scanning, message: message, onCancel: onCancel);
+      _ScanSnackBarConfig(
+          state: _ScanState.scanning, message: message, onCancel: onCancel);
 
   factory _ScanSnackBarConfig.complete({
     required String message,
     required VoidCallback onReview,
   }) =>
-      _ScanSnackBarConfig(state: _ScanState.complete, message: message, onReview: onReview);
+      _ScanSnackBarConfig(
+          state: _ScanState.complete, message: message, onReview: onReview);
 
   factory _ScanSnackBarConfig.error({
     required String message,
     VoidCallback? onRetry,
   }) =>
-      _ScanSnackBarConfig(state: _ScanState.error, message: message, onRetry: onRetry);
+      _ScanSnackBarConfig(
+          state: _ScanState.error, message: message, onRetry: onRetry);
 
   final _ScanState state;
   final String message;
@@ -153,10 +156,12 @@ class _ScanProgressSnackBarWidget extends StatefulWidget {
   const _ScanProgressSnackBarWidget();
 
   @override
-  State<_ScanProgressSnackBarWidget> createState() => _ScanProgressSnackBarWidgetState();
+  State<_ScanProgressSnackBarWidget> createState() =>
+      _ScanProgressSnackBarWidgetState();
 }
 
-class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget>
+class _ScanProgressSnackBarWidgetState
+    extends State<_ScanProgressSnackBarWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
 
@@ -196,7 +201,9 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
 
         final Color bg = config.isError
             ? Colors.red.shade900
-            : (controller.isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFF1C1C1E));
+            : (controller.isDarkMode
+                ? const Color(0xFF2C2C2E)
+                : const Color(0xFF1C1C1E));
         final Color accent = config.isError
             ? Colors.redAccent
             : config.isComplete
@@ -212,11 +219,15 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 6, top: 10, bottom: 10),
+                  padding: const EdgeInsets.only(
+                      left: 14, right: 6, top: 10, bottom: 10),
                   child: Row(
                     children: [
                       // Leading icon
-                      _LeadingIcon(config: config, pulseController: _pulseController, accent: accent),
+                      _LeadingIcon(
+                          config: config,
+                          pulseController: _pulseController,
+                          accent: accent),
                       const SizedBox(width: 10),
 
                       // Message
@@ -234,7 +245,8 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
                       ),
 
                       // Action button: Cancel / Review / Retry
-                      _ActionButton(config: config, accent: accent, context: context),
+                      _ActionButton(
+                          config: config, accent: accent, context: context),
 
                       // Close 'X' button
                       InkWell(
@@ -242,7 +254,8 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
                         onTap: () => ScanProgressSnackBar.dismiss(),
                         child: const Padding(
                           padding: EdgeInsets.all(6),
-                          child: Icon(Icons.close_rounded, color: Colors.white54, size: 18),
+                          child: Icon(Icons.close_rounded,
+                              color: Colors.white54, size: 18),
                         ),
                       ),
                     ],
@@ -250,7 +263,10 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
                 ),
 
                 // Bottom indicator line: pulsing for scanning, solid for complete/error
-                _BottomIndicator(config: config, accent: accent, pulseController: _pulseController),
+                _BottomIndicator(
+                    config: config,
+                    accent: accent,
+                    pulseController: _pulseController),
               ],
             ),
           ),

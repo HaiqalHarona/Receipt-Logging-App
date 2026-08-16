@@ -19,7 +19,8 @@ void main() {
 
     test('Initial state loads sample receipts', () {
       expect(viewModel.receipts.length, greaterThanOrEqualTo(5));
-      expect(viewModel.availableCategories, containsAll(['Groceries', 'Transport', 'Electronics', 'Dining']));
+      expect(viewModel.availableCategories,
+          containsAll(['Groceries', 'Transport', 'Electronics', 'Dining']));
     });
 
     test('Category filtering narrows receipt list', () {
@@ -47,29 +48,39 @@ void main() {
       expect(viewModel.sortField, equals(HistorySortField.none));
     });
 
-    test('Sort by Amount (Tap 1: \$ Low-High, Tap 2: \$ High-Low, Tap 3: Reset)', () {
-      viewModel.toggleSort(HistorySortField.amount); // Tap 1: Ascending (\$ Low-High)
+    test(
+        'Sort by Amount (Tap 1: \$ Low-High, Tap 2: \$ High-Low, Tap 3: Reset)',
+        () {
+      viewModel.toggleSort(
+          HistorySortField.amount); // Tap 1: Ascending (\$ Low-High)
       expect(viewModel.sortField, equals(HistorySortField.amount));
       expect(viewModel.sortAscending, isTrue);
-      expect(viewModel.receipts.first.amount, equals(12.50)); // Blue Bottle Coffee
+      expect(
+          viewModel.receipts.first.amount, equals(12.50)); // Blue Bottle Coffee
 
-      viewModel.toggleSort(HistorySortField.amount); // Tap 2: Descending (\$ High-Low)
+      viewModel.toggleSort(
+          HistorySortField.amount); // Tap 2: Descending (\$ High-Low)
       expect(viewModel.sortAscending, isFalse);
-      expect(viewModel.receipts.first.amount, equals(142.80)); // Whole Foods Market
+      expect(viewModel.receipts.first.amount,
+          equals(142.80)); // Whole Foods Market
 
       viewModel.toggleSort(HistorySortField.amount); // Tap 3: Reset
       expect(viewModel.sortField, equals(HistorySortField.none));
     });
 
-    test('Sort by Date (Tap 1: Newest First, Tap 2: Oldest First, Tap 3: Reset)', () {
+    test(
+        'Sort by Date (Tap 1: Newest First, Tap 2: Oldest First, Tap 3: Reset)',
+        () {
       viewModel.toggleSort(HistorySortField.date); // Tap 1: Newest First
       expect(viewModel.sortField, equals(HistorySortField.date));
       expect(viewModel.sortAscending, isFalse);
-      expect(viewModel.receipts.first.date, equals('Aug 01, 2026')); // Target Superstore
+      expect(viewModel.receipts.first.date,
+          equals('Aug 01, 2026')); // Target Superstore
 
       viewModel.toggleSort(HistorySortField.date); // Tap 2: Oldest First
       expect(viewModel.sortAscending, isTrue);
-      expect(viewModel.receipts.first.date, equals('Jul 22, 2026')); // Whole Foods Market
+      expect(viewModel.receipts.first.date,
+          equals('Jul 22, 2026')); // Whole Foods Market
 
       viewModel.toggleSort(HistorySortField.date); // Tap 3: Reset
       expect(viewModel.sortField, equals(HistorySortField.none));

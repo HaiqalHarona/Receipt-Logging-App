@@ -6,7 +6,9 @@ import 'package:reciept_logging/ui/features/dashboard/view_models/dashboard_view
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('DashboardViewModel Spending Summary 6-Element Carousel & Caching Tests', () {
+  group(
+      'DashboardViewModel Spending Summary 6-Element Carousel & Caching Tests',
+      () {
     late DashboardViewModel viewModel;
 
     setUp(() {
@@ -37,9 +39,12 @@ void main() {
       }
     });
 
-    test('Calculated summary data is cached and retrieved on subsequent calls', () {
-      final firstFetch = viewModel.getSpendingSummary(SpendingSummaryPeriod.threeMonths);
-      final secondFetch = viewModel.getSpendingSummary(SpendingSummaryPeriod.threeMonths);
+    test('Calculated summary data is cached and retrieved on subsequent calls',
+        () {
+      final firstFetch =
+          viewModel.getSpendingSummary(SpendingSummaryPeriod.threeMonths);
+      final secondFetch =
+          viewModel.getSpendingSummary(SpendingSummaryPeriod.threeMonths);
 
       // Verify reference equality (same cached instance returned)
       expect(identical(firstFetch, secondFetch), isTrue);
@@ -72,18 +77,22 @@ void main() {
       );
     });
 
-    test('Comparison labels and percentage changes populate for periods 1M-YTD and omit for allTime', () {
+    test(
+        'Comparison labels and percentage changes populate for periods 1M-YTD and omit for allTime',
+        () {
       final m1 = viewModel.getSpendingSummary(SpendingSummaryPeriod.oneMonth);
       expect(m1.comparisonLabel, equals('compared to last month'));
       expect(m1.percentageChange, isNotNull);
 
-      final m3 = viewModel.getSpendingSummary(SpendingSummaryPeriod.threeMonths);
+      final m3 =
+          viewModel.getSpendingSummary(SpendingSummaryPeriod.threeMonths);
       expect(m3.comparisonLabel, equals('compared to last 3 months'));
 
       final ytd = viewModel.getSpendingSummary(SpendingSummaryPeriod.ytd);
       expect(ytd.comparisonLabel, equals('compared to last year'));
 
-      final allTime = viewModel.getSpendingSummary(SpendingSummaryPeriod.allTime);
+      final allTime =
+          viewModel.getSpendingSummary(SpendingSummaryPeriod.allTime);
       expect(allTime.comparisonLabel, isNull);
       expect(allTime.percentageChange, isNull);
     });

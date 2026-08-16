@@ -163,7 +163,8 @@ class BulkJobCreateResponseDto {
       batchId: (json['batch_id'] as String?) ?? '',
       totalJobs: (json['total_jobs'] as int?) ?? 0,
       jobs: (json['jobs'] as List<dynamic>?)
-              ?.map((e) => BulkJobSummaryDto.fromJson(e as Map<String, dynamic>))
+              ?.map(
+                  (e) => BulkJobSummaryDto.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
     );
@@ -184,6 +185,7 @@ class BulkJobStatusDto {
   final String jobId;
   final String batchId;
   final String? filename;
+
   /// One of: PENDING, PROCESSING, COMPLETED, FAILED
   final String status;
   final ReceiptDto? data;
@@ -225,16 +227,19 @@ class BulkBatchStatusResponseDto {
   bool get isAllDone => completedJobs >= totalJobs && totalJobs > 0;
 
   /// All successfully COMPLETED jobs with a non-null ReceiptDto.
-  List<ReceiptDto> get successfulReceipts =>
-      jobs.where((j) => j.isCompleted && j.data != null).map((j) => j.data!).toList();
+  List<ReceiptDto> get successfulReceipts => jobs
+      .where((j) => j.isCompleted && j.data != null)
+      .map((j) => j.data!)
+      .toList();
 
   /// All successfully COMPLETED jobs retaining their job metadata (jobId, filename).
   List<BulkJobStatusDto> get completedJobsList =>
       jobs.where((j) => j.isCompleted && j.data != null).toList();
 
   /// All FAILED jobs (or completed jobs without valid data).
-  List<BulkJobStatusDto> get failedJobsList =>
-      jobs.where((j) => j.isFailed || (j.isCompleted && j.data == null)).toList();
+  List<BulkJobStatusDto> get failedJobsList => jobs
+      .where((j) => j.isFailed || (j.isCompleted && j.data == null))
+      .toList();
 
   factory BulkBatchStatusResponseDto.fromJson(Map<String, dynamic> json) {
     return BulkBatchStatusResponseDto(

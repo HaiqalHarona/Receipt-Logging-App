@@ -107,7 +107,8 @@ void main() {
   });
 
   group('Repository Memory Fallback Tests', () {
-    test('ReceiptRepository initial sample items and total calculations', () async {
+    test('ReceiptRepository initial sample items and total calculations',
+        () async {
       final repo = ReceiptRepository.instance;
       expect(repo.receipts.isNotEmpty, isTrue);
 
@@ -129,7 +130,8 @@ void main() {
       expect(repo.conversations.first.title, equals('Renamed Chat'));
 
       await repo.softDeleteConversation('conv_test_1');
-      expect(repo.conversations.where((c) => c.id == 'conv_test_1').isEmpty, isTrue);
+      expect(repo.conversations.where((c) => c.id == 'conv_test_1').isEmpty,
+          isTrue);
     });
 
     test('ChatMessageRepository memory operations', () async {

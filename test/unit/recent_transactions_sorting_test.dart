@@ -9,7 +9,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('DashboardViewModel Recent Transactions Ordering Tests', () {
-    test('recentTransactions returns receipts sorted by createdAt descending (latest to earliest)', () async {
+    test(
+        'recentTransactions returns receipts sorted by createdAt descending (latest to earliest)',
+        () async {
       final repo = ReceiptRepository.instance;
       final now = DateTime.now();
 

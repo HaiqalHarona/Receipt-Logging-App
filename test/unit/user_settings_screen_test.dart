@@ -19,7 +19,9 @@ void main() {
   }
 
   group('UserSettingsScreen Widget Tests', () {
-    testWidgets('UserSettingsScreen renders header, profile info, and Log Out button', (WidgetTester tester) async {
+    testWidgets(
+        'UserSettingsScreen renders header, profile info, and Log Out button',
+        (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -46,7 +48,9 @@ void main() {
       expect(find.text('Log Out'), findsOneWidget);
     });
 
-    testWidgets('AuthService caching returns cached profile without network call', (WidgetTester tester) async {
+    testWidgets(
+        'AuthService caching returns cached profile without network call',
+        (WidgetTester tester) async {
       const mockUser = UserRecordDto(
         id: 'usr-cache-99',
         username: 'CachedUser',

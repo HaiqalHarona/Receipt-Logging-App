@@ -9,7 +9,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Receipt createdAt Timestamp Tests', () {
-    test('Receipt domain model handles createdAt serialization and copyWith', () {
+    test('Receipt domain model handles createdAt serialization and copyWith',
+        () {
       final now = DateTime.now();
       final receipt = Receipt(
         id: 'test-1',
@@ -53,7 +54,9 @@ void main() {
       expect(domainModel.createdAt, equals(now));
     });
 
-    test('ReceiptRepository.saveReceipt automatically populates createdAt if null', () async {
+    test(
+        'ReceiptRepository.saveReceipt automatically populates createdAt if null',
+        () async {
       final repo = ReceiptRepository.instance;
       const newReceipt = Receipt(
         id: 'test-auto-created-at',
@@ -68,9 +71,13 @@ void main() {
 
       await repo.saveReceipt(newReceipt);
 
-      final saved = repo.receipts.firstWhere((r) => r.id == 'test-auto-created-at');
+      final saved =
+          repo.receipts.firstWhere((r) => r.id == 'test-auto-created-at');
       expect(saved.createdAt, isNotNull);
-      expect(saved.createdAt!.isAfter(DateTime.now().subtract(const Duration(seconds: 10))), isTrue);
+      expect(
+          saved.createdAt!
+              .isAfter(DateTime.now().subtract(const Duration(seconds: 10))),
+          isTrue);
     });
   });
 }

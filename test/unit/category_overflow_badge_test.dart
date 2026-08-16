@@ -19,7 +19,9 @@ void main() {
   }
 
   group('Dynamic Category Tag Overflow Tests', () {
-    testWidgets('ReceiptListItemWidget displays all tags with no +N badge when all fit', (WidgetTester tester) async {
+    testWidgets(
+        'ReceiptListItemWidget displays all tags with no +N badge when all fit',
+        (WidgetTester tester) async {
       tester.view.physicalSize = const Size(1200, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -54,7 +56,9 @@ void main() {
       expect(find.textContaining('+'), findsNothing);
     });
 
-    testWidgets('ReceiptListItemWidget displays +N badge dynamically when tags would overflow', (WidgetTester tester) async {
+    testWidgets(
+        'ReceiptListItemWidget displays +N badge dynamically when tags would overflow',
+        (WidgetTester tester) async {
       tester.view.physicalSize = const Size(360, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);

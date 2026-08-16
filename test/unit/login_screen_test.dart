@@ -42,11 +42,14 @@ void main() {
 
       expect(viewModel.isLoggedIn, isTrue);
       expect(viewModel.username, equals('TestUser'));
-      expect(viewModel.avatarImagePath, equals('https://example.com/avatar.png'));
+      expect(
+          viewModel.avatarImagePath, equals('https://example.com/avatar.png'));
       expect(notified, isTrue);
     });
 
-    test('AuthService clearSession notifies DashboardViewModel and resets auth state', () async {
+    test(
+        'AuthService clearSession notifies DashboardViewModel and resets auth state',
+        () async {
       await AuthService.instance.saveSession(const UserRecordDto(
         id: 'usr-123',
         username: 'LoggedInUser',
@@ -73,7 +76,9 @@ void main() {
       );
     }
 
-    testWidgets('LoginScreen renders username/password fields, Sign In button, and links', (WidgetTester tester) async {
+    testWidgets(
+        'LoginScreen renders username/password fields, Sign In button, and links',
+        (WidgetTester tester) async {
       await tester.pumpWidget(buildTestableWidget(const LoginScreen()));
       await tester.pumpAndSettle();
 
@@ -85,7 +90,8 @@ void main() {
       expect(find.text('Sign Up'), findsOneWidget);
     });
 
-    testWidgets('Forget Password and Sign Up links are present on LoginScreen', (WidgetTester tester) async {
+    testWidgets('Forget Password and Sign Up links are present on LoginScreen',
+        (WidgetTester tester) async {
       await tester.pumpWidget(buildTestableWidget(const LoginScreen()));
       await tester.pumpAndSettle();
 
@@ -103,7 +109,9 @@ void main() {
       );
     }
 
-    testWidgets('DashboardScreen omits Hello Nino placeholder when logged out and shows Login button', (WidgetTester tester) async {
+    testWidgets(
+        'DashboardScreen omits Hello Nino placeholder when logged out and shows Login button',
+        (WidgetTester tester) async {
       await tester.pumpWidget(buildTestableDashboard());
       await tester.pumpAndSettle();
 

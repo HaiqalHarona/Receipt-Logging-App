@@ -498,7 +498,8 @@ class BackendApiClient {
     }
 
     final path = uri.path;
-    AppLogger.debug('HTTP', '--> POST $path (parse-many, ${imageFiles.length} files)');
+    AppLogger.debug(
+        'HTTP', '--> POST $path (parse-many, ${imageFiles.length} files)');
     final stopwatch = Stopwatch()..start();
     try {
       final streamed = await _http.send(request).timeout(ApiConfig.timeout);
@@ -544,8 +545,9 @@ class BackendApiClient {
       if (userToken != null) queryParams['user_token'] = userToken;
     }
 
-    final uri = Uri.parse('${ApiConfig.baseUrl}/scan/parse-many/$batchId/stream')
-        .replace(queryParameters: queryParams);
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}/scan/parse-many/$batchId/stream')
+            .replace(queryParameters: queryParams);
 
     return _openSseStream(uri);
   }
@@ -562,7 +564,8 @@ class BackendApiClient {
       request.headers['Cache-Control'] = 'no-cache';
 
       final response = await client.send(request);
-      AppLogger.info('HTTP', '<-- ${response.statusCode} GET ${uri.path} (SSE)');
+      AppLogger.info(
+          'HTTP', '<-- ${response.statusCode} GET ${uri.path} (SSE)');
 
       if (response.statusCode != 200) {
         final body = await response.stream.bytesToString();

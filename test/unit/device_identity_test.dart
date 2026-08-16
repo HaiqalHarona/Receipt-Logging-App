@@ -11,7 +11,8 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('deviceId and deviceToken are persistent across service calls', () async {
+    test('deviceId and deviceToken are persistent across service calls',
+        () async {
       final service = DeviceIdentityService.instance;
       service.setCredentials(
         deviceId: 'dev_persistent_test_uuid_123',

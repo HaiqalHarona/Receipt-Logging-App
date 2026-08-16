@@ -17,8 +17,11 @@ void main() {
       viewModel.dispose();
     });
 
-    test('monthlySpendingHistory returns exactly graphMonthCount points for 6mo timeline', () {
-      final history = viewModel.getMonthlySpendingHistory(TimelineFilter.sixMonths);
+    test(
+        'monthlySpendingHistory returns exactly graphMonthCount points for 6mo timeline',
+        () {
+      final history =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.sixMonths);
       expect(history.length, equals(DashboardViewModel.graphMonthCount));
     });
 
@@ -28,7 +31,8 @@ void main() {
         expect(
           history[i].month.isAfter(history[i - 1].month),
           isTrue,
-          reason: 'Point $i (${history[i].label}) should be after point ${i - 1} (${history[i - 1].label})',
+          reason:
+              'Point $i (${history[i].label}) should be after point ${i - 1} (${history[i - 1].label})',
         );
       }
     });

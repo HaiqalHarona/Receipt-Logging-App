@@ -21,9 +21,12 @@ void main() {
       expect(viewModel.selectedTimeline, equals(TimelineFilter.thisMonth));
     });
 
-    test('thisMonth filter returns daily points for all days in current month', () {
-      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.thisMonth);
-      final daysInMonth = DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day;
+    test('thisMonth filter returns daily points for all days in current month',
+        () {
+      final points =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.thisMonth);
+      final daysInMonth =
+          DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day;
       expect(points.length, equals(daysInMonth));
     });
 
@@ -36,17 +39,20 @@ void main() {
     });
 
     test('3mo filter returns exactly 3 month data points', () {
-      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.threeMonths);
+      final points =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.threeMonths);
       expect(points.length, equals(3));
     });
 
     test('6mo filter returns exactly 6 month data points', () {
-      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.sixMonths);
+      final points =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.sixMonths);
       expect(points.length, equals(6));
     });
 
     test('12mo filter returns exactly 12 month data points', () {
-      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.twelveMonths);
+      final points =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.twelveMonths);
       expect(points.length, equals(12));
     });
 
@@ -56,16 +62,23 @@ void main() {
       expect(points.length, equals(currentMonth));
     });
 
-    test('Calculated timeline results are cached and retrieved on subsequent calls', () {
-      final firstFetch = viewModel.getMonthlySpendingHistory(TimelineFilter.sixMonths);
-      final secondFetch = viewModel.getMonthlySpendingHistory(TimelineFilter.sixMonths);
+    test(
+        'Calculated timeline results are cached and retrieved on subsequent calls',
+        () {
+      final firstFetch =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.sixMonths);
+      final secondFetch =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.sixMonths);
 
       // Verify reference equality (same cached instance returned)
       expect(identical(firstFetch, secondFetch), isTrue);
     });
 
-    test('All-time timeline returns points starting from earliest receipt month', () {
-      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.allTime);
+    test(
+        'All-time timeline returns points starting from earliest receipt month',
+        () {
+      final points =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.allTime);
       expect(points.length, greaterThanOrEqualTo(3));
       for (final p in points) {
         expect(p.amount, greaterThanOrEqualTo(0.0));

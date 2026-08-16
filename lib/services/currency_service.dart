@@ -79,14 +79,17 @@ class CurrencyService extends ChangeNotifier {
 
   /// Formats a converted amount with symbol and appropriate decimal places.
   /// Formats negative amounts cleanly as -$2.50 instead of $-2.50.
-  String format(double amount, {String? fromCurrencyCode, String? toCurrencyCode}) {
-    final converted = convert(amount, fromCurrencyCode ?? _currentCurrency, toCurrencyCode);
+  String format(double amount,
+      {String? fromCurrencyCode, String? toCurrencyCode}) {
+    final converted =
+        convert(amount, fromCurrencyCode ?? _currentCurrency, toCurrencyCode);
     final targetCode = toCurrencyCode ?? _currentCurrency;
     final symbol = supportedCurrencies[targetCode]?.symbol ?? '\$';
 
     final isNegative = converted < 0;
     final absVal = converted.abs();
-    final numStr = targetCode == 'JPY' ? '${absVal.round()}' : absVal.toStringAsFixed(2);
+    final numStr =
+        targetCode == 'JPY' ? '${absVal.round()}' : absVal.toStringAsFixed(2);
     return isNegative ? '-$symbol$numStr' : '$symbol$numStr';
   }
 }

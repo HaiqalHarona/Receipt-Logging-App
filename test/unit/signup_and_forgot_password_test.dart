@@ -21,7 +21,9 @@ void main() {
   }
 
   group('SignUpScreen Widget Tests', () {
-    testWidgets('SignUpScreen renders fields, Sign Up CTA, and Log In bottom link', (WidgetTester tester) async {
+    testWidgets(
+        'SignUpScreen renders fields, Sign Up CTA, and Log In bottom link',
+        (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -42,10 +44,14 @@ void main() {
       final plainTexts = richTextFinder
           .evaluate()
           .map((e) => (e.widget as RichText).text.toPlainText());
-      expect(plainTexts.any((t) => t.contains('Already have an account? Log In')), isTrue);
+      expect(
+          plainTexts.any((t) => t.contains('Already have an account? Log In')),
+          isTrue);
     });
 
-    testWidgets('Submitting SignUpScreen with empty username shows error SnackBar', (WidgetTester tester) async {
+    testWidgets(
+        'Submitting SignUpScreen with empty username shows error SnackBar',
+        (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -62,13 +68,16 @@ void main() {
   });
 
   group('ForgotPasswordScreen Widget Tests', () {
-    testWidgets('ForgotPasswordScreen renders Email or Mobile input, Send Reset Code CTA, and Log In link', (WidgetTester tester) async {
+    testWidgets(
+        'ForgotPasswordScreen renders Email or Mobile input, Send Reset Code CTA, and Log In link',
+        (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(buildTestableWidget(const ForgotPasswordScreen()));
+      await tester
+          .pumpWidget(buildTestableWidget(const ForgotPasswordScreen()));
       await tester.pumpAndSettle();
 
       expect(find.text('Forgot Password?'), findsOneWidget);
@@ -80,27 +89,36 @@ void main() {
       final plainTexts = richTextFinder
           .evaluate()
           .map((e) => (e.widget as RichText).text.toPlainText());
-      expect(plainTexts.any((t) => t.contains('Remember your password? Log In')), isTrue);
+      expect(
+          plainTexts.any((t) => t.contains('Remember your password? Log In')),
+          isTrue);
     });
 
-    testWidgets('Submitting ForgotPasswordScreen with empty input shows error inline', (WidgetTester tester) async {
+    testWidgets(
+        'Submitting ForgotPasswordScreen with empty input shows error inline',
+        (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(buildTestableWidget(const ForgotPasswordScreen()));
+      await tester
+          .pumpWidget(buildTestableWidget(const ForgotPasswordScreen()));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(NeumorphicButtonWidget, 'Send Reset Code'));
+      await tester
+          .tap(find.widgetWithText(NeumorphicButtonWidget, 'Send Reset Code'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Please enter your email or mobile number.'), findsOneWidget);
+      expect(find.text('Please enter your email or mobile number.'),
+          findsOneWidget);
     });
   });
 
   group('OtpVerificationScreen & ResetPasswordScreen Widget Tests', () {
-    testWidgets('OtpVerificationScreen renders 6-digit code input and verify CTA', (WidgetTester tester) async {
+    testWidgets(
+        'OtpVerificationScreen renders 6-digit code input and verify CTA',
+        (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);

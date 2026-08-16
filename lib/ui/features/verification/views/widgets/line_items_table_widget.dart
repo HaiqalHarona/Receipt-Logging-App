@@ -225,7 +225,9 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
             : item.quantity!.toStringAsFixed(1))
         : '—';
     final amtStr = basePrice != 0
-        ? (isDiscount ? '-${basePrice.abs().toStringAsFixed(2)}' : basePrice.toStringAsFixed(2))
+        ? (isDiscount
+            ? '-${basePrice.abs().toStringAsFixed(2)}'
+            : basePrice.toStringAsFixed(2))
         : '—';
 
     return Padding(
@@ -444,8 +446,10 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
                         _buildNeumorphicField(
                           controller: _amtController,
                           hint: 'e.g. 4.50 or -2.50',
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                          formatter: FilteringTextInputFormatter.allow(RegExp(r'^-?\d*\.?\d{0,2}')),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true, signed: true),
+                          formatter: FilteringTextInputFormatter.allow(
+                              RegExp(r'^-?\d*\.?\d{0,2}')),
                           textPrimary: widget.accent,
                           base: base,
                           isBold: true,

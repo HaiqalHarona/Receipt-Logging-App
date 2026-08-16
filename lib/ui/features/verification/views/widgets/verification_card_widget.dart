@@ -50,7 +50,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   @override
   void didUpdateWidget(covariant VerificationCardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.receipt.id != widget.receipt.id || oldWidget.receipt != widget.receipt) {
+    if (oldWidget.receipt.id != widget.receipt.id ||
+        oldWidget.receipt != widget.receipt) {
       _disposeControllers();
       _initControllers();
     }
@@ -90,7 +91,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
 
   void _recalculateTotalFromLineItems() {
     if (!_isAutoCalculate) return;
-    final double sum = _lineItems.fold(0.0, (acc, item) => acc + item.lineTotal);
+    final double sum =
+        _lineItems.fold(0.0, (acc, item) => acc + item.lineTotal);
     final double total = math.max(0.0, sum);
     _amountController.text = total.toStringAsFixed(2);
   }
@@ -112,7 +114,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
     // Format legacy string items list to stay synchronized with lineItems
     final List<String> legacyItems = _lineItems.map((li) {
       final baseP = li.effectiveUnitPrice;
-      final priceStr = baseP != 0 ? ' - $_selectedCurrency ${baseP.toStringAsFixed(2)}' : '';
+      final priceStr =
+          baseP != 0 ? ' - $_selectedCurrency ${baseP.toStringAsFixed(2)}' : '';
       return '${li.description}$priceStr';
     }).toList();
 

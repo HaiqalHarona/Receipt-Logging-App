@@ -115,7 +115,8 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   Future<void> _capturePhoto() async {
-    if (_cameraController == null || !_isCameraInitialized || _isSubmitting) return;
+    if (_cameraController == null || !_isCameraInitialized || _isSubmitting)
+      return;
 
     if (_isBulkMode && _queuedImages.length >= 10) {
       _showToast("Maximum of 10 receipts reached for bulk scan.");
@@ -158,7 +159,8 @@ class _ScannerScreenState extends State<ScannerScreen>
           setState(() {
             _queuedImages.addAll(pickedFiles.take(remaining));
           });
-          AppLogger.info('UI', 'Imported ${pickedFiles.length} image(s) into bulk queue');
+          AppLogger.info(
+              'UI', 'Imported ${pickedFiles.length} image(s) into bulk queue');
         }
       } else {
         final XFile? image = await _picker.pickImage(
@@ -166,7 +168,8 @@ class _ScannerScreenState extends State<ScannerScreen>
         );
 
         if (image != null) {
-          AppLogger.info('UI', 'Single image picked from gallery: ${image.path}');
+          AppLogger.info(
+              'UI', 'Single image picked from gallery: ${image.path}');
           await ScanBatchController.instance.startBatchScan([image]);
         }
       }
@@ -190,7 +193,8 @@ class _ScannerScreenState extends State<ScannerScreen>
       _isSubmitting = true;
     });
 
-    AppLogger.info('UI', 'Submitting ${_queuedImages.length} image(s) to async batch scan pipeline');
+    AppLogger.info('UI',
+        'Submitting ${_queuedImages.length} image(s) to async batch scan pipeline');
 
     try {
       await ScanBatchController.instance.startBatchScan(_queuedImages);
@@ -207,8 +211,18 @@ class _ScannerScreenState extends State<ScannerScreen>
     AppLogger.info('UI', 'User tapped Manual entry on ScannerScreen');
     final now = DateTime.now();
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final formattedDate =
         '${months[now.month - 1]} ${now.day.toString().padLeft(2, '0')}, ${now.year}';
@@ -756,7 +770,9 @@ class _ScannerBottomControls extends StatelessWidget {
                   height: 66,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: (queuedCount >= 10 || isProcessing) ? Colors.grey : accent,
+                    color: (queuedCount >= 10 || isProcessing)
+                        ? Colors.grey
+                        : accent,
                     boxShadow: [
                       BoxShadow(
                         color: accent.withValues(alpha: 0.4),
@@ -785,7 +801,8 @@ class _ScannerBottomControls extends StatelessWidget {
                       depth: isProcessing ? -2 : 6,
                       intensity: isProcessing ? 0.5 : 0.9,
                       boxShape: const NeumorphicBoxShape.circle(),
-                      color: isProcessing ? accent.withValues(alpha: 0.7) : accent,
+                      color:
+                          isProcessing ? accent.withValues(alpha: 0.7) : accent,
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
@@ -864,7 +881,6 @@ class _ScannerBottomControls extends StatelessWidget {
     );
   }
 }
-
 
 class _ScannerBracketsPainter extends CustomPainter {
   final Color color;

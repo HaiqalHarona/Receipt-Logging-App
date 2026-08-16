@@ -8,7 +8,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Category Overflow & Edit Pre-Selection Unit Tests', () {
-    test('ReceiptListItemWidget displays max 2 tags and correct +X overflow count', () {
+    test(
+        'ReceiptListItemWidget displays max 2 tags and correct +X overflow count',
+        () {
       const rawCategory = 'Groceries 🛒, Electronics, Dining, Shopping';
       final allTags = rawCategory
           .split(',')
@@ -25,7 +27,9 @@ void main() {
       expect(remainingCount, equals(2));
     });
 
-    test('ReceiptDetailScreen parses all categories for wrapped multi-row layout', () {
+    test(
+        'ReceiptDetailScreen parses all categories for wrapped multi-row layout',
+        () {
       const rawCategory = 'Groceries, Transport 🚗, Dining 🍔';
       final allDetailTags = rawCategory
           .split(',')
@@ -38,7 +42,9 @@ void main() {
       expect(allDetailTags, equals(['Groceries', 'Transport', 'Dining']));
     });
 
-    test('VerificationCardWidget sanitizes category tokens on load to match pre-selected chips', () {
+    test(
+        'VerificationCardWidget sanitizes category tokens on load to match pre-selected chips',
+        () {
       const receipt = Receipt(
         id: 'rec_edit_01',
         merchant: 'Supermarket',
@@ -63,13 +69,17 @@ void main() {
       expect(savedCategory, equals('Groceries, Dining'));
     });
 
-    test('CategoryUtils.sanitize strips emojis cleanly and returns empty string for empty input', () {
+    test(
+        'CategoryUtils.sanitize strips emojis cleanly and returns empty string for empty input',
+        () {
       expect(CategoryUtils.sanitize('General 🧾'), equals('General'));
       expect(CategoryUtils.sanitize('Groceries 🛒'), equals('Groceries'));
       expect(CategoryUtils.sanitize(''), equals(''));
     });
 
-    test('Empty category string remains empty without forcing default General category', () {
+    test(
+        'Empty category string remains empty without forcing default General category',
+        () {
       const receipt = Receipt(
         id: 'rec_empty_01',
         merchant: 'Target',

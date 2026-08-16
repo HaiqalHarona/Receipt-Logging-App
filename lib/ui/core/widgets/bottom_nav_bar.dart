@@ -26,7 +26,8 @@ class AppBottomNavBar extends StatelessWidget {
         final inactiveColor = controller.secondaryTextColor;
         final navBg = controller.currentBaseColor;
         final isScanning = ScanBatchController.instance.isScanning;
-        final hasReceiptsToReview = ScanBatchController.instance.hasReceiptsToReview;
+        final hasReceiptsToReview =
+            ScanBatchController.instance.hasReceiptsToReview;
 
         final screenWidth = MediaQuery.of(context).size.width;
         final margin5Percent = screenWidth * 0.05;
@@ -137,7 +138,8 @@ class _CenterScanFAB extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final disabledColor = isDark ? const Color(0xFF38383A) : Colors.grey.shade400;
+    final disabledColor =
+        isDark ? const Color(0xFF38383A) : Colors.grey.shade400;
 
     VoidCallback? onTapHandler;
     if (isScanning) {
@@ -145,7 +147,8 @@ class _CenterScanFAB extends StatelessWidget {
     } else if (hasReceiptsToReview) {
       onTapHandler = () {
         ScanProgressSnackBar.dismiss();
-        context.push('/verification', extra: ScanBatchController.instance.completedReceipts);
+        context.push('/verification',
+            extra: ScanBatchController.instance.completedReceipts);
       };
     } else {
       onTapHandler = () {
@@ -168,8 +171,12 @@ class _CenterScanFAB extends StatelessWidget {
           color: isScanning ? disabledColor : accent,
           border: NeumorphicBorder(
             color: isDark
-                ? (isScanning ? Colors.white12 : Colors.white.withValues(alpha: 0.5))
-                : (isScanning ? Colors.white24 : Colors.white.withValues(alpha: 0.9)),
+                ? (isScanning
+                    ? Colors.white12
+                    : Colors.white.withValues(alpha: 0.5))
+                : (isScanning
+                    ? Colors.white24
+                    : Colors.white.withValues(alpha: 0.9)),
             width: 2.5,
           ),
         ),

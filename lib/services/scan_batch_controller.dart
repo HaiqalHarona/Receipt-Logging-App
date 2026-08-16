@@ -67,10 +67,12 @@ class ScanBatchController extends ChangeNotifier {
   /// to /dashboard, and opens an SSE stream for real-time progress updates.
   ///
   /// Shows a persistent [ScanProgressSnackBar] with Cancel / Review / Retry actions.
-  Future<void> startBatchScan(List<XFile> images, [BuildContext? context]) async {
+  Future<void> startBatchScan(List<XFile> images,
+      [BuildContext? context]) async {
     if (images.isEmpty) return;
 
-    AppLogger.info('ScanBatch', 'Starting batch scan for ${images.length} image(s)');
+    AppLogger.info(
+        'ScanBatch', 'Starting batch scan for ${images.length} image(s)');
 
     _completedReceipts = [];
     _activeImages = List.from(images);
@@ -125,7 +127,8 @@ class ScanBatchController extends ChangeNotifier {
     _activeBatchId = batchResponse.batchId;
     notifyListeners();
     final total = batchResponse.totalJobs;
-    AppLogger.info('ScanBatch', 'Batch created: ${batchResponse.batchId} ($total jobs)');
+    AppLogger.info(
+        'ScanBatch', 'Batch created: ${batchResponse.batchId} ($total jobs)');
 
     // ── Navigate to Dashboard ────────────────────────────────────────────
     appRouter.go('/dashboard');
@@ -242,8 +245,8 @@ class ScanBatchController extends ChangeNotifier {
             .toList();
         final failedJobs = dto.failedJobsList;
 
-        AppLogger.info(
-            'ScanBatch', 'Batch $batchId complete: ${receipts.length}/$total receipts parsed, ${failedJobs.length} failed');
+        AppLogger.info('ScanBatch',
+            'Batch $batchId complete: ${receipts.length}/$total receipts parsed, ${failedJobs.length} failed');
 
         if (receipts.isEmpty) {
           // All jobs failed
@@ -261,7 +264,8 @@ class ScanBatchController extends ChangeNotifier {
           // Partial success: some completed, some failed
           _completedReceipts = receipts;
           notifyListeners();
-          final failedNames = failedJobs.map((j) => j.filename ?? 'receipt').join(', ');
+          final failedNames =
+              failedJobs.map((j) => j.filename ?? 'receipt').join(', ');
           final message =
               '${receipts.length}/$total receipt${receipts.length != 1 ? 's' : ''} ready. Failed: $failedNames';
 
@@ -286,19 +290,23 @@ class ScanBatchController extends ChangeNotifier {
           );
         }
       } catch (e) {
-        AppLogger.error('ScanBatch', 'Failed to parse batch_complete payload', e);
+        AppLogger.error(
+            'ScanBatch', 'Failed to parse batch_complete payload', e);
         _completedReceipts = [];
         notifyListeners();
-        _showError('Scan completed but results could not be read.', _activeImages.isNotEmpty ? _activeImages : null);
+        _showError('Scan completed but results could not be read.',
+            _activeImages.isNotEmpty ? _activeImages : null);
       }
     } else if (event == 'progress') {
       try {
         final json = jsonDecode(data) as Map<String, dynamic>;
         final completed = (json['completed_jobs'] as int?) ?? 0;
         final totalJobs = (json['total_jobs'] as int?) ?? total;
-        AppLogger.info('ScanBatch', 'Batch $batchId progress: $completed/$totalJobs completed');
+        AppLogger.info('ScanBatch',
+            'Batch $batchId progress: $completed/$totalJobs completed');
         ScanProgressSnackBar.show(
-          message: 'Scanning receipt${totalJobs > 1 ? 's' : ''} ($completed/$totalJobs)…',
+          message:
+              'Scanning receipt${totalJobs > 1 ? 's' : ''} ($completed/$totalJobs)…',
           onCancel: () => _cancel(),
         );
       } catch (e) {
@@ -311,7 +319,8 @@ class ScanBatchController extends ChangeNotifier {
       _activeBatchId = null;
       _completedReceipts = [];
       notifyListeners();
-      _showError('Scan timed out. Please try again.', _activeImages.isNotEmpty ? _activeImages : null);
+      _showError('Scan timed out. Please try again.',
+          _activeImages.isNotEmpty ? _activeImages : null);
     } else if (event == 'error') {
       _isTerminalEventReceived = true;
       _sseSubscription?.cancel();
@@ -348,24 +357,26 @@ class ScanBatchController extends ChangeNotifier {
   void _showError(String message, List<XFile>? retryImages) {
     ScanProgressSnackBar.showError(
       message: message,
-      onRetry: retryImages != null
-          ? () => startBatchScan(retryImages)
-          : null,
+      onRetry: retryImages != null ? () => startBatchScan(retryImages) : null,
     );
   }
 
   // ── Job → Domain mapper ───────────────────────────────────────────────────
 
-  Receipt _jobToReceipt(BulkJobStatusDto job, Map<String, String> imagePathMap) {
+  Receipt _jobToReceipt(
+      BulkJobStatusDto job, Map<String, String> imagePathMap) {
     final dto = job.data!;
-    final id = job.jobId.isNotEmpty ? job.jobId : 'res-${DateTime.now().millisecondsSinceEpoch}';
+    final id = job.jobId.isNotEmpty
+        ? job.jobId
+        : 'res-${DateTime.now().millisecondsSinceEpoch}';
     final lineItems = dto.lineItems.map((li) => li.toDomain()).toList();
     final items = dto.lineItems.map((li) {
       final parts = <String>[li.description];
       if (li.totalPrice != null) {
         parts.add('${dto.currency} ${li.totalPrice!.toStringAsFixed(2)}');
       } else if (li.unitPrice != null && li.quantity != null) {
-        parts.add('${li.quantity} × ${dto.currency} ${li.unitPrice!.toStringAsFixed(2)}');
+        parts.add(
+            '${li.quantity} × ${dto.currency} ${li.unitPrice!.toStringAsFixed(2)}');
       }
       return parts.join(' — ');
     }).toList();
@@ -389,8 +400,18 @@ class ScanBatchController extends ChangeNotifier {
     try {
       final dt = DateTime.parse(raw);
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${months[dt.month - 1]} ${dt.day.toString().padLeft(2, '0')}, ${dt.year}';
     } catch (_) {
@@ -401,11 +422,20 @@ class ScanBatchController extends ChangeNotifier {
   String _normaliseCategory(String? raw) {
     if (raw == null || raw.isEmpty) return '';
     final lower = raw.toLowerCase();
-    if (lower.contains('grocer') || lower.contains('supermarket')) return 'Groceries';
-    if (lower.contains('dining') || lower.contains('restaurant') || lower.contains('food')) return 'Dining';
-    if (lower.contains('transport') || lower.contains('fuel') || lower.contains('gas')) return 'Transport';
-    if (lower.contains('shop') || lower.contains('retail') || lower.contains('clothe')) return 'Shopping';
-    if (lower.contains('electron') || lower.contains('tech') || lower.contains('gadget')) return 'Electronics';
+    if (lower.contains('grocer') || lower.contains('supermarket'))
+      return 'Groceries';
+    if (lower.contains('dining') ||
+        lower.contains('restaurant') ||
+        lower.contains('food')) return 'Dining';
+    if (lower.contains('transport') ||
+        lower.contains('fuel') ||
+        lower.contains('gas')) return 'Transport';
+    if (lower.contains('shop') ||
+        lower.contains('retail') ||
+        lower.contains('clothe')) return 'Shopping';
+    if (lower.contains('electron') ||
+        lower.contains('tech') ||
+        lower.contains('gadget')) return 'Electronics';
     return '';
   }
 }
