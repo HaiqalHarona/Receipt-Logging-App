@@ -12,6 +12,7 @@ import '../../services/currency_service.dart';
 import '../../services/isar_service.dart';
 import '../models/receipt_isar.dart';
 import '../../cloud/api/backend_api_client.dart';
+import '../../cloud/models/receipt_models.dart';
 import '../../cloud/services/auth_service.dart';
 
 /// Single source of truth for receipt data.
@@ -152,6 +153,40 @@ class ReceiptRepository extends ChangeNotifier {
       r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
     );
     return uuidRegex.hasMatch(id);
+  }
+
+  void _updateCloudIfSynced(Receipt receipt) {
+    if (_isUuid(receipt.id) && AuthService.instance.isLoggedIn) {
+      final username = AuthService.instance.currentUsername;
+      final userToken = AuthService.instance.currentUserToken;
+      if (username != null && userToken != null) {
+        AppLogger.info('CloudSync',
+            '[ReceiptRepository] Triggering backend PATCH /receipts/${receipt.id} on Supabase...');
+        BackendApiClient.instance
+            .updateReceipt(
+          receiptId: receipt.id,
+          receipt: ReceiptDto.fromDomain(receipt),
+          username: username,
+          userToken: userToken,
+        )
+            .then((record) {
+          AppLogger.info('CloudSync',
+              '[ReceiptRepository] Cloud receipt ${receipt.id} updated on Supabase (id=${record.id}).');
+        }).catchError((e, st) {
+          AppLogger.error(
+              'CloudSync',
+              '[ReceiptRepository] Error executing PATCH /receipts/${receipt.id}',
+              e,
+              st);
+        });
+      }
+    }
+  }
+
+  /// Updates a receipt in local Isar and triggers an async PATCH to Supabase when logged in.
+  Future<void> updateReceipt(Receipt receipt) async {
+    await saveReceipt(receipt);
+    _updateCloudIfSynced(receipt);
   }
 
   void _deleteFromCloudIfSynced(String id) {

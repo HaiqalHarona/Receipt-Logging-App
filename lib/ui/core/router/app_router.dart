@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'main_tab_shell.dart';
 import '../../features/verification/views/verification_screen.dart';
+import '../../features/edit_receipt/views/edit_receipt_screen.dart';
 import '../../features/receipt_detail/views/receipt_detail_screen.dart';
 import '../../features/analytics/views/analytics_screen.dart';
 import '../../features/paywall/views/paywall_screen.dart';
@@ -110,6 +111,11 @@ final GoRouter appRouter = GoRouter(
       path: '/receipt-detail',
       pageBuilder: (context, state) => _buildNeumorphicPage(
           state: state, child: const ReceiptDetailScreen()),
+    ),
+    GoRoute(
+      path: '/edit-receipt',
+      pageBuilder: (context, state) =>
+          _buildNeumorphicPage(state: state, child: const EditReceiptScreen()),
     ),
     GoRoute(
       path: '/analytics',

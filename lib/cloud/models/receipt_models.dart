@@ -7,8 +7,12 @@
 ///   POST   /api/v1/receipts/        → [ReceiptRecordDto]
 ///   POST   /api/v1/receipts/batch   → List<[ReceiptRecordDto]>
 ///   GET    /api/v1/receipts/        → List<[ReceiptRecordDto]>
+///   PATCH  /api/v1/receipts/{id}    → [ReceiptRecordDto]
 ///   DELETE /api/v1/receipts/{id}    → bool
 library;
+
+import '../../domain/models/receipt.dart';
+import '../../domain/models/line_item.dart';
 
 // ── LINE ITEM ──────────────────────────────────────────────────────────────────
 
@@ -33,6 +37,13 @@ class LineItemDto {
       totalPrice: (json['total_price'] as num?)?.toDouble(),
     );
   }
+
+  factory LineItemDto.fromDomain(LineItem li) => LineItemDto(
+        description: li.description,
+        quantity: li.quantity,
+        unitPrice: li.unitPrice,
+        totalPrice: li.totalPrice,
+      );
 
   Map<String, dynamic> toJson() => {
         'description': description,
@@ -87,6 +98,20 @@ class ReceiptDto {
       rawText: (json['raw_text'] as String?) ?? '',
       confidenceScore: (json['confidence_score'] as num?)?.toDouble() ?? 0.0,
       notes: json['notes'] as String?,
+    );
+  }
+
+  /// Converts a domain [Receipt] into a [ReceiptDto] for sending to the backend PATCH endpoint.
+  factory ReceiptDto.fromDomain(Receipt receipt) {
+    return ReceiptDto(
+      merchantName: receipt.merchant.isNotEmpty ? receipt.merchant : 'Unknown Merchant',
+      totalAmount: receipt.amount,
+      date: receipt.date,
+      rawText: '',
+      lineItems: receipt.lineItems.map(LineItemDto.fromDomain).toList(),
+      currency: receipt.currency,
+      category: receipt.category.isNotEmpty ? receipt.category : null,
+      confidenceScore: 1.0,
     );
   }
 

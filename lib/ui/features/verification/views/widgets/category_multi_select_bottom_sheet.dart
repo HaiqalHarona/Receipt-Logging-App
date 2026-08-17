@@ -46,11 +46,12 @@ class _CategoryMultiSelectBottomSheetState
 
   static const List<String> _defaultCategories = [
     'Groceries',
-    'Dining & Food',
-    'Transport & Fuel',
+    'Dining',
+    'Entertainment',
+    'Transport',
     'Shopping',
-    'Electronics & Tech',
-    'General & Other',
+    'Electronics',
+    'General',
   ];
 
   static const List<Color> _presetColors = [

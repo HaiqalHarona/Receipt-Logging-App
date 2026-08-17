@@ -113,7 +113,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
 
   void _openEditor() async {
     if (_receipt == null) return;
-    await context.push('/verification', extra: _receipt);
+    await context.push('/edit-receipt', extra: _receipt);
 
     // Refresh static detail display from repository upon returning
     if (!mounted) return;

@@ -12,6 +12,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/app_logger_service.dart';
+import '../../services/cloud_sync_service.dart';
 import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
 import '../models/user_models.dart';
@@ -205,6 +206,7 @@ class AuthService extends ChangeNotifier {
     _countryCode = null;
     _mobileNumber = null;
     _cachedProfile = null;
+    CloudSyncService.instance.cancelBackgroundSync();
 
     try {
       final prefs = await SharedPreferences.getInstance();

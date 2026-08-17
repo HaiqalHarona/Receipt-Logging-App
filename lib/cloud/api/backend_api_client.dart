@@ -728,16 +728,19 @@ class BackendApiClient {
   }
 
   /// Fetches non-deleted receipts for the authenticated user, newest first.
-  /// Supports pagination via [limit] and [offset].
+  /// Supports pagination via [limit] and [offset], and delta sync via [updatedAfter].
   Future<List<ReceiptRecordDto>> fetchReceipts({
     required String username,
     required String userToken,
     int? limit,
     int? offset,
+    String? updatedAfter,
   }) async {
     final queryParams = <String, String>{
       if (limit != null) 'limit': '$limit',
       if (offset != null) 'offset': '$offset',
+      if (updatedAfter != null && updatedAfter.isNotEmpty)
+        'updated_after': updatedAfter,
     };
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/')
         .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
@@ -770,6 +773,32 @@ class BackendApiClient {
     final response = await _sendRequest('DELETE', uri, headers: headers);
 
     return response.statusCode == 200;
+  }
+
+  /// Updates an existing receipt in the Supabase backend via PATCH.
+  /// Returns the updated [ReceiptRecordDto] on success.
+  Future<ReceiptRecordDto> updateReceipt({
+    required String receiptId,
+    required ReceiptDto receipt,
+    required String username,
+    required String userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/$receiptId');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
+    );
+
+    final response = await _sendRequest(
+      'PATCH',
+      uri,
+      headers: headers,
+      body: jsonEncode({'receipt': receipt.toJson()}),
+    );
+
+    _assertStatus(response, 200);
+    return ReceiptRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   // ── AI CHAT ──────────────────────────────────────────────────────────────────
