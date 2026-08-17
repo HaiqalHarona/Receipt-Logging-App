@@ -73,7 +73,8 @@ class CloudSyncService {
       final token = AuthService.instance.currentUserToken;
       if (username == null || token == null) return;
 
-      AppLogger.info('CloudSync', 'Starting login sync for user $username (session: $sessionId)...');
+      AppLogger.info('CloudSync',
+          'Starting login sync for user $username (session: $sessionId)...');
 
       // ── 1. Fetch User Profile ──────────────────────────────────────────────
       await AuthService.instance.getOrFetchProfile();
@@ -91,7 +92,8 @@ class CloudSyncService {
 
         // ── 3. Pre-fetch Messages for Top 3 Conversations ───────────────────
         for (final conv in convDtos.take(3)) {
-          if (_activeSessionId != sessionId || !AuthService.instance.isLoggedIn) break;
+          if (_activeSessionId != sessionId || !AuthService.instance.isLoggedIn)
+            break;
           await ensureChatHistoryLoaded(conv.id);
         }
       }
@@ -228,7 +230,8 @@ class CloudSyncService {
         AppLogger.info('CloudSync',
             'Delta sync updated ${domainReceipts.length} receipts in Isar DB.');
       } else {
-        AppLogger.info('CloudSync', 'Delta sync: local cache already up to date.');
+        AppLogger.info(
+            'CloudSync', 'Delta sync: local cache already up to date.');
       }
 
       await prefs.setString('$_keyLastSyncPrefix$username',
@@ -260,7 +263,8 @@ class CloudSyncService {
       );
 
       if (recordDtos.isEmpty) {
-        AppLogger.info('CloudSync', 'fetchReceipts returned 0 records (offset: $offset)');
+        AppLogger.info(
+            'CloudSync', 'fetchReceipts returned 0 records (offset: $offset)');
         return 0;
       }
 
@@ -327,4 +331,3 @@ class CloudSyncService {
     );
   }
 }
-

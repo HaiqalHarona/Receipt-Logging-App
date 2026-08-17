@@ -53,7 +53,8 @@ class _EditReceiptScreenState extends State<EditReceiptScreen> {
       context.pop();
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.show(context, message: 'Failed to save receipt. Please try again.');
+      AppSnackBar.show(context,
+          message: 'Failed to save receipt. Please try again.');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

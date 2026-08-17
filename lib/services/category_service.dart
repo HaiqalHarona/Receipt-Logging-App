@@ -32,8 +32,12 @@ class CustomCategory {
   factory CustomCategory.fromJson(Map<String, dynamic> json) {
     return CustomCategory(
       name: (json['name'] as String?) ?? '',
-      colorValue: (json['colorValue'] as int?) ?? (json['color_value'] as int?) ?? 0xFF10B981,
-      iconCodePoint: (json['iconCodePoint'] as int?) ?? (json['icon_code_point'] as int?) ?? 0xe318,
+      colorValue: (json['colorValue'] as int?) ??
+          (json['color_value'] as int?) ??
+          0xFF10B981,
+      iconCodePoint: (json['iconCodePoint'] as int?) ??
+          (json['icon_code_point'] as int?) ??
+          0xe318,
     );
   }
 

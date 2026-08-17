@@ -214,8 +214,8 @@ class _CategoryMultiSelectBottomSheetState
                     depth: 2,
                     intensity: 0.85,
                     color: baseColor,
-                    boxShape: NeumorphicBoxShape.roundRect(
-                        BorderRadius.circular(12)),
+                    boxShape:
+                        NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Center(
@@ -238,8 +238,8 @@ class _CategoryMultiSelectBottomSheetState
                     depth: 3,
                     intensity: 0.85,
                     color: Colors.redAccent,
-                    boxShape: NeumorphicBoxShape.roundRect(
-                        BorderRadius.circular(12)),
+                    boxShape:
+                        NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: const Center(
@@ -553,7 +553,6 @@ class _CategoryMultiSelectBottomSheetState
         // 2-Column Action Buttons Row: [Col 1: Edit Categories] [Col 2: Add New (X/8)]
         if (_enableCategoryCreation) ...[
           const SizedBox(height: 4),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             child: Row(
@@ -575,8 +574,8 @@ class _CategoryMultiSelectBottomSheetState
                       boxShape: NeumorphicBoxShape.roundRect(
                           BorderRadius.circular(14)),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 8),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -596,9 +595,8 @@ class _CategoryMultiSelectBottomSheetState
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
-                              color: _isEditingCategories
-                                  ? accent
-                                  : textSecondary,
+                              color:
+                                  _isEditingCategories ? accent : textSecondary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -630,8 +628,8 @@ class _CategoryMultiSelectBottomSheetState
                       boxShape: NeumorphicBoxShape.roundRect(
                           BorderRadius.circular(14)),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 8),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

@@ -24,8 +24,12 @@ class CustomCategoryDto {
   factory CustomCategoryDto.fromJson(Map<String, dynamic> json) {
     return CustomCategoryDto(
       name: (json['name'] as String?) ?? '',
-      colorValue: (json['colorValue'] as int?) ?? (json['color_value'] as int?) ?? 0xFF10B981,
-      iconCodePoint: (json['iconCodePoint'] as int?) ?? (json['icon_code_point'] as int?) ?? 0xe318,
+      colorValue: (json['colorValue'] as int?) ??
+          (json['color_value'] as int?) ??
+          0xFF10B981,
+      iconCodePoint: (json['iconCodePoint'] as int?) ??
+          (json['icon_code_point'] as int?) ??
+          0xe318,
     );
   }
 
@@ -70,7 +74,8 @@ class UserRecordDto {
       mobileNumber: json['mobile_number'] as String?,
       avatarImagePath: json['avatar_image_path'] as String?,
       customCategories: (json['custom_categories'] as List<dynamic>?)
-              ?.map((e) => CustomCategoryDto.fromJson(e as Map<String, dynamic>))
+              ?.map(
+                  (e) => CustomCategoryDto.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
       createdAt: (json['created_at'] as String?) ?? '',

@@ -104,7 +104,8 @@ class ReceiptDto {
   /// Converts a domain [Receipt] into a [ReceiptDto] for sending to the backend PATCH endpoint.
   factory ReceiptDto.fromDomain(Receipt receipt) {
     return ReceiptDto(
-      merchantName: receipt.merchant.isNotEmpty ? receipt.merchant : 'Unknown Merchant',
+      merchantName:
+          receipt.merchant.isNotEmpty ? receipt.merchant : 'Unknown Merchant',
       totalAmount: receipt.amount,
       date: receipt.date,
       rawText: '',
