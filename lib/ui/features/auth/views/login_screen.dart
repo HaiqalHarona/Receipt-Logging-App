@@ -12,6 +12,7 @@ import '../../../../services/app_logger_service.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../data/repositories/conversation_repository.dart';
 import '../../../../data/repositories/chat_message_repository.dart';
+import '../../../../services/category_service.dart';
 import '../../../../services/isar_service.dart';
 import '../../../../data/models/receipt_isar.dart';
 import '../../../../domain/models/receipt.dart';
@@ -87,6 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
     await ReceiptRepository.instance.clearAll();
     await ConversationRepository.instance.clearAll();
     await ChatMessageRepository.instance.clearAll();
+    await CategoryService.instance.clearAll();
   }
 
   Future<bool> _showGuestOverrideWarningModal() async {
@@ -274,29 +276,29 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Persist session and link hardware device first
-      await AuthService.instance.saveSession(user, userToken: password);
-      await AuthService.instance.linkCurrentDevice(user, userToken: password);
-
-      // Check if local unsynced guest data exists AFTER successful login and device linking
+      // Check if local unsynced guest data exists BEFORE saving user session and linking device
       if (await _hasLocalGuestData()) {
         AppLogger.info('UI',
-            'User authenticated. Local guest data detected. Prompting override warning modal...');
+            'Local guest data detected. Prompting override warning modal...');
         final confirmed = await _showGuestOverrideWarningModal();
         if (!confirmed) {
-          AppLogger.info('UI',
-              'User canceled override modal. Unlinking device and clearing session...');
-          await AuthService.instance.linkCurrentDevice(null);
-          await AuthService.instance.clearSession();
+          AppLogger.info('UI', 'User canceled override modal. Aborting login.');
           if (mounted) {
             setState(() => _isLoading = false);
           }
           return;
         }
         await _purgeLocalGuestData();
+      } else {
+        // Clean slate: ensure local stores are cleared so no stale records duplicate with cloud data
+        await _purgeLocalGuestData();
       }
 
-      // Perform initial cloud sync after modal confirmation
+      // Persist session and link hardware device AFTER modal confirmation / guest purge
+      await AuthService.instance.saveSession(user, userToken: password);
+      await AuthService.instance.linkCurrentDevice(user, userToken: password);
+
+      // Perform initial cloud sync
       await CloudSyncService.instance.syncOnLogin();
 
       if (!mounted) return;

@@ -414,6 +414,7 @@ class BackendApiClient {
     String? countryCode,
     String? mobileNumber,
     String? avatarImagePath,
+    List<CustomCategoryDto>? customCategories,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
     final headers = ApiConfig.buildUserHeaders(
@@ -426,6 +427,10 @@ class BackendApiClient {
     if (countryCode != null) body['country_code'] = countryCode;
     if (mobileNumber != null) body['mobile_number'] = mobileNumber;
     if (avatarImagePath != null) body['avatar_image_path'] = avatarImagePath;
+    if (customCategories != null) {
+      body['custom_categories'] =
+          customCategories.map((c) => c.toJson()).toList();
+    }
 
     final response = await _sendRequest(
       'PATCH',

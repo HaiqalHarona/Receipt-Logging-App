@@ -14,6 +14,7 @@ import '../models/receipt_isar.dart';
 import '../../cloud/api/backend_api_client.dart';
 import '../../cloud/models/receipt_models.dart';
 import '../../cloud/services/auth_service.dart';
+import '../../ui/core/utils/category_utils.dart';
 
 /// Single source of truth for receipt data.
 ///
@@ -187,6 +188,45 @@ class ReceiptRepository extends ChangeNotifier {
   Future<void> updateReceipt(Receipt receipt) async {
     await saveReceipt(receipt);
     _updateCloudIfSynced(receipt);
+  }
+
+  /// Removes a category tag from all stored receipts.
+  /// If a receipt only has this category, it falls back to 'General' (or empty string if 'General').
+  /// Automatically updates Isar and syncs affected receipts to Supabase when logged in.
+  Future<void> removeCategoryFromAllReceipts(String categoryToRemove) async {
+    final cleanTarget = CategoryUtils.sanitize(categoryToRemove).toLowerCase();
+    if (cleanTarget.isEmpty) return;
+
+    final List<Receipt> affected = [];
+
+    for (final r in _receipts) {
+      final categories = r.category
+          .split(',')
+          .map((c) => CategoryUtils.sanitize(c).trim())
+          .where((c) => c.isNotEmpty)
+          .toList();
+
+      final matchingIndex = categories.indexWhere(
+          (c) => CategoryUtils.sanitize(c).toLowerCase() == cleanTarget);
+
+      if (matchingIndex >= 0) {
+        categories.removeAt(matchingIndex);
+        final newCategoryString = categories.isEmpty
+            ? (cleanTarget == 'general' ? '' : 'General')
+            : categories.join(', ');
+
+        final updatedReceipt = r.copyWith(category: newCategoryString);
+        affected.add(updatedReceipt);
+      }
+    }
+
+    if (affected.isNotEmpty) {
+      for (final updated in affected) {
+        await updateReceipt(updated);
+      }
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Removed category "$categoryToRemove" from ${affected.length} receipts.');
+    }
   }
 
   void _deleteFromCloudIfSynced(String id) {

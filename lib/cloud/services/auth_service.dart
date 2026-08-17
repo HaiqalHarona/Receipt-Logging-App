@@ -12,6 +12,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/app_logger_service.dart';
+import '../../services/category_service.dart';
 import '../../services/cloud_sync_service.dart';
 import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
@@ -95,13 +96,13 @@ class AuthService extends ChangeNotifier {
 
   /// Retrieves user profile details.
   ///
-  /// **Caching Rule**: Fetches from backend via `GET /user/me` ONLY ONCE if not cached.
+  /// **Caching Rule**: Fetches from backend via `GET /user/me` ONLY ONCE if not cached (unless [force] is true).
   /// Subsequent reads immediately return the cached [UserRecordDto] without making extra HTTP calls.
-  Future<UserRecordDto?> getOrFetchProfile() async {
+  Future<UserRecordDto?> getOrFetchProfile({bool force = false}) async {
     if (!isLoggedIn || _username == null || _userToken == null) return null;
 
-    // Return cached profile if already present with complete details
-    if (_cachedProfile != null && _cachedProfile!.id.isNotEmpty) {
+    // Return cached profile if already present with complete details and not forced
+    if (!force && _cachedProfile != null && _cachedProfile!.id.isNotEmpty) {
       AppLogger.info('AuthService',
           'Served profile from cache for: ${_cachedProfile!.username}');
       return _cachedProfile;
@@ -154,6 +155,31 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Updates custom user categories via `PATCH /user/me` and updates local cache.
+  Future<bool> updateCustomCategories(
+      List<CustomCategoryDto> customCategories) async {
+    if (!isLoggedIn || _username == null || _userToken == null) return false;
+
+    try {
+      final updated = await BackendApiClient.instance.updateUserProfile(
+        username: _username!,
+        userToken: _userToken!,
+        customCategories: customCategories,
+      );
+
+      _cachedProfile = updated;
+      await _persistProfile(updated);
+      AppLogger.info('AuthService',
+          'Custom categories synced to backend and cache: ${customCategories.length} categories');
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      AppLogger.error(
+          'AuthService', 'Failed to sync custom categories to backend', e, st);
+      return false;
+    }
+  }
+
   // ── SESSION MANAGEMENT ──────────────────────────────────────────────────────
 
   /// Persists a new user session and cached profile locally.
@@ -192,6 +218,11 @@ class AuthService extends ChangeNotifier {
       } else {
         await prefs.remove(_keyMobileNumber);
       }
+
+      // Sync custom categories from cloud into CategoryService (Cloud Priority: overwrite local with user's exact cloud list)
+      await CategoryService.instance.syncFromCloud(
+        user.customCategories.map((c) => CustomCategory.fromDto(c)).toList(),
+      );
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to persist profile', e, st);
     }
@@ -199,6 +230,7 @@ class AuthService extends ChangeNotifier {
 
   /// Clears the local user session (logout).
   Future<void> clearSession() async {
+    final oldUsername = _username;
     _userId = null;
     _username = null;
     _userToken = null;
@@ -207,6 +239,10 @@ class AuthService extends ChangeNotifier {
     _mobileNumber = null;
     _cachedProfile = null;
     CloudSyncService.instance.cancelBackgroundSync();
+    if (oldUsername != null) {
+      await CloudSyncService.instance.resetSyncState(oldUsername);
+    }
+    await CategoryService.instance.clearAll();
 
     try {
       final prefs = await SharedPreferences.getInstance();

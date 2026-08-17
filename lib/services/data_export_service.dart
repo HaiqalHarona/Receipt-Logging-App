@@ -6,6 +6,7 @@
 
 import 'package:isar/isar.dart';
 import 'app_logger_service.dart';
+import 'category_service.dart';
 import '../data/repositories/receipt_repository.dart';
 import '../data/repositories/conversation_repository.dart';
 import '../services/isar_service.dart';
@@ -89,10 +90,17 @@ class DataExportService {
         }
       }
 
+      // ── Custom Categories ───────────────────────────────────────────────────
+      await CategoryService.instance.init();
+      final customCategories = CategoryService.instance.customCategories;
+      final customCategoriesJson =
+          customCategories.map((c) => c.toJson()).toList();
+
       final result = {
         'receipts': receiptsJson,
         'conversations': conversationsJson,
         'chat_messages': chatMessagesJson,
+        'custom_categories': customCategoriesJson,
       };
 
       AppLogger.info(
@@ -100,12 +108,18 @@ class DataExportService {
         'Exported guest data: '
             'receipts=${receiptsJson.length} '
             'conversations=${conversationsJson.length} '
-            'chat_messages=${chatMessagesJson.length}',
+            'chat_messages=${chatMessagesJson.length} '
+            'custom_categories=${customCategoriesJson.length}',
       );
       return result;
     } catch (e, st) {
       AppLogger.error('DataExport', 'Export failed', e, st);
-      return {'receipts': [], 'conversations': [], 'chat_messages': []};
+      return {
+        'receipts': [],
+        'conversations': [],
+        'chat_messages': [],
+        'custom_categories': []
+      };
     }
   }
 

@@ -1,6 +1,7 @@
 // File: lib/ui/features/verification/views/widgets/category_multi_select_bottom_sheet.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../../../../data/repositories/receipt_repository.dart';
 import '../../../../../services/category_service.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/utils/category_utils.dart';
@@ -42,12 +43,11 @@ class CategoryMultiSelectBottomSheet extends StatefulWidget {
 
 class _CategoryMultiSelectBottomSheetState
     extends State<CategoryMultiSelectBottomSheet> {
-  static const bool _enableCategoryCreation = false;
+  static const bool _enableCategoryCreation = true;
 
   static const List<String> _defaultCategories = [
     'Groceries',
     'Dining',
-    'Entertainment',
     'Transport',
     'Shopping',
     'Electronics',
@@ -63,6 +63,28 @@ class _CategoryMultiSelectBottomSheetState
     Color(0xFFF43F5E), // Rose Pink
     Color(0xFFF97316), // Coral Orange
     Color(0xFF6366F1), // Indigo
+    Color(0xFFEC4899), // Hot Pink
+    Color(0xFF14B8A6), // Teal
+    Color(0xFF84CC16), // Lime Green
+    Color(0xFFEAB308), // Sun Yellow
+    Color(0xFFA855F7), // Rich Orchid
+    Color(0xFFD946EF), // Magenta
+    Color(0xFF0EA5E9), // Sky Blue
+    Color(0xFF22C55E), // Vibrant Green
+    Color(0xFFEF4444), // Crimson Red
+    Color(0xFF64748B), // Slate Blue
+    Color(0xFF78716C), // Warm Stone
+    Color(0xFFD97706), // Ochre Bronze
+    Color(0xFF059669), // Forest Jade
+    Color(0xFF2563EB), // Royal Blue
+    Color(0xFF7C3AED), // Deep Violet
+    Color(0xFFBE123C), // Ruby Red
+    Color(0xFF0D9488), // Deep Teal
+    Color(0xFF4F46E5), // Deep Indigo
+    Color(0xFFDB2777), // Berry Pink
+    Color(0xFFCA8A04), // Mustard Gold
+    Color(0xFF15803D), // Pine Green
+    Color(0xFF475569), // Charcoal Slate
   ];
 
   static const List<IconData> _presetIcons = [
@@ -78,10 +100,29 @@ class _CategoryMultiSelectBottomSheetState
     Icons.local_cafe_rounded,
     Icons.home_rounded,
     Icons.work_rounded,
+    Icons.flight_rounded,
+    Icons.hotel_rounded,
+    Icons.local_gas_station_rounded,
+    Icons.pets_rounded,
+    Icons.school_rounded,
+    Icons.menu_book_rounded,
+    Icons.sports_esports_rounded,
+    Icons.music_note_rounded,
+    Icons.spa_rounded,
+    Icons.cleaning_services_rounded,
+    Icons.build_rounded,
+    Icons.receipt_long_rounded,
+    Icons.wifi_rounded,
+    Icons.child_care_rounded,
+    Icons.local_bar_rounded,
+    Icons.directions_bus_rounded,
+    Icons.savings_rounded,
+    Icons.category_rounded,
   ];
 
   late Set<String> _selectedCategories;
   bool _isAddingNew = false;
+  bool _isEditingCategories = false;
 
   final TextEditingController _newCatNameController = TextEditingController();
   int _selectedColorIndex = 0;
@@ -117,6 +158,118 @@ class _CategoryMultiSelectBottomSheetState
       }
     }
     return combined;
+  }
+
+  Future<void> _confirmAndDeleteCategory(String cat) async {
+    final baseColor = NeumorphicTheme.baseColor(context);
+    final textPrimary = AppThemeController.instance.textColor;
+    final textSecondary = AppThemeController.instance.secondaryTextColor;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: baseColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade900.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.redAccent, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Delete Category',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete "$cat"? This will untag it from all receipts.',
+          style: TextStyle(
+            fontSize: 14,
+            color: textSecondary,
+            height: 1.4,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: NeumorphicButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  style: NeumorphicStyle(
+                    depth: 2,
+                    intensity: 0.85,
+                    color: baseColor,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(12)),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: NeumorphicButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  style: NeumorphicStyle(
+                    depth: 3,
+                    intensity: 0.85,
+                    color: Colors.redAccent,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(12)),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: const Center(
+                    child: Text(
+                      'Delete',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _selectedCategories.remove(cat);
+      });
+      await CategoryService.instance.removeCategory(cat);
+      await ReceiptRepository.instance.removeCategoryFromAllReceipts(cat);
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
   Future<void> _handleSaveNewCategory() async {
@@ -168,63 +321,71 @@ class _CategoryMultiSelectBottomSheetState
         color: baseColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Drag Handle Top Bar
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: textSecondary.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: textSecondary.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 16),
 
           // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _isAddingNew ? 'Create Custom Category' : 'Select Categories',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: textPrimary,
-                ),
-              ),
-              if (_isAddingNew)
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isAddingNew = false;
-                      _creationError = null;
-                    });
-                  },
-                  child:
-                      Icon(Icons.close_rounded, color: textSecondary, size: 22),
-                )
-              else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Text(
-                  '${_selectedCategories.length} selected',
+                  _isAddingNew ? 'Create Custom Category' : 'Select Categories',
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: accent,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textPrimary,
                   ),
                 ),
-            ],
+                if (_isAddingNew)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isAddingNew = false;
+                        _creationError = null;
+                      });
+                    },
+                    child: Icon(Icons.close_rounded,
+                        color: textSecondary, size: 22),
+                  )
+                else
+                  Text(
+                    '${_selectedCategories.length} selected',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
           // Body View Switcher
           Flexible(
             child: SingleChildScrollView(
+              clipBehavior: Clip.hardEdge,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
               child: _isAddingNew
                   ? _buildAddCategoryView(
                       baseColor, accent, textPrimary, textSecondary)
@@ -237,34 +398,37 @@ class _CategoryMultiSelectBottomSheetState
 
           // Bottom Action Button Bar
           if (!_isAddingNew)
-            Row(
-              children: [
-                Expanded(
-                  child: NeumorphicButton(
-                    onPressed: () {
-                      Navigator.of(context).pop(_selectedCategories.toList());
-                    },
-                    style: NeumorphicStyle(
-                      depth: 4,
-                      intensity: 0.85,
-                      color: accent,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(14)),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: const Center(
-                      child: Text(
-                        'Done',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: NeumorphicButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(_selectedCategories.toList());
+                      },
+                      style: NeumorphicStyle(
+                        depth: 4,
+                        intensity: 0.85,
+                        color: accent,
+                        boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(14)),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: const Center(
+                        child: Text(
+                          'Done',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
         ],
       ),
@@ -289,25 +453,37 @@ class _CategoryMultiSelectBottomSheetState
           final isSelected = _selectedCategories.contains(cat);
           final catColor = CategoryUtils.getCategoryColor(cat);
           final catIcon = CategoryUtils.getCategoryIcon(cat);
+          final isCustom =
+              CategoryService.instance.findCustomCategory(cat) != null;
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding:
+                const EdgeInsets.only(bottom: 12, left: 2, right: 2, top: 2),
             child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (isSelected) {
-                    _selectedCategories.remove(cat);
-                  } else {
-                    _selectedCategories.add(cat);
-                  }
-                });
-              },
+              onTap: _isEditingCategories
+                  ? (isCustom ? () => _confirmAndDeleteCategory(cat) : null)
+                  : () {
+                      setState(() {
+                        if (isSelected) {
+                          _selectedCategories.remove(cat);
+                        } else {
+                          _selectedCategories.add(cat);
+                        }
+                      });
+                    },
               child: Neumorphic(
                 style: NeumorphicStyle(
-                  depth: isSelected ? -2 : 3,
+                  depth: _isEditingCategories
+                      ? (isCustom ? 2 : 0)
+                      : (isSelected ? -2 : 3),
                   intensity: 0.85,
-                  color:
-                      isSelected ? accent.withValues(alpha: 0.15) : baseColor,
+                  color: _isEditingCategories
+                      ? (isCustom
+                          ? baseColor
+                          : baseColor.withValues(alpha: 0.5))
+                      : (isSelected
+                          ? accent.withValues(alpha: 0.15)
+                          : baseColor),
                   boxShape:
                       NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
                 ),
@@ -331,19 +507,42 @@ class _CategoryMultiSelectBottomSheetState
                           fontSize: 14,
                           fontWeight:
                               isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? accent : textPrimary,
+                          color: _isEditingCategories && !isCustom
+                              ? textSecondary.withValues(alpha: 0.5)
+                              : (isSelected ? accent : textPrimary),
                         ),
                       ),
                     ),
-                    Icon(
-                      isSelected
-                          ? Icons.check_circle_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      color: isSelected
-                          ? accent
-                          : textSecondary.withValues(alpha: 0.4),
-                      size: 22,
-                    ),
+                    if (_isEditingCategories)
+                      if (isCustom)
+                        GestureDetector(
+                          onTap: () => _confirmAndDeleteCategory(cat),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color:
+                                  Colors.red.shade900.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                          ),
+                        )
+                      else
+                        const SizedBox(width: 20)
+                    else
+                      Icon(
+                        isSelected
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                        color: isSelected
+                            ? accent
+                            : textSecondary.withValues(alpha: 0.4),
+                        size: 22,
+                      ),
                   ],
                 ),
               ),
@@ -351,49 +550,116 @@ class _CategoryMultiSelectBottomSheetState
           );
         }),
 
-        // Flag to disable category creation UI for now (kept intact for future enablement)
+        // 2-Column Action Buttons Row: [Col 1: Edit Categories] [Col 2: Add New (X/8)]
         if (_enableCategoryCreation) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
 
-          // "+ Add New Category" Button
-          NeumorphicButton(
-            onPressed: isMaxReached
-                ? null
-                : () {
-                    setState(() {
-                      _isAddingNew = true;
-                      _creationError = null;
-                    });
-                  },
-            style: NeumorphicStyle(
-              depth: isMaxReached ? -4 : 3,
-              intensity: 0.85,
-              color:
-                  isMaxReached ? baseColor.withValues(alpha: 0.5) : baseColor,
-              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.add_circle_outline_rounded,
-                  size: 18,
-                  color: isMaxReached
-                      ? textSecondary.withValues(alpha: 0.5)
-                      : accent,
+                // Col-1: Edit Categories
+                Expanded(
+                  child: NeumorphicButton(
+                    onPressed: () {
+                      setState(() {
+                        _isEditingCategories = !_isEditingCategories;
+                      });
+                    },
+                    style: NeumorphicStyle(
+                      depth: _isEditingCategories ? -2 : 3,
+                      intensity: 0.85,
+                      color: _isEditingCategories
+                          ? accent.withValues(alpha: 0.15)
+                          : baseColor,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(14)),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _isEditingCategories
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.edit_rounded,
+                          size: 16,
+                          color: _isEditingCategories ? accent : textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            _isEditingCategories
+                                ? 'Done Editing'
+                                : 'Edit Categories',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: _isEditingCategories
+                                  ? accent
+                                  : textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  isMaxReached
-                      ? 'Max ${CategoryService.maxCustomCategories} custom categories reached'
-                      : 'Add New Category ($customCount/${CategoryService.maxCustomCategories})',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.bold,
-                    color: isMaxReached
-                        ? textSecondary.withValues(alpha: 0.5)
-                        : accent,
+
+                // Col-2: Add New Category
+                Expanded(
+                  child: NeumorphicButton(
+                    onPressed: isMaxReached
+                        ? null
+                        : () {
+                            setState(() {
+                              _isAddingNew = true;
+                              _isEditingCategories = false;
+                              _creationError = null;
+                            });
+                          },
+                    style: NeumorphicStyle(
+                      depth: isMaxReached ? -4 : 3,
+                      intensity: 0.85,
+                      color: isMaxReached
+                          ? baseColor.withValues(alpha: 0.5)
+                          : baseColor,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(14)),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_circle_outline_rounded,
+                          size: 16,
+                          color: isMaxReached
+                              ? textSecondary.withValues(alpha: 0.5)
+                              : accent,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            isMaxReached
+                                ? 'Max ($customCount/${CategoryService.maxCustomCategories})'
+                                : 'Add New ($customCount/${CategoryService.maxCustomCategories})',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: isMaxReached
+                                  ? textSecondary.withValues(alpha: 0.5)
+                                  : accent,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -473,7 +739,7 @@ class _CategoryMultiSelectBottomSheetState
         ),
         const SizedBox(height: 16),
 
-        // Color Presets Grid (8 Colors)
+        // Color Presets Grid (30 Colors)
         Text(
           'Select Theme Color',
           style: TextStyle(
@@ -519,7 +785,7 @@ class _CategoryMultiSelectBottomSheetState
         ),
         const SizedBox(height: 16),
 
-        // Icon Presets Grid (12 Icons)
+        // Icon Presets Grid (30 Icons)
         Text(
           'Select Icon',
           style: TextStyle(

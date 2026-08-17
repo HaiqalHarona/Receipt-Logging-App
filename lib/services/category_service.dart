@@ -3,6 +3,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../cloud/models/user_models.dart';
+import '../cloud/services/auth_service.dart';
 import '../ui/core/utils/category_utils.dart';
 
 /// Model representing a custom user-created category.
@@ -29,14 +31,26 @@ class CustomCategory {
 
   factory CustomCategory.fromJson(Map<String, dynamic> json) {
     return CustomCategory(
-      name: json['name'] as String,
-      colorValue: json['colorValue'] as int,
-      iconCodePoint: json['iconCodePoint'] as int,
+      name: (json['name'] as String?) ?? '',
+      colorValue: (json['colorValue'] as int?) ?? (json['color_value'] as int?) ?? 0xFF10B981,
+      iconCodePoint: (json['iconCodePoint'] as int?) ?? (json['icon_code_point'] as int?) ?? 0xe318,
     );
   }
+
+  CustomCategoryDto toDto() => CustomCategoryDto(
+        name: name,
+        colorValue: colorValue,
+        iconCodePoint: iconCodePoint,
+      );
+
+  factory CustomCategory.fromDto(CustomCategoryDto dto) => CustomCategory(
+        name: dto.name,
+        colorValue: dto.colorValue,
+        iconCodePoint: dto.iconCodePoint,
+      );
 }
 
-/// Service managing custom user-added categories persisted in SharedPreferences.
+/// Service managing custom user-added categories persisted in SharedPreferences & Supabase.
 /// Enforces a maximum limit of 8 custom categories.
 class CategoryService extends ChangeNotifier {
   static final CategoryService instance = CategoryService._internal();
@@ -78,6 +92,15 @@ class CategoryService extends ChangeNotifier {
     }
   }
 
+  /// Syncs and overwrites local categories with cloud categories (Cloud Priority).
+  Future<void> syncFromCloud(List<CustomCategory> cloudCategories) async {
+    _customCategories.clear();
+    _customCategories.addAll(cloudCategories);
+    await _saveToDisk();
+    _isInitialized = true;
+    notifyListeners();
+  }
+
   /// Adds a new custom category if limit is not reached and name is unique.
   Future<bool> addCategory(
       String name, int colorValue, int iconCodePoint) async {
@@ -101,7 +124,40 @@ class CategoryService extends ChangeNotifier {
     _customCategories.add(newCat);
     await _saveToDisk();
     notifyListeners();
+
+    // Trigger cloud sync in background if logged in
+    _syncToCloudIfLoggedIn();
+
     return true;
+  }
+
+  /// Removes a custom category by name.
+  Future<bool> removeCategory(String name) async {
+    await init();
+    final clean = CategoryUtils.sanitize(name).toLowerCase();
+    final beforeCount = _customCategories.length;
+    _customCategories.removeWhere((c) => c.name.toLowerCase() == clean);
+    if (_customCategories.length != beforeCount) {
+      await _saveToDisk();
+      notifyListeners();
+      _syncToCloudIfLoggedIn();
+      return true;
+    }
+    return false;
+  }
+
+  /// Clears all local custom categories (e.g. on logout/account reset).
+  Future<void> clearAll() async {
+    _customCategories.clear();
+    await _saveToDisk();
+    notifyListeners();
+  }
+
+  void _syncToCloudIfLoggedIn() {
+    if (AuthService.instance.isLoggedIn) {
+      final dtoList = _customCategories.map((c) => c.toDto()).toList();
+      AuthService.instance.updateCustomCategories(dtoList);
+    }
   }
 
   /// Finds a custom category by name if one exists.

@@ -7,6 +7,11 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../data/repositories/receipt_repository.dart';
+import '../../../../data/repositories/conversation_repository.dart';
+import '../../../../data/repositories/chat_message_repository.dart';
+import '../../../../services/category_service.dart';
+import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/app_logger_service.dart';
 
@@ -132,7 +137,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final guestData = await DataExportService.instance.exportGuestData();
       final hasGuestData = (guestData['receipts'] as List).isNotEmpty ||
           (guestData['conversations'] as List).isNotEmpty ||
-          (guestData['chat_messages'] as List).isNotEmpty;
+          (guestData['chat_messages'] as List).isNotEmpty ||
+          (guestData['custom_categories'] as List).isNotEmpty;
 
       final user = await BackendApiClient.instance.createUser(
         username: username,
@@ -148,6 +154,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
         userToken: password,
         migrateData: hasGuestData ? guestData : null,
       );
+
+      // Once migration to Supabase succeeds:
+      // 1. Purge local temporary guest stores (they now live in Supabase)
+      await ReceiptRepository.instance.clearAll();
+      await ConversationRepository.instance.clearAll();
+      await ChatMessageRepository.instance.clearAll();
+      await CategoryService.instance.clearAll();
+
+      // 2. Force re-fetch profile so migrated custom categories load into CategoryService
+      await AuthService.instance.getOrFetchProfile(force: true);
+
+      // 3. Trigger initial cloud sync to download migrated receipts with Supabase UUIDs
+      await CloudSyncService.instance.syncOnLogin();
 
       if (!mounted) return;
       setState(() => _isLoading = false);

@@ -98,20 +98,31 @@ class CloudSyncService {
 
       // ── 4. Receipts Sync (Delta vs Progressive Hydration) ───────────────────
       final prefs = await SharedPreferences.getInstance();
-      final isFullSyncComplete = prefs.getBool('$_keyFullSyncPrefix$username') ?? false;
+      final hasLocalReceipts = ReceiptRepository.instance.receipts.isNotEmpty;
+      final isFullSyncComplete =
+          (prefs.getBool('$_keyFullSyncPrefix$username') ?? false) &&
+              hasLocalReceipts;
 
       if (isFullSyncComplete) {
-        AppLogger.info('CloudSync', 'Full sync previously completed for $username. Running delta sync...');
+        AppLogger.info('CloudSync',
+            'Full sync previously completed for $username and local receipts present (${ReceiptRepository.instance.receipts.length}). Running delta sync...');
         await _runDeltaSync(username, token, prefs);
       } else {
-        AppLogger.info('CloudSync', 'Fetching initial 50 receipts for instant render...');
+        AppLogger.info('CloudSync',
+            'No local receipts or full sync incomplete for $username. Fetching initial 50 receipts for instant render...');
+        // Clear stale timestamps so subsequent logic is consistent
+        await prefs.remove('$_keyFullSyncPrefix$username');
+        await prefs.remove('$_keyLastSyncPrefix$username');
+
         final initialLoaded = await fetchMoreReceipts(offset: 0, limit: 50);
 
         if (initialLoaded < 50) {
           // Total historical records on server is less than 50 -> complete immediately!
           await prefs.setBool('$_keyFullSyncPrefix$username', true);
-          await prefs.setString('$_keyLastSyncPrefix$username', DateTime.now().toUtc().toIso8601String());
-          AppLogger.info('CloudSync', 'Initial batch ($initialLoaded) covered all records. Full sync marked complete.');
+          await prefs.setString('$_keyLastSyncPrefix$username',
+              DateTime.now().toUtc().toIso8601String());
+          AppLogger.info('CloudSync',
+              'Initial batch ($initialLoaded) covered all records. Full sync marked complete.');
         } else {
           // Launch non-blocking background hydration loop for the rest of history
           unawaited(_startBackgroundReceiptHydration(
@@ -145,7 +156,8 @@ class CloudSyncService {
     _isHydrating = true;
     int currentOffset = startOffset;
 
-    AppLogger.info('CloudSync', 'Starting background receipt hydration from offset $currentOffset...');
+    AppLogger.info('CloudSync',
+        'Starting background receipt hydration from offset $currentOffset...');
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -155,25 +167,31 @@ class CloudSyncService {
         await Future.delayed(const Duration(seconds: 1));
 
         if (!AuthService.instance.isLoggedIn || _activeSessionId != sessionId) {
-          AppLogger.info('CloudSync', 'Background hydration aborted (user logged out or session changed).');
+          AppLogger.info('CloudSync',
+              'Background hydration aborted (user logged out or session changed).');
           break;
         }
 
-        final loaded = await fetchMoreReceipts(offset: currentOffset, limit: chunkSize);
-        AppLogger.info('CloudSync', 'Background hydrated $loaded receipts (offset: $currentOffset)');
+        final loaded =
+            await fetchMoreReceipts(offset: currentOffset, limit: chunkSize);
+        AppLogger.info('CloudSync',
+            'Background hydrated $loaded receipts (offset: $currentOffset)');
 
         if (loaded < chunkSize) {
           // Reached end of historical records!
           await prefs.setBool('$_keyFullSyncPrefix$username', true);
-          await prefs.setString('$_keyLastSyncPrefix$username', DateTime.now().toUtc().toIso8601String());
-          AppLogger.info('CloudSync', 'Full historical receipt hydration COMPLETE. Stored in local Isar DB.');
+          await prefs.setString('$_keyLastSyncPrefix$username',
+              DateTime.now().toUtc().toIso8601String());
+          AppLogger.info('CloudSync',
+              'Full historical receipt hydration COMPLETE. Stored in local Isar DB.');
           break;
         }
 
         currentOffset += loaded;
       }
     } catch (e, st) {
-      AppLogger.error('CloudSync', 'Error in background receipt hydration', e, st);
+      AppLogger.error(
+          'CloudSync', 'Error in background receipt hydration', e, st);
     } finally {
       _isHydrating = false;
     }
@@ -186,8 +204,16 @@ class CloudSyncService {
     SharedPreferences prefs,
   ) async {
     try {
+      if (ReceiptRepository.instance.receipts.isEmpty) {
+        AppLogger.warning('CloudSync',
+            'Delta sync aborted because local receipts are empty. Triggering initial load...');
+        await fetchMoreReceipts(offset: 0, limit: 50);
+        return;
+      }
+
       final lastSyncStr = prefs.getString('$_keyLastSyncPrefix$username');
-      AppLogger.info('CloudSync', 'Executing delta sync (updated_after: $lastSyncStr)...');
+      AppLogger.info(
+          'CloudSync', 'Executing delta sync (updated_after: $lastSyncStr)...');
 
       final recordDtos = await BackendApiClient.instance.fetchReceipts(
         username: username,
@@ -199,12 +225,14 @@ class CloudSyncService {
         final domainReceipts =
             recordDtos.map((record) => _recordDtoToDomain(record)).toList();
         await ReceiptRepository.instance.saveAllReceipts(domainReceipts);
-        AppLogger.info('CloudSync', 'Delta sync updated ${domainReceipts.length} receipts in Isar DB.');
+        AppLogger.info('CloudSync',
+            'Delta sync updated ${domainReceipts.length} receipts in Isar DB.');
       } else {
         AppLogger.info('CloudSync', 'Delta sync: local cache already up to date.');
       }
 
-      await prefs.setString('$_keyLastSyncPrefix$username', DateTime.now().toUtc().toIso8601String());
+      await prefs.setString('$_keyLastSyncPrefix$username',
+          DateTime.now().toUtc().toIso8601String());
     } catch (e, st) {
       AppLogger.error('CloudSync', 'Delta sync error', e, st);
     }

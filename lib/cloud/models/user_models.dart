@@ -8,6 +8,34 @@
 ///   DELETE /api/v1/user/me      → bool
 library;
 
+// ── CUSTOM CATEGORY DTO ──────────────────────────────────────────────────────
+
+class CustomCategoryDto {
+  const CustomCategoryDto({
+    required this.name,
+    required this.colorValue,
+    required this.iconCodePoint,
+  });
+
+  final String name;
+  final int colorValue;
+  final int iconCodePoint;
+
+  factory CustomCategoryDto.fromJson(Map<String, dynamic> json) {
+    return CustomCategoryDto(
+      name: (json['name'] as String?) ?? '',
+      colorValue: (json['colorValue'] as int?) ?? (json['color_value'] as int?) ?? 0xFF10B981,
+      iconCodePoint: (json['iconCodePoint'] as int?) ?? (json['icon_code_point'] as int?) ?? 0xe318,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'colorValue': colorValue,
+        'iconCodePoint': iconCodePoint,
+      };
+}
+
 // ── USER RECORD ───────────────────────────────────────────────────────────────
 
 class UserRecordDto {
@@ -19,6 +47,7 @@ class UserRecordDto {
     this.countryCode,
     this.mobileNumber,
     this.avatarImagePath,
+    this.customCategories = const [],
     this.deletedAt,
   });
 
@@ -28,6 +57,7 @@ class UserRecordDto {
   final String? countryCode;
   final String? mobileNumber;
   final String? avatarImagePath;
+  final List<CustomCategoryDto> customCategories;
   final String createdAt;
   final String? deletedAt;
 
@@ -39,6 +69,10 @@ class UserRecordDto {
       countryCode: json['country_code'] as String?,
       mobileNumber: json['mobile_number'] as String?,
       avatarImagePath: json['avatar_image_path'] as String?,
+      customCategories: (json['custom_categories'] as List<dynamic>?)
+              ?.map((e) => CustomCategoryDto.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
       createdAt: (json['created_at'] as String?) ?? '',
       deletedAt: json['deleted_at'] as String?,
     );
@@ -51,6 +85,7 @@ class UserRecordDto {
         if (countryCode != null) 'country_code': countryCode,
         if (mobileNumber != null) 'mobile_number': mobileNumber,
         if (avatarImagePath != null) 'avatar_image_path': avatarImagePath,
+        'custom_categories': customCategories.map((c) => c.toJson()).toList(),
         'created_at': createdAt,
         if (deletedAt != null) 'deleted_at': deletedAt,
       };
