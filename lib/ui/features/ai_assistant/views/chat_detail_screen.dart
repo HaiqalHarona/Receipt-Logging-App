@@ -75,8 +75,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (_conversation == null) return;
     setState(() => _isLoadingHistory = true);
     try {
-      final history = await ChatMessageRepository.instance
-          .fetchHistory(_conversation!.id);
+      final history =
+          await ChatMessageRepository.instance.fetchHistory(_conversation!.id);
       if (mounted) {
         setState(() {
           _messages = history;
@@ -185,12 +185,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               : (_customTitle ?? 'Untitled'),
           'created_at': (conv?.createdAt ?? now).toIso8601String(),
           'updated_at': (conv?.updatedAt ?? now).toIso8601String(),
-          'messages': _messages.map((m) => {
-            'id': m.id,
-            'sender': m.sender,
-            'content': m.content,
-            'created_at': m.createdAt.toIso8601String(),
-          }).toList(),
+          'messages': _messages
+              .map((m) => {
+                    'id': m.id,
+                    'sender': m.sender,
+                    'content': m.content,
+                    'created_at': m.createdAt.toIso8601String(),
+                  })
+              .toList(),
         };
         final jsonStr = const JsonEncoder.withIndent('  ').convert(jsonMap);
         Clipboard.setData(ClipboardData(text: jsonStr));
@@ -260,11 +262,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     depth: -3,
                     intensity: 0.8,
                     color: baseColor,
-                    boxShape: NeumorphicBoxShape.roundRect(
-                        BorderRadius.circular(12)),
+                    boxShape:
+                        NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   child: TextField(
                     controller: titleController,
                     autofocus: true,
@@ -404,8 +406,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 Text(
                   'Are you sure you want to delete "$title"? This action cannot be undone.',
                   textAlign: TextAlign.center,
-                  style:
-                      TextStyle(fontSize: 13, color: textSecondary, height: 1.4),
+                  style: TextStyle(
+                      fontSize: 13, color: textSecondary, height: 1.4),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -440,7 +442,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             await ConversationRepository.instance
                                 .softDeleteConversation(_conversation!.id);
                             await ChatMessageRepository.instance
-                                .deleteHistoryForConversation(_conversation!.id);
+                                .deleteHistoryForConversation(
+                                    _conversation!.id);
                           }
                           if (!mounted) return;
                           AppSnackBar.show(
@@ -514,9 +517,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           .toList();
 
       final allReceipts = ReceiptRepository.instance.receipts;
-      final last100Receipts = allReceipts.length > 100
-          ? allReceipts.sublist(0, 100)
-          : allReceipts;
+      final last100Receipts =
+          allReceipts.length > 100 ? allReceipts.sublist(0, 100) : allReceipts;
       receiptsPayload = last100Receipts
           .map((r) => ReceiptDto.fromDomain(r).toJson())
           .toList();
@@ -541,7 +543,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       // 5. On successful 200 OK response:
       // If first turn of a new conversation, create conversation in Isar DB:
       if (_conversation == null) {
-        final newConv = await ConversationRepository.instance.createConversation(
+        final newConv =
+            await ConversationRepository.instance.createConversation(
           id: response.conversationId.isNotEmpty
               ? response.conversationId
               : null,
@@ -616,8 +619,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         final displayTitle = _conversation?.title.isNotEmpty == true
             ? _conversation!.title
             : (_customTitle?.isNotEmpty == true ? _customTitle! : 'Untitled');
-        final displayTimestamp = _formatHeaderTimestamp(
-            _conversation?.updatedAt ?? DateTime.now());
+        final displayTimestamp =
+            _formatHeaderTimestamp(_conversation?.updatedAt ?? DateTime.now());
 
         return NeumorphicBackground(
           child: Scaffold(
@@ -858,8 +861,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                         // Circular Send Button
                         NeumorphicButton(
-                          onPressed:
-                              _isGenerating ? null : _handleSendMessage,
+                          onPressed: _isGenerating ? null : _handleSendMessage,
                           style: NeumorphicStyle(
                             depth: _isGenerating ? -2 : 3,
                             intensity: 0.85,
@@ -910,11 +912,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 depth: -2,
                 intensity: 0.7,
                 color: baseColor,
-                boxShape: NeumorphicBoxShape.roundRect(
-                    BorderRadius.circular(12)),
+                boxShape:
+                    NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
               ),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Text(
                 "Today",
                 style: TextStyle(
@@ -939,8 +940,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   depth: 3,
                   intensity: 0.85,
                   color: baseColor,
-                  boxShape: NeumorphicBoxShape.roundRect(
-                      BorderRadius.circular(16)),
+                  boxShape:
+                      NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
                 ),
                 padding: const EdgeInsets.all(14),
                 child: Row(
@@ -1055,11 +1056,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               depth: 3,
               intensity: 0.85,
               color: accent,
-              boxShape:
-                  NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
             ),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -1108,11 +1107,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               depth: 3,
               intensity: 0.85,
               color: baseColor,
-              boxShape:
-                  NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
             ),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1158,8 +1155,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             depth: 2,
             intensity: 0.8,
             color: baseColor,
-            boxShape:
-                NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(

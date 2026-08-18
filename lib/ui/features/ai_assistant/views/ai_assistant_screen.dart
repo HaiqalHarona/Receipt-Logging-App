@@ -90,9 +90,10 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
     final isToday = now.year == localDt.year &&
         now.month == localDt.month &&
         now.day == localDt.day;
-    final isYesterday = now.subtract(const Duration(days: 1)).year == localDt.year &&
-        now.subtract(const Duration(days: 1)).month == localDt.month &&
-        now.subtract(const Duration(days: 1)).day == localDt.day;
+    final isYesterday =
+        now.subtract(const Duration(days: 1)).year == localDt.year &&
+            now.subtract(const Duration(days: 1)).month == localDt.month &&
+            now.subtract(const Duration(days: 1)).day == localDt.day;
 
     final monthIndex = localDt.month - 1;
     final parts = [
@@ -229,7 +230,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
                                   style: TextStyle(
                                       fontSize: 14, color: textPrimary),
                                   decoration: InputDecoration(
-                                    hintText: "Search conversation title, date...",
+                                    hintText:
+                                        "Search conversation title, date...",
                                     hintStyle: TextStyle(
                                         fontSize: 14,
                                         color: textSecondary.withValues(

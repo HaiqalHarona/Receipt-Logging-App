@@ -73,8 +73,7 @@ class ConversationListItemWidget extends StatelessWidget {
     return '$monthStr ${localDt.day}, ${localDt.year} · $timeStr';
   }
 
-  void _handleMenuAction(
-      BuildContext context, _ConversationMenuAction action) {
+  void _handleMenuAction(BuildContext context, _ConversationMenuAction action) {
     switch (action) {
       case _ConversationMenuAction.editTitle:
         _showEditTitleDialog(context);
@@ -158,11 +157,11 @@ class ConversationListItemWidget extends StatelessWidget {
                     depth: -3,
                     intensity: 0.8,
                     color: baseColor,
-                    boxShape: NeumorphicBoxShape.roundRect(
-                        BorderRadius.circular(12)),
+                    boxShape:
+                        NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   child: TextField(
                     controller: titleController,
                     autofocus: true,
@@ -287,7 +286,8 @@ class ConversationListItemWidget extends StatelessWidget {
                 Text(
                   'Are you sure you want to delete "${conversation.title}"? This action cannot be undone.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: textSecondary, height: 1.4),
+                  style: TextStyle(
+                      fontSize: 13, color: textSecondary, height: 1.4),
                 ),
                 const SizedBox(height: 24),
                 Row(
