@@ -24,42 +24,42 @@ The **Receipt Logger Backend** provides high-speed, intelligent multimodal recei
 
 ### Implemented Features
 - **Device Registration & Token Management** (`/api/v1/devices`):
-  - `POST /api/v1/devices/register`: Idempotent registration of hardware `device_id` and secret `device_token`.
-  - `GET /api/v1/devices/me`: Retrieves current device registration record.
-  - `POST /api/v1/devices/link`: Links/unlinks current device to a user account.
-  - `POST /api/v1/devices/rotate-token`: Rotates device security token.
-  - `DELETE /api/v1/devices/me`: Soft-deletes device record.
+ - `POST /api/v1/devices/register`: Idempotent registration of hardware `device_id` and secret `device_token`.
+ - `GET /api/v1/devices/me`: Retrieves current device registration record.
+ - `POST /api/v1/devices/link`: Links/unlinks current device to a user account.
+ - `POST /api/v1/devices/rotate-token`: Rotates device security token.
+ - `DELETE /api/v1/devices/me`: Soft-deletes device record.
 - **User Authentication & Password Management** (`/api/v1/user`):
-  - `POST /api/v1/user/create`: Registers a new user account (PBKDF2/SHA-256 server-side password hash).
-  - `POST /api/v1/user/login`: Authenticates credentials in constant time to prevent timing attacks.
-  - `GET /api/v1/user/me`: Retrieves authenticated user profile (session-scoped).
-  - `POST /api/v1/user/reset-password-initiate`: Initiates password reset flow.
-  - `POST /api/v1/user/reset-password-otp`: Verifies OTP reset code.
-  - `POST /api/v1/user/password-reset-new`: Sets new password following verification.
-  - `DELETE /api/v1/user/me`: Soft-deletes user account profile.
+ - `POST /api/v1/user/create`: Registers a new user account (PBKDF2/SHA-256 server-side password hash).
+ - `POST /api/v1/user/login`: Authenticates credentials in constant time to prevent timing attacks.
+ - `GET /api/v1/user/me`: Retrieves authenticated user profile (session-scoped).
+ - `POST /api/v1/user/reset-password-initiate`: Initiates password reset flow.
+ - `POST /api/v1/user/reset-password-otp`: Verifies OTP reset code.
+ - `POST /api/v1/user/password-reset-new`: Sets new password following verification.
+ - `DELETE /api/v1/user/me`: Soft-deletes user account profile.
 - **Async Bulk Receipt Extraction & Streaming** (`/api/v1/scan`):
-  - `POST /api/v1/scan/parse-many`: Accepts 1 to 10 receipt image files (`multipart/form-data`), enqueues background processing jobs, and returns `batch_id`.
-  - `GET /api/v1/scan/parse-many/{batch_id}`: Retrieves job status (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`) and extracted JSON results (enforces batch ownership).
-  - `GET /api/v1/scan/parse-many/{batch_id}/stream`: Real-time SSE stream emitting `progress` (`completed_jobs`/`total_jobs`) and `batch_complete` JSON events when extraction finishes (supports User & Guest modes).
-  - `POST /api/v1/scan/parse` (`[DEPRECATED]`): Legacy synchronous single receipt parse endpoint.
+ - `POST /api/v1/scan/parse-many`: Accepts 1 to 10 receipt image files (`multipart/form-data`), enqueues background processing jobs, and returns `batch_id`.
+ - `GET /api/v1/scan/parse-many/{batch_id}`: Retrieves job status (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`) and extracted JSON results (enforces batch ownership).
+ - `GET /api/v1/scan/parse-many/{batch_id}/stream`: Real-time SSE stream emitting `progress` (`completed_jobs`/`total_jobs`) and `batch_complete` JSON events when extraction finishes (supports User & Guest modes).
+ - `POST /api/v1/scan/parse` (`[DEPRECATED]`): Legacy synchronous single receipt parse endpoint.
 - **Session-Scoped Receipt CRUD Endpoints** (`/api/v1/receipts`):
-  - `GET /api/v1/receipts/`: Retrieves all non-deleted receipts owned by session identity (user or guest device).
-  - `GET /api/v1/receipts/{receipt_id}`: Retrieves a single receipt by UUID, enforcing session ownership.
-  - `POST /api/v1/receipts/`: Creates a single receipt record bound to session identity.
-  - `POST /api/v1/receipts/batch`: Batch-creates up to 100 receipts bound to session identity in a single Supabase call.
-  - `DELETE /api/v1/receipts/{receipt_id}`: Soft-deletes a receipt by setting `deleted_at` timestamp.
+ - `GET /api/v1/receipts/`: Retrieves all non-deleted receipts owned by session identity (user or guest device).
+ - `GET /api/v1/receipts/{receipt_id}`: Retrieves a single receipt by UUID, enforcing session ownership.
+ - `POST /api/v1/receipts/`: Creates a single receipt record bound to session identity.
+ - `POST /api/v1/receipts/batch`: Batch-creates up to 100 receipts bound to session identity in a single Supabase call.
+ - `DELETE /api/v1/receipts/{receipt_id}`: Soft-deletes a receipt by setting `deleted_at` timestamp.
 - **AI Financial Chat & Assistant** (`/api/v1/chat`):
-  - `POST /api/v1/chat/create`: Starts a new financial assistant conversation.
-  - `GET /api/v1/chat/list`: Lists active user conversations.
-  - `GET /api/v1/chat/history`: Retrieves chat message history.
-  - `POST /api/v1/chat/query`: Sends user query to Gemini 3.6 Flash with RAG receipt context.
-  - `DELETE /api/v1/chat/{conversation_id}`: Soft-deletes conversation.
+ - `POST /api/v1/chat/create`: Starts a new financial assistant conversation.
+ - `GET /api/v1/chat/list`: Lists active user conversations.
+ - `GET /api/v1/chat/history`: Retrieves chat message history.
+ - `POST /api/v1/chat/query`: Sends user query to Gemini 3.6 Flash with RAG receipt context.
+ - `DELETE /api/v1/chat/{conversation_id}`: Soft-deletes conversation.
 - **Explicit HTTP 422 Error Handling**: Custom exception handlers in `main.py` intercept any request payload schema mismatches or invalid data types and return clean `HTTP 422 Unprocessable Entity` responses.
 - **Health Check and Diagnostics** (`GET /api/v1/health/`): Returns API operational status and environment setting.
 
 ---
 
-## 🛠️ Scoped Header Authentication Contract
+## Scoped Header Authentication Contract
 
 All protected endpoints enforce **Scoped Identity Authentication** (`get_scoped_identity` / `get_sse_identity`):
 
@@ -78,7 +78,7 @@ All protected endpoints enforce **Scoped Identity Authentication** (`get_scoped_
 
 ---
 
-## 🏃 Running the Application
+## Running the Application
 
 ### Option A: Using the PowerShell Script (Recommended for Windows)
 

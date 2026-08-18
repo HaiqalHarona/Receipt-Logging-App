@@ -10,17 +10,17 @@ Our repository uses a Dual-Trunk / Light GitFlow branching strategy designed for
 
 ```
 +-----------------------------------------------------------------------------+
-|                           BRANCH HIERARCHY OVERVIEW                         |
-|                                                                             |
-|   [master / main]  -------------------*---------------------------*-------  |
-|   (Production)                        ^                           ^ (Hotfix)|
-|                                       | (Release PR)              |         |
-|   [develop]        ----*--------------*--------------*------------+-------  |
-|   (Staging Hub)        ^                             ^                      |
-|                        | (Feature PR)                | (Bugfix PR)          |
-|   [feature/*]      ----+--------------               |                      |
-|   (Topic/Task)                                       |                      |
-|   [bugfix/*]       ----------------------------------+                      |
+|              BRANCH HIERARCHY OVERVIEW             |
+|                                       |
+|  [master / main] -------------------*---------------------------*------- |
+|  (Production)            ^              ^ (Hotfix)|
+|                    | (Release PR)       |     |
+|  [develop]    ----*--------------*--------------*------------+------- |
+|  (Staging Hub)    ^               ^           |
+|            | (Feature PR)        | (Bugfix PR)     |
+|  [feature/*]   ----+--------------        |           |
+|  (Topic/Task)                    |           |
+|  [bugfix/*]    ----------------------------------+           |
 +-----------------------------------------------------------------------------+
 ```
 
@@ -52,30 +52,30 @@ Our repository uses a Dual-Trunk / Light GitFlow branching strategy designed for
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    participant Dev as Developer
-    participant FeatureBranch as feature/xyz
-    participant CI as GitHub Actions CI
-    participant Develop as develop (Staging)
-    participant Master as master (Production)
+  autonumber
+  participant Dev as Developer
+  participant FeatureBranch as feature/xyz
+  participant CI as GitHub Actions CI
+  participant Develop as develop (Staging)
+  participant Master as master (Production)
 
-    Dev->>FeatureBranch: git checkout -b feature/receipt-export develop
-    Dev->>FeatureBranch: Commit code & verify local tests
-    Dev->>FeatureBranch: git push origin feature/receipt-export
-    Dev->>Develop: Open Pull Request targeting 'develop'
-    
-    FeatureBranch->>CI: Trigger "Analyze & Test" Job
-    CI-->>Develop: CI Status Check: PASSED (Format, Lint, Tests, Coverage)
-    Note over Develop: Code Review & QA Verification
-    Develop->>Develop: Squash & Merge PR into develop
-    
-    Develop->>CI: Trigger Staging Build (Dev APK & Web Bundle)
-    
-    Note over Develop,Master: Ready for Production Release (v1.0.0)
-    Develop->>Master: Open Release PR: develop -> master
-    Master->>CI: Run Full Test Suite & Release Validation
-    Master->>Master: Merge PR & Create Tag (v1.0.0)
-    Master->>CI: Trigger Production Release Build (Release APK & Web Release)
+  Dev->>FeatureBranch: git checkout -b feature/receipt-export develop
+  Dev->>FeatureBranch: Commit code & verify local tests
+  Dev->>FeatureBranch: git push origin feature/receipt-export
+  Dev->>Develop: Open Pull Request targeting 'develop'
+  
+  FeatureBranch->>CI: Trigger "Analyze & Test" Job
+  CI-->>Develop: CI Status Check: PASSED (Format, Lint, Tests, Coverage)
+  Note over Develop: Code Review & QA Verification
+  Develop->>Develop: Squash & Merge PR into develop
+  
+  Develop->>CI: Trigger Staging Build (Dev APK & Web Bundle)
+  
+  Note over Develop,Master: Ready for Production Release (v1.0.0)
+  Develop->>Master: Open Release PR: develop -> master
+  Master->>CI: Run Full Test Suite & Release Validation
+  Master->>Master: Merge PR & Create Tag (v1.0.0)
+  Master->>CI: Trigger Production Release Build (Release APK & Web Release)
 ```
 
 ---
