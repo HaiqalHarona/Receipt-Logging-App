@@ -15,6 +15,7 @@ import '../../../../data/repositories/chat_message_repository.dart';
 import '../../../../services/category_service.dart';
 import '../../../../services/isar_service.dart';
 import '../../../../data/models/receipt_isar.dart';
+import '../../../../data/models/chat_message_isar.dart';
 import '../../../../domain/models/receipt.dart';
 import 'package:isar/isar.dart';
 
@@ -62,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<bool> _hasLocalGuestData() async {
     await ReceiptRepository.instance.init();
     await ConversationRepository.instance.init();
+    await CategoryService.instance.init();
 
     List<Receipt> receipts = ReceiptRepository.instance.receipts;
     if (IsarService.isInitialized) {
@@ -79,7 +81,26 @@ class _LoginScreenState extends State<LoginScreen> {
     final hasGuestReceipts = receipts.any((r) => !_isUuid(r.id));
     final hasGuestConversations = ConversationRepository.instance.conversations
         .any((c) => !_isUuid(c.id));
-    return hasGuestReceipts || hasGuestConversations;
+
+    bool hasGuestMessages = false;
+    if (IsarService.isInitialized) {
+      try {
+        final msgs =
+            await IsarService.isar.chatMessageIsarModels.where().findAll();
+        hasGuestMessages = msgs.any((m) => !_isUuid(m.conversationId));
+      } catch (e) {
+        AppLogger.error(
+            'UI', 'Error querying chat messages in _hasLocalGuestData', e);
+      }
+    }
+
+    final hasCustomCategories =
+        CategoryService.instance.customCategories.isNotEmpty;
+
+    return hasGuestReceipts ||
+        hasGuestConversations ||
+        hasGuestMessages ||
+        hasCustomCategories;
   }
 
   Future<void> _purgeLocalGuestData() async {

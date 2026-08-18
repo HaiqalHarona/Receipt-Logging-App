@@ -17,6 +17,8 @@ import '../../features/settings/views/customization_screen.dart';
 import '../../features/settings/views/db_viewer_screen.dart';
 import '../../features/settings/views/user_settings_screen.dart';
 import '../../features/scanner/views/scanner_screen.dart';
+import '../../features/ai_assistant/views/chat_detail_screen.dart';
+import '../../../../domain/models/conversation.dart';
 
 import '../../../cloud/services/auth_service.dart';
 import '../../../../services/scan_batch_controller.dart';
@@ -101,6 +103,15 @@ final GoRouter appRouter = GoRouter(
               const NoTransitionPage(child: SizedBox.shrink()),
         ),
       ],
+    ),
+    GoRoute(
+      path: '/chat',
+      pageBuilder: (context, state) => _buildNeumorphicPage(
+        state: state,
+        child: ChatDetailScreen(
+          conversation: state.extra as Conversation?,
+        ),
+      ),
     ),
     GoRoute(
       path: '/verification',

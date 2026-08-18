@@ -70,22 +70,20 @@ class DataExportService {
 
       // ── Chat Messages (all conversations from Isar directly) ─────────────────
       final List<Map<String, dynamic>> chatMessagesJson = [];
-      if (IsarService.isInitialized && conversationsJson.isNotEmpty) {
+      if (IsarService.isInitialized && guestConversations.isNotEmpty) {
         for (final conv in guestConversations) {
           final msgs = await IsarService.isar.chatMessageIsarModels
               .where()
               .conversationIdEqualTo(conv.id)
               .findAll();
           for (final m in msgs) {
-            if (!_isUuid(m.messageId)) {
-              chatMessagesJson.add({
-                'id': m.messageId,
-                'conversation_id': m.conversationId,
-                'sender': m.sender,
-                'content': m.content,
-                'created_at': m.createdAt.toUtc().toIso8601String(),
-              });
-            }
+            chatMessagesJson.add({
+              'id': m.messageId,
+              'conversation_id': m.conversationId,
+              'sender': m.sender,
+              'content': m.content,
+              'created_at': m.createdAt.toUtc().toIso8601String(),
+            });
           }
         }
       }

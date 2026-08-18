@@ -714,7 +714,7 @@ class BackendApiClient {
     required String username,
     required String userToken,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/create');
     final headers = ApiConfig.buildUserHeaders(
       username: username,
       userToken: userToken,
@@ -862,12 +862,95 @@ class BackendApiClient {
     required String requestType,
     String? conversationId,
     List<Map<String, dynamic>>? conversationHistory,
+    List<Map<String, dynamic>>? receipts,
     List<Map<String, dynamic>>? recentReceipts,
     String? deviceName,
     String? deviceToken,
     String? username,
     String? userToken,
   }) async {
+    // ── Client-side Validation ──────────────────────────────────────────────
+    final trimmedMessage = message.trim();
+    if (trimmedMessage.isEmpty) {
+      throw ArgumentError('Chat message cannot be empty or whitespace.');
+    }
+    if (trimmedMessage.length > 4000) {
+      throw ArgumentError('Chat message cannot exceed 4000 characters.');
+    }
+    if (requestType != 'guest' && requestType != 'user') {
+      throw ArgumentError('requestType must be either "guest" or "user".');
+    }
+
+    // Mode-specific credential & conversation constraints
+    if (requestType == 'guest') {
+      if (conversationId != null && conversationId.trim().isNotEmpty) {
+        throw ArgumentError('conversationId cannot be provided in guest mode.');
+      }
+      if (deviceName == null || deviceName.trim().isEmpty) {
+        throw ArgumentError('deviceName is required for guest mode.');
+      }
+      if (deviceToken == null || deviceToken.trim().isEmpty) {
+        throw ArgumentError('deviceToken is required for guest mode.');
+      }
+    } else {
+      if (username == null || username.trim().isEmpty) {
+        throw ArgumentError('username is required for user mode.');
+      }
+      if (userToken == null || userToken.trim().isEmpty) {
+        throw ArgumentError('userToken is required for user mode.');
+      }
+    }
+
+    // Conversation history validation
+    if (conversationHistory != null) {
+      if (conversationHistory.length > 50) {
+        throw ArgumentError('Conversation history cannot exceed 50 messages.');
+      }
+      for (final entry in conversationHistory) {
+        final role = entry['role'];
+        if (role != 'user' && role != 'assistant') {
+          throw ArgumentError(
+              'Each conversationHistory entry must have role "user" or "assistant".');
+        }
+        final content = entry['content'];
+        if (content == null || content is! String || content.trim().isEmpty) {
+          throw ArgumentError(
+              'Each conversationHistory entry must have non-empty content.');
+        }
+        if (content.length > 4000) {
+          throw ArgumentError(
+              'Each conversationHistory entry content cannot exceed 4000 characters.');
+        }
+      }
+    }
+
+    // Receipts context validation
+    final effectiveReceipts = receipts ?? recentReceipts;
+    if (effectiveReceipts != null) {
+      if (effectiveReceipts.length > 100) {
+        throw ArgumentError('Receipts context cannot exceed 100 items.');
+      }
+      for (final r in effectiveReceipts) {
+        final merchant = r['merchant_name'] ?? r['merchant'];
+        if (merchant == null ||
+            merchant is! String ||
+            merchant.trim().isEmpty) {
+          throw ArgumentError(
+              'Each receipt in receipts context must have a non-empty merchant_name.');
+        }
+        final total = r['total_amount'] ?? r['amount'];
+        if (total == null || total is! num) {
+          throw ArgumentError(
+              'Each receipt in receipts context must have a valid numeric total_amount.');
+        }
+        final date = r['date'];
+        if (date == null || date is! String || date.trim().isEmpty) {
+          throw ArgumentError(
+              'Each receipt in receipts context must have a valid date string.');
+        }
+      }
+    }
+
     final uri = Uri.parse('${ApiConfig.baseUrl}/chat/query');
     final headers = ApiConfig.buildScanHeaders(
       requestType: requestType,
@@ -879,10 +962,10 @@ class BackendApiClient {
 
     final Map<String, dynamic> bodyPayload = {
       'conversation_id': conversationId,
-      'message': message,
+      'message': message.trim(),
       if (conversationHistory != null)
         'conversation_history': conversationHistory,
-      if (recentReceipts != null) 'recent_receipts': recentReceipts,
+      if (effectiveReceipts != null) 'receipts': effectiveReceipts,
     };
 
     final response = await _sendRequest(
@@ -922,6 +1005,31 @@ class BackendApiClient {
         .map((e) => ChatMessageDto.fromJson(e as Map<String, dynamic>))
         .toList();
     return messages;
+  }
+
+  /// Updates the title of an AI conversation in Supabase cloud store.
+  Future<ConversationDto> updateConversationTitle({
+    required String conversationId,
+    required String title,
+    required String username,
+    required String userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/chat/$conversationId');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
+    );
+
+    final response = await _sendRequest(
+      'PATCH',
+      uri,
+      headers: headers,
+      body: jsonEncode({'title': title}),
+    );
+
+    _assertStatus(response, 200);
+    return ConversationDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   /// Soft-deletes a conversation by UUID. Returns `true` on success.

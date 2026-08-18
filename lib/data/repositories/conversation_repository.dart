@@ -17,6 +17,8 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
+import '../../cloud/api/backend_api_client.dart';
+import '../../cloud/services/auth_service.dart';
 import '../../services/app_logger_service.dart';
 import '../../services/isar_service.dart';
 import '../models/conversation_isar.dart';
@@ -100,6 +102,74 @@ class ConversationRepository extends ChangeNotifier {
     return model.toDomain();
   }
 
+  bool _isUuid(String id) {
+    if (id.isEmpty) return false;
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    return uuidRegex.hasMatch(id);
+  }
+
+  void _updateCloudTitleIfSynced(String conversationId, String newTitle) {
+    if (_isUuid(conversationId) && AuthService.instance.isLoggedIn) {
+      final username = AuthService.instance.currentUsername;
+      final userToken = AuthService.instance.currentUserToken;
+      if (username != null && userToken != null) {
+        AppLogger.info('CloudSync',
+            '[ConversationRepository] Triggering backend PATCH /chat/$conversationId on Supabase (title: "$newTitle")...');
+        BackendApiClient.instance
+            .updateConversationTitle(
+          conversationId: conversationId,
+          title: newTitle,
+          username: username,
+          userToken: userToken,
+        )
+            .then((record) {
+          AppLogger.info('CloudSync',
+              '[ConversationRepository] Cloud conversation $conversationId title updated on Supabase (title="${record.title}").');
+        }).catchError((e, st) {
+          AppLogger.error(
+              'CloudSync',
+              '[ConversationRepository] Error executing PATCH /chat/$conversationId',
+              e,
+              st);
+        });
+      }
+    }
+  }
+
+  void _deleteFromCloudIfSynced(String conversationId) {
+    if (_isUuid(conversationId) && AuthService.instance.isLoggedIn) {
+      final username = AuthService.instance.currentUsername;
+      final userToken = AuthService.instance.currentUserToken;
+      if (username != null && userToken != null) {
+        AppLogger.info('CloudSync',
+            '[ConversationRepository] Triggering backend DELETE /chat/$conversationId on Supabase...');
+        BackendApiClient.instance
+            .deleteConversation(
+          conversationId: conversationId,
+          username: username,
+          userToken: userToken,
+        )
+            .then((success) {
+          if (success) {
+            AppLogger.info('CloudSync',
+                '[ConversationRepository] Cloud conversation $conversationId soft-deleted on Supabase.');
+          } else {
+            AppLogger.warning('CloudSync',
+                '[ConversationRepository] Cloud conversation $conversationId deletion returned false.');
+          }
+        }).catchError((e, st) {
+          AppLogger.error(
+              'CloudSync',
+              '[ConversationRepository] Error executing DELETE /chat/$conversationId',
+              e,
+              st);
+        });
+      }
+    }
+  }
+
   /// Updates the title of a conversation and bumps [updatedAt].
   Future<void> updateTitle(String id, String newTitle) async {
     AppLogger.info('Isar',
@@ -108,6 +178,7 @@ class ConversationRepository extends ChangeNotifier {
       model.title = newTitle;
       model.updatedAt = DateTime.now();
     });
+    _updateCloudTitleIfSynced(id, newTitle);
   }
 
   /// Bumps [updatedAt] on a conversation (called when a new message is sent).
@@ -127,6 +198,7 @@ class ConversationRepository extends ChangeNotifier {
     await _mutateConversation(id, (model) {
       model.deletedAt = DateTime.now();
     });
+    _deleteFromCloudIfSynced(id);
   }
 
   /// Permanently wipes all conversations from the local Isar database.
