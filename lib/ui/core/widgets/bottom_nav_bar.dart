@@ -243,27 +243,42 @@ class _NavItem extends StatelessWidget {
         if (!isActive) context.go(path);
       },
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? accent : inactiveColor,
-              size: 22,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? accent : inactiveColor,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                letterSpacing: 0.2,
+      child: AnimatedScale(
+        scale: isActive ? 1.08 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutBack,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TweenAnimationBuilder<Color?>(
+                tween: ColorTween(
+                  begin: inactiveColor,
+                  end: isActive ? accent : inactiveColor,
+                ),
+                duration: const Duration(milliseconds: 200),
+                builder: (context, color, _) {
+                  return Icon(
+                    icon,
+                    color: color,
+                    size: 22,
+                  );
+                },
               ),
-            ),
-          ],
+              const SizedBox(height: 3),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  color: isActive ? accent : inactiveColor,
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                  letterSpacing: 0.2,
+                ),
+                child: Text(label),
+              ),
+            ],
+          ),
         ),
       ),
     );

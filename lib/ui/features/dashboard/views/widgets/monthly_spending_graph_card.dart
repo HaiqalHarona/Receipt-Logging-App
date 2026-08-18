@@ -4,7 +4,6 @@ import 'dart:math' as math;
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../view_models/dashboard_view_model.dart';
 import 'spending_summary_card.dart';
-import 'timeline_filter_bottom_sheet.dart';
 
 /// Protruded Neumorphic card displaying an interactive monthly spending line graph.
 ///
@@ -108,36 +107,49 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
     }
   }
 
-  String _getTimelineLabel(TimelineFilter filter) {
-    switch (filter) {
-      case TimelineFilter.thisMonth:
-        return '1m';
-      case TimelineFilter.threeMonths:
-        return '3mo';
-      case TimelineFilter.sixMonths:
-        return '6mo';
-      case TimelineFilter.ytd:
-        return 'YTD';
-      case TimelineFilter.twelveMonths:
-        return '12mo';
-      case TimelineFilter.allTime:
-        return 'All';
-    }
-  }
-
-  void _openTimelineModal(TimelineFilter activeTimeline) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => TimelineFilterBottomSheet(
-        activeFilter: activeTimeline,
-        onSelect: (filter) {
-          setState(() {
-            _selectedIndex = null; // Clear graph point tooltip on filter switch
-          });
-          widget.viewModel.setTimeline(filter);
+  Widget _buildTimelineChip({
+    required String label,
+    required TimelineFilter filter,
+    required TimelineFilter activeFilter,
+  }) {
+    final isSelected = filter == activeFilter;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          if (!isSelected) {
+            setState(() {
+              _selectedIndex = null; // Clear graph point tooltip on filter switch
+            });
+            widget.viewModel.setTimeline(filter);
+          }
         },
+        child: Neumorphic(
+          style: NeumorphicStyle(
+            depth: isSelected ? -2 : 2,
+            intensity: 0.85,
+            color: isSelected
+                ? widget.accent.withValues(alpha: 0.15)
+                : NeumorphicTheme.baseColor(context),
+            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+            border: isSelected
+                ? NeumorphicBorder(
+                    color: widget.accent.withValues(alpha: 0.4),
+                    width: 1.0,
+                  )
+                : const NeumorphicBorder.none(),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                color: isSelected ? widget.accent : widget.textSecondary,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -148,7 +160,6 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
     final points = widget.viewModel.monthlySpendingHistory;
     final symbol = widget.viewModel.currentSymbol;
     final subtitleText = _getSubtitleText(activeTimeline, symbol);
-    final activeLabel = _getTimelineLabel(activeTimeline);
 
     return Neumorphic(
       style: NeumorphicStyle(
@@ -162,80 +173,69 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header Row with Right-Side Fixed-Size Timeline Trigger Button ──
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
+            // ── Section Header (Title & Subtitle) ──
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Spending Trend',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: widget.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitleText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: widget.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Right-Side Fixed Size Neumorphic Trigger Button
-                GestureDetector(
-                  onTap: () => _openTimelineModal(activeTimeline),
-                  child: Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: 3,
-                      intensity: 0.8,
-                      color: NeumorphicTheme.baseColor(context),
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(10)),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: SizedBox(
-                      width: 84,
-                      height: 24,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.calendar_today_rounded,
-                            size: 12,
-                            color: widget.accent,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              activeLabel,
-                              textAlign: TextAlign.center,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: widget.textPrimary,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            size: 14,
-                            color: widget.textSecondary,
-                          ),
-                        ],
-                      ),
-                    ),
+                Text(
+                  'Spending Trend',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: widget.textPrimary,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitleText,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: widget.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Segmented Month Selector Row (1M · 3M · 6M · 12M · YTD · ALL) ──
+            Row(
+              children: [
+                _buildTimelineChip(
+                  label: '1M',
+                  filter: TimelineFilter.thisMonth,
+                  activeFilter: activeTimeline,
+                ),
+                const SizedBox(width: 6),
+                _buildTimelineChip(
+                  label: '3M',
+                  filter: TimelineFilter.threeMonths,
+                  activeFilter: activeTimeline,
+                ),
+                const SizedBox(width: 6),
+                _buildTimelineChip(
+                  label: '6M',
+                  filter: TimelineFilter.sixMonths,
+                  activeFilter: activeTimeline,
+                ),
+                const SizedBox(width: 6),
+                _buildTimelineChip(
+                  label: '12M',
+                  filter: TimelineFilter.twelveMonths,
+                  activeFilter: activeTimeline,
+                ),
+                const SizedBox(width: 6),
+                _buildTimelineChip(
+                  label: 'YTD',
+                  filter: TimelineFilter.ytd,
+                  activeFilter: activeTimeline,
+                ),
+                const SizedBox(width: 6),
+                _buildTimelineChip(
+                  label: 'ALL',
+                  filter: TimelineFilter.allTime,
+                  activeFilter: activeTimeline,
                 ),
               ],
             ),

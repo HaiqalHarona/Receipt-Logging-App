@@ -26,9 +26,20 @@ class ThemePreset {
   });
 }
 
-class AppThemeController extends ChangeNotifier {
+class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
   static final AppThemeController instance = AppThemeController._internal();
-  AppThemeController._internal();
+  AppThemeController._internal() {
+    try {
+      WidgetsBinding.instance.addObserver(this);
+    } catch (_) {}
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    if (_themeMode == ThemeMode.system) {
+      notifyListeners();
+    }
+  }
 
   // ── SharedPreferences Keys ───────────────────────────────────────────────
   static const _kThemeMode = 'theme_mode'; // int: ThemeMode.values index
@@ -40,9 +51,22 @@ class AppThemeController extends ChangeNotifier {
   static const _kFontScale = 'font_scale';
 
   // ── State ────────────────────────────────────────────────────────────────
-  ThemeMode _themeMode = ThemeMode.light; // Default: light mode
+  ThemeMode _themeMode = ThemeMode.dark; // Default: Charcoal Slate (Dark)
   ThemeMode get themeMode => _themeMode;
-  bool get isDarkMode => _themeMode == ThemeMode.dark;
+
+  /// Dynamically evaluates whether dark mode is active (including resolving
+  /// OS platform brightness when _themeMode == ThemeMode.system).
+  bool get isDarkMode {
+    if (_themeMode == ThemeMode.system) {
+      try {
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+            Brightness.dark;
+      } catch (_) {
+        return true;
+      }
+    }
+    return _themeMode == ThemeMode.dark;
+  }
 
   Color? _customDarkAccentColor;
   Color? _customLightAccentColor;
@@ -58,16 +82,14 @@ class AppThemeController extends ChangeNotifier {
   double get neuDepth => _neuDepth;
   double get fontScale => _fontScale;
 
-  int get selectedPresetIndex => _themeMode == ThemeMode.dark
-      ? _selectedDarkPresetIndex
-      : _selectedLightPresetIndex;
+  int get selectedPresetIndex =>
+      isDarkMode ? _selectedDarkPresetIndex : _selectedLightPresetIndex;
 
-  ThemePreset get currentPreset => _themeMode == ThemeMode.dark
-      ? darkPresets[_selectedDarkPresetIndex]
-      : lightPresets[_selectedLightPresetIndex];
+  ThemePreset get currentPreset =>
+      isDarkMode ? darkPresets[_selectedDarkPresetIndex] : lightPresets[_selectedLightPresetIndex];
 
   Color get currentBaseColor {
-    return _themeMode == ThemeMode.dark
+    return isDarkMode
         ? darkPresets[_selectedDarkPresetIndex].darkBaseColor
         : lightPresets[_selectedLightPresetIndex].lightBaseColor;
   }
@@ -75,7 +97,7 @@ class AppThemeController extends ChangeNotifier {
   Color get currentAccentColor => accentColor;
 
   Color get accentColor {
-    if (_themeMode == ThemeMode.dark) {
+    if (isDarkMode) {
       return _customDarkAccentColor ??
           darkPresets[_selectedDarkPresetIndex].darkAccentColor;
     } else {
@@ -85,20 +107,20 @@ class AppThemeController extends ChangeNotifier {
   }
 
   Color get textColor {
-    return _themeMode == ThemeMode.dark
+    return isDarkMode
         ? darkPresets[_selectedDarkPresetIndex].darkTextColor
         : lightPresets[_selectedLightPresetIndex].lightTextColor;
   }
 
   Color get secondaryTextColor {
-    return _themeMode == ThemeMode.dark
+    return isDarkMode
         ? darkPresets[_selectedDarkPresetIndex].darkSecondaryTextColor
         : lightPresets[_selectedLightPresetIndex].lightSecondaryTextColor;
   }
 
   Color get shadowDarkColor {
     final base = currentBaseColor;
-    if (_themeMode == ThemeMode.dark) {
+    if (isDarkMode) {
       final hsl = HSLColor.fromColor(base);
       return hsl
           .withLightness((hsl.lightness * 0.40).clamp(0.0, 1.0))
@@ -115,7 +137,7 @@ class AppThemeController extends ChangeNotifier {
 
   Color get shadowLightColor {
     final base = currentBaseColor;
-    if (_themeMode == ThemeMode.dark) {
+    if (isDarkMode) {
       final hsl = HSLColor.fromColor(base);
       return hsl
           .withLightness((hsl.lightness + 0.10).clamp(0.0, 1.0))
@@ -318,8 +340,8 @@ class AppThemeController extends ChangeNotifier {
   /// Default themeMode = ThemeMode.light (index 1 in ThemeMode.values).
   Future<void> loadPersistedTheme() async {
     final prefs = await SharedPreferences.getInstance();
-    // ThemeMode.values = [system(0), light(1), dark(2)] — default 1 = light
-    final modeIdx = prefs.getInt(_kThemeMode) ?? 1;
+    // ThemeMode.values = [system(0), light(1), dark(2)] — default 2 = dark (Charcoal Slate)
+    final modeIdx = prefs.getInt(_kThemeMode) ?? 2;
     _themeMode =
         ThemeMode.values[modeIdx.clamp(0, ThemeMode.values.length - 1)];
     _selectedDarkPresetIndex =
@@ -365,7 +387,7 @@ class AppThemeController extends ChangeNotifier {
   }
 
   void selectPreset(int index) {
-    if (_themeMode == ThemeMode.dark) {
+    if (isDarkMode) {
       _selectedDarkPresetIndex = index.clamp(0, darkPresets.length - 1);
       _customDarkAccentColor = null;
     } else {
@@ -377,7 +399,7 @@ class AppThemeController extends ChangeNotifier {
   }
 
   void updateCustomAccentColor(Color color) {
-    if (_themeMode == ThemeMode.dark) {
+    if (isDarkMode) {
       _customDarkAccentColor = color;
     } else {
       _customLightAccentColor = color;
@@ -387,7 +409,7 @@ class AppThemeController extends ChangeNotifier {
   }
 
   void resetToPreset() {
-    if (_themeMode == ThemeMode.dark) {
+    if (isDarkMode) {
       _customDarkAccentColor = null;
     } else {
       _customLightAccentColor = null;

@@ -56,7 +56,18 @@ class _MainTabShellState extends State<MainTabShell> {
     if (targetIndex != _currentIndex) {
       _currentIndex = targetIndex;
       if (_pageController.hasClients && !_isAnimatingPage) {
-        _pageController.jumpToPage(targetIndex);
+        _isAnimatingPage = true;
+        _pageController
+            .animateToPage(
+          targetIndex,
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeInOutCubic,
+        )
+            .then((_) {
+          if (mounted) {
+            _isAnimatingPage = false;
+          }
+        });
       }
     }
   }

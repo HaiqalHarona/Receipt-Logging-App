@@ -13,10 +13,10 @@ void main() {
   });
 
   group('AppThemeController Unit Tests', () {
-    test('Defaults to Light Mode and Neumorphic Silver preset', () {
+    test('Defaults to Dark Mode and Charcoal Slate preset', () {
       final controller = AppThemeController.instance;
 
-      expect(controller.themeMode, equals(ThemeMode.light));
+      expect(controller.themeMode, equals(ThemeMode.dark));
       expect(controller.selectedPresetIndex, equals(0));
       expect(controller.neuDepth, equals(6.0));
       expect(controller.fontScale, equals(1.0));
@@ -32,6 +32,11 @@ void main() {
       controller.setThemeMode(ThemeMode.light);
       expect(controller.themeMode, equals(ThemeMode.light));
       expect(controller.isDarkMode, isFalse);
+
+      controller.setThemeMode(ThemeMode.system);
+      expect(controller.themeMode, equals(ThemeMode.system));
+      // isDarkMode resolves dynamically according to platform dispatcher
+      expect(controller.isDarkMode, isA<bool>());
     });
 
     test('Selects presets and updates colors', () {
