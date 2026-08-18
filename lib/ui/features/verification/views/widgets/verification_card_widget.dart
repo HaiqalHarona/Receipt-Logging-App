@@ -50,10 +50,15 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
   @override
   void didUpdateWidget(covariant VerificationCardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.receipt.id != widget.receipt.id ||
-        oldWidget.receipt != widget.receipt) {
+    // Only reinitialize controllers when switching to a different receipt.
+    // Reinitializing on every content change resets the text cursor to index 0.
+    if (oldWidget.receipt.id != widget.receipt.id) {
       _disposeControllers();
       _initControllers();
+    } else {
+      if (_selectedCurrency != widget.receipt.currency) {
+        setState(() => _selectedCurrency = widget.receipt.currency);
+      }
     }
   }
 

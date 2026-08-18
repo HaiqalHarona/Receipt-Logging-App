@@ -62,214 +62,242 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // Customization Card
-                    GestureDetector(
-                      onTap: () => context.push('/customization'),
-                      child: NeumorphicCardWidget(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Customization & Theme",
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: textPrimary,
-                                    ),
+                    // ── SECTION 1: APPEARANCE ─────────────────────────────
+                    _buildSectionHeader("APPEARANCE", textSecondary),
+                    const SizedBox(height: 8),
+                    _buildSectionContainer(
+                      children: [
+                        // Customization & Theme Row
+                        InkWell(
+                          onTap: () => context.push('/customization'),
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Customization & Theme",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Adjust app colors, presets & accents",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "Adjust app colors, presets & accents",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: textSecondary,
+                                  size: 22,
+                                ),
+                              ],
                             ),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              color: textSecondary,
-                              size: 22,
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
+                        _buildDivider(textSecondary),
+                        // Appearance Mode Row
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Theme Mode',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const Spacer(),
+                              _buildModeChip(
+                                icon: Icons.dark_mode_rounded,
+                                label: 'Dark',
+                                mode: ThemeMode.dark,
+                                controller: controller,
+                                accent: accent,
+                                textPrimary: textPrimary,
+                              ),
+                              const SizedBox(width: 8),
+                              _buildModeChip(
+                                icon: Icons.light_mode_rounded,
+                                label: 'Light',
+                                mode: ThemeMode.light,
+                                controller: controller,
+                                accent: accent,
+                                textPrimary: textPrimary,
+                              ),
+                              const SizedBox(width: 8),
+                              _buildModeChip(
+                                icon: Icons.phone_android_rounded,
+                                label: 'Auto',
+                                mode: ThemeMode.system,
+                                controller: controller,
+                                accent: accent,
+                                textPrimary: textPrimary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
-                    // Appearance Mode Toggle (3-way: Dark · Light · Auto)
-                    NeumorphicCardWidget(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Appearance',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: textPrimary,
-                            ),
-                          ),
-                          const Spacer(),
-                          _buildModeChip(
-                            icon: Icons.dark_mode_rounded,
-                            label: 'Dark',
-                            mode: ThemeMode.dark,
-                            controller: controller,
-                            accent: accent,
-                            textPrimary: textPrimary,
-                          ),
-                          const SizedBox(width: 8),
-                          _buildModeChip(
-                            icon: Icons.light_mode_rounded,
-                            label: 'Light',
-                            mode: ThemeMode.light,
-                            controller: controller,
-                            accent: accent,
-                            textPrimary: textPrimary,
-                          ),
-                          const SizedBox(width: 8),
-                          _buildModeChip(
-                            icon: Icons.phone_android_rounded,
-                            label: 'Auto',
-                            mode: ThemeMode.system,
-                            controller: controller,
-                            accent: accent,
-                            textPrimary: textPrimary,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Currency Setting Card (Interactive Modal Selector)
-                    GestureDetector(
-                      onTap: () => _showCurrencyPicker(
-                          context, textPrimary, textSecondary, accent),
-                      child: NeumorphicCardWidget(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Default Display Currency",
+                    // ── SECTION 2: DATA & PREFERENCES ─────────────────────
+                    _buildSectionHeader("DATA & PREFERENCES", textSecondary),
+                    const SizedBox(height: 8),
+                    _buildSectionContainer(
+                      children: [
+                        // Currency Selector Row
+                        InkWell(
+                          onTap: () => _showCurrencyPicker(
+                              context, textPrimary, textSecondary, accent),
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Default Display Currency",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "All receipts convert automatically",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    "$currentCurrency ($currentSymbol)",
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.bold,
-                                      color: textPrimary,
+                                      color: accent,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "All receipts are automatically converted",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: accent.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        _buildDivider(textSecondary),
+                        // Export Database Row
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Export Database (JSON/CSV)",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: textPrimary,
+                                  ),
+                                ),
                               ),
-                              child: Text(
-                                "$currentCurrency ($currentSymbol)",
+                              Text(
+                                "Export",
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                   color: accent,
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 24),
 
-                    // Export Database Setting Card
-                    NeumorphicCardWidget(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Export Database (JSON/CSV)",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: textPrimary,
-                              ),
+                    // ── SECTION 3: DEVELOPER TOOLS ────────────────────────
+                    _buildSectionHeader("DEVELOPER TOOLS", textSecondary),
+                    const SizedBox(height: 8),
+                    _buildSectionContainer(
+                      children: [
+                        // Isar Database Viewer Row
+                        InkWell(
+                          onTap: () => context.push('/settings/db-viewer'),
+                          borderRadius: BorderRadius.circular(18),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Isar Database Viewer",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Inspect stored receipts & live storage",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.storage_rounded,
+                                  color: accent,
+                                  size: 22,
+                                ),
+                              ],
                             ),
                           ),
-                          Text(
-                            "Export",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: accent,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Isar Database Viewer Card
-                    GestureDetector(
-                      onTap: () => context.push('/settings/db-viewer'),
-                      child: NeumorphicCardWidget(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Isar Database Viewer",
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "Inspect stored receipts & Isar storage live",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.storage_rounded,
-                              color: accent,
-                              size: 22,
-                            ),
-                          ],
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -278,6 +306,41 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSectionHeader(String label, Color textSecondary) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: textSecondary.withValues(alpha: 0.8),
+          letterSpacing: 0.9,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionContainer({required List<Widget> children}) {
+    return NeumorphicCardWidget(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildDivider(Color textSecondary) {
+    return Divider(
+      height: 1,
+      thickness: 0.5,
+      indent: 16,
+      endIndent: 16,
+      color: textSecondary.withValues(alpha: 0.15),
     );
   }
 
