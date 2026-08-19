@@ -1,6 +1,6 @@
-// File: lib/services/currency_service.dart
-
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../cloud/services/user_preferences_service.dart';
 
 /// Centralized Currency Service for live currency conversion and symbol formatting.
 ///
@@ -10,10 +10,37 @@ class CurrencyService extends ChangeNotifier {
   static final CurrencyService instance = CurrencyService._internal();
   CurrencyService._internal();
 
+  static const String _kSelectedCurrency = 'selected_currency_code';
+
   String _currentCurrency = 'USD';
 
   /// Currently selected target currency code (e.g. 'USD', 'EUR', 'GBP').
   String get currentCurrency => _currentCurrency;
+
+  /// Loads persisted currency code from SharedPreferences on app launch.
+  Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_kSelectedCurrency);
+      if (saved != null && supportedCurrencies.containsKey(saved)) {
+        _currentCurrency = saved;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// Updates the user's preferred currency, saves locally, and syncs to cloud.
+  void setCurrency(String newCurrencyCode) {
+    if (supportedCurrencies.containsKey(newCurrencyCode) &&
+        _currentCurrency != newCurrencyCode) {
+      _currentCurrency = newCurrencyCode;
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString(_kSelectedCurrency, newCurrencyCode);
+      });
+      UserPreferencesService.instance.scheduleSync();
+      notifyListeners();
+    }
+  }
 
   /// Currency definitions and exchange rates relative to USD (1.0).
   static const Map<String, CurrencyInfo> supportedCurrencies = {
@@ -50,15 +77,6 @@ class CurrencyService extends ChangeNotifier {
   /// Symbol for the currently active currency (e.g. '$', '€', '£', 'RM').
   String get currentSymbol =>
       supportedCurrencies[_currentCurrency]?.symbol ?? '\$';
-
-  /// Updates the user's preferred currency and triggers UI recalculation.
-  void setCurrency(String newCurrencyCode) {
-    if (supportedCurrencies.containsKey(newCurrencyCode) &&
-        _currentCurrency != newCurrencyCode) {
-      _currentCurrency = newCurrencyCode;
-      notifyListeners();
-    }
-  }
 
   /// Converts [amount] from [fromCurrencyCode] to [toCurrencyCode] (defaulting to [_currentCurrency]).
   double convert(double amount, String fromCurrencyCode,

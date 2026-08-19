@@ -1,5 +1,6 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../cloud/services/user_preferences_service.dart';
 
 /// Theme Preset Definitions
 class ThemePreset {
@@ -370,6 +371,7 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
       prefs.setDouble(_kDepth, _neuDepth);
       prefs.setDouble(_kFontScale, _fontScale);
     });
+    UserPreferencesService.instance.scheduleSync();
   }
 
   // ── Setters ──────────────────────────────────────────────────────────────

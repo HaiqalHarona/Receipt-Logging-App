@@ -17,6 +17,7 @@ import '../../services/cloud_sync_service.dart';
 import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
 import '../models/user_models.dart';
+import 'user_preferences_service.dart';
 
 class AuthService extends ChangeNotifier {
   AuthService._();
@@ -223,6 +224,11 @@ class AuthService extends ChangeNotifier {
       await CategoryService.instance.syncFromCloud(
         user.customCategories.map((c) => CustomCategory.fromDto(c)).toList(),
       );
+
+      // Restore user preferences (currency, theme, presets) from cloud
+      if (user.preferences.isNotEmpty) {
+        await UserPreferencesService.instance.applyCloudPreferences(user.preferences);
+      }
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to persist profile', e, st);
     }

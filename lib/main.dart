@@ -13,6 +13,7 @@ import 'services/device_identity_service.dart';
 import 'services/api/backend_api_client.dart';
 import 'cloud/services/auth_service.dart';
 import 'services/cloud_sync_service.dart';
+import 'services/currency_service.dart';
 import 'services/app_logger_service.dart';
 
 void main() async {
@@ -30,6 +31,7 @@ void main() async {
   await DeviceIdentityService.instance.init(BackendApiClient.instance);
   await AuthService.instance.init();
   await CloudSyncService.instance.syncOnLogin();
+  await CurrencyService.instance.init();
   await AppThemeController.instance.loadPersistedTheme();
 
   ErrorWidget.builder = (FlutterErrorDetails details) {

@@ -15,9 +15,10 @@ Architectural blueprints, endpoint matrices, and project structural specificatio
 - **[Project Structure](file:///docs/ai_context/PROJECT_STRUCTURE.md)**: Feature-first directory breakdown, layered service architecture, Riverpod state management, Isar local persistence, and GoRouter declarative navigation.
 
 ### Developer & Team Guides
-Guides for backend API integration, git branching strategy, CI/CD automation, and agent swarm protocols:
+Guides for backend API integration, data flow pipelines, git branching strategy, CI/CD automation, and agent swarm protocols:
 
-- **[Backend API Specification](file:///docs/user_guides/API.md)**: FastAPI backend documentation, header authentication contract (`X-Device-ID`, `X-Device-Token`), endpoints catalog, and local server startup.
+- **[Backend API Specification](file:///docs/user_guides/API.md)**: FastAPI backend documentation, header authentication contract (`X-Device-ID`, `X-Device-Token`), endpoints catalog, parsing flowcharts, and local server startup.
+- **[Data Flow & Workflow Guide](file:///docs/user_guides/DATA_FLOW_AND_WORKFLOW.md)**: Complete lifecycle of data across Flutter UI, Isar local database, FastAPI backend, Redis job queues, Gemini Vision AI, and Supabase cloud sync.
 - **[Git Branching & CI/CD Guide](file:///docs/user_guides/BRANCHING_AND_CICD.md)**: Dual-trunk / Light GitFlow workflow, branch protection rules, and GitHub Actions automated pipeline breakdown (`analyze-and-test`, `build-android`, `build-web`).
 - **[Agent Swarm Specifications](file:///docs/user_guides/AGENTS.md)**: Subagent roles (`@ui_builder`, `@test_writer`, `@janitor`), handoff protocols, and coding constraints.
 
