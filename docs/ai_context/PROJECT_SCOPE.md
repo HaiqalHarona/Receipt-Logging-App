@@ -5,34 +5,34 @@ Privacy-first, offline-first receipt and expense tracking mobile application bui
 
 ### Core Architecture & Workflow
 ```
-
-                Camera Image Capture / Picker               
-
-                      
-                      
-
-       Backend REST Client: BackendApiClient.parseManyReceiptImages        
- Header: X-Request-Type: "guest" | "user" (Required scoped identity mode)        
- Header: X-Device-ID / X-Device-Token OR X-User-ID / X-User-Token            
- Endpoint: POST /api/v1/scan/parse-many  (Accepts 1 to 10 images, returns batch_id)  
-
-                      
-                      
-
-       Real-Time Status: GET /api/v1/scan/parse-many/{batch_id}/stream       
- Server-Sent Events (SSE) stream emitting batch_complete event with extracted JSON data 
-
-                      
-                      
-
-               Verification Review Modal (UI)               
- Validate AI-extracted merchant name, line items, totals, date, and category inference 
-
-                      
-                      
-
-         Stateful UI Update + Isar 3.x Local Database Persistence        
-
++-----------------------------------------------------------------------------------------+
+|                               Camera Image Capture / Picker                             |
++-------------------------------------------+---------------------------------------------+
+                                            |
+                                            v
++-----------------------------------------------------------------------------------------+
+|                 Backend REST Client: BackendApiClient.parseManyReceiptImages            |
+| Header: X-Request-Type: "guest" | "user" (Required scoped identity mode)                |
+| Header: X-Device-Name / X-Device-Token OR X-User-Name / X-User-Token                    |
+| Endpoint: POST /api/v1/scan/parse-many  (Accepts 2 to 10 images, returns batch_id)      |
++-------------------------------------------+---------------------------------------------+
+                                            |
+                                            v
++-----------------------------------------------------------------------------------------+
+|                 Real-Time Status: GET /api/v1/scan/parse-many/{batch_id}/stream         |
+| Server-Sent Events (SSE) stream emitting batch_complete event with extracted JSON data  |
++-------------------------------------------+---------------------------------------------+
+                                            |
+                                            v
++-----------------------------------------------------------------------------------------+
+|                                Verification Review Modal (UI)                           |
+| Validate AI-extracted merchant name, line items, totals, date, and category inference   |
++-------------------------------------------+---------------------------------------------+
+                                            |
+                                            v
++-----------------------------------------------------------------------------------------+
+|                 Stateful UI Update + Isar 3.x Local Database Persistence                |
++-----------------------------------------------------------------------------------------+
 ```
 
 - **Primary Processing**: Camera capture sends 1 to 10 receipt images to the FastAPI backend (`POST /api/v1/scan/parse-many`) running Vision AI (Gemini 3.6 Flash) with Redis queue background processing and real-time SSE updates.

@@ -53,3 +53,4 @@ app.*.map.json
 .codeagentswarm/
 AGENTS.md
 artifacts/
+.scripts/*

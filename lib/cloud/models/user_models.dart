@@ -52,6 +52,7 @@ class UserRecordDto {
     this.mobileNumber,
     this.avatarImagePath,
     this.customCategories = const [],
+    this.preferences = const {},
     this.deletedAt,
   });
 
@@ -62,6 +63,7 @@ class UserRecordDto {
   final String? mobileNumber;
   final String? avatarImagePath;
   final List<CustomCategoryDto> customCategories;
+  final Map<String, dynamic> preferences;
   final String createdAt;
   final String? deletedAt;
 
@@ -78,6 +80,7 @@ class UserRecordDto {
                   (e) => CustomCategoryDto.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      preferences: (json['preferences'] as Map<String, dynamic>?) ?? const {},
       createdAt: (json['created_at'] as String?) ?? '',
       deletedAt: json['deleted_at'] as String?,
     );
@@ -91,6 +94,7 @@ class UserRecordDto {
         if (mobileNumber != null) 'mobile_number': mobileNumber,
         if (avatarImagePath != null) 'avatar_image_path': avatarImagePath,
         'custom_categories': customCategories.map((c) => c.toJson()).toList(),
+        'preferences': preferences,
         'created_at': createdAt,
         if (deletedAt != null) 'deleted_at': deletedAt,
       };

@@ -415,6 +415,7 @@ class BackendApiClient {
     String? mobileNumber,
     String? avatarImagePath,
     List<CustomCategoryDto>? customCategories,
+    Map<String, dynamic>? preferences,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
     final headers = ApiConfig.buildUserHeaders(
@@ -431,6 +432,9 @@ class BackendApiClient {
       body['custom_categories'] =
           customCategories.map((c) => c.toJson()).toList();
     }
+    if (preferences != null) {
+      body['preferences'] = preferences;
+    }
 
     final response = await _sendRequest(
       'PATCH',
@@ -442,6 +446,19 @@ class BackendApiClient {
     _assertStatus(response, 200);
     return UserRecordDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Updates user UI & spending preferences dictionary via PATCH /user/me.
+  Future<UserRecordDto> updateUserPreferences({
+    required String username,
+    required String userToken,
+    required Map<String, dynamic> preferences,
+  }) async {
+    return updateUserProfile(
+      username: username,
+      userToken: userToken,
+      preferences: preferences,
+    );
   }
 
   /// Soft-deletes user profile and unlinks active devices.
