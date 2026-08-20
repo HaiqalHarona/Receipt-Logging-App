@@ -14,6 +14,7 @@ import '../../../../services/category_service.dart';
 import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../cloud/api/api_config.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -208,6 +209,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  // ── PASSWORD STRENGTH HELPER ─────────────────────────────────────────────
+
+  int _calculatePasswordStrength(String pass) {
+    if (pass.isEmpty) return 0;
+    int score = 0;
+    if (pass.length >= 6) score++;
+    if (pass.length >= 8 && RegExp(r'[0-9]').hasMatch(pass)) score++;
+    if (RegExp(r'[A-Z]').hasMatch(pass) && RegExp(r'[a-z]').hasMatch(pass)) score++;
+    if (RegExp(r'[!@#\$&*~-]').hasMatch(pass) || pass.length >= 12) score++;
+    return score.clamp(1, 4);
+  }
+
+  Color _getPasswordStrengthColor(int strength, Color accent) {
+    switch (strength) {
+      case 1:
+        return Colors.redAccent;
+      case 2:
+        return Colors.orangeAccent;
+      case 3:
+        return Colors.amber;
+      case 4:
+        return accent;
+      default:
+        return Colors.transparent;
+    }
+  }
+
+  String _getPasswordStrengthLabel(int strength) {
+    switch (strength) {
+      case 1:
+        return "Weak (min 6 characters)";
+      case 2:
+        return "Fair (add numbers & mix case)";
+      case 3:
+        return "Good";
+      case 4:
+        return "Strong";
+      default:
+        return "";
+    }
+  }
+
   // ── HELPERS ─────────────────────────────────────────────────────────────────
 
   Widget _buildFieldError(String? error) {
@@ -230,12 +273,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  Widget _buildSectionLabel(String label, Color textSecondary) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: textSecondary.withValues(alpha: 0.8),
+          letterSpacing: 0.9,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = AppThemeController.instance;
     final textPrimary = controller.textColor;
     final textSecondary = controller.secondaryTextColor;
     final accent = controller.accentColor;
+    final passText = _passwordController.text;
+    final strength = _calculatePasswordStrength(passText);
 
     return NeumorphicBackground(
       child: Scaffold(
@@ -246,35 +306,56 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Navigation Bar
+                // Top Navigation Back Pill
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    NeumorphicIconBadge(
-                      icon: Icons.arrow_back_rounded,
-                      iconSize: 20,
+                    GestureDetector(
                       onTap: () {
                         AppLogger.info(
                             'UI', 'User tapped Back on SignUpScreen');
-                        context.pop();
+                        if (GoRouter.of(context).canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/auth');
+                        }
                       },
-                    ),
-                    Text(
-                      "Sign Up",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: textPrimary,
+                      child: Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: 4,
+                          intensity: 0.85,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(12)),
+                          color: controller.currentBaseColor,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.arrow_back_rounded,
+                                  color: textPrimary, size: 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                "Back",
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 40),
                   ],
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
                 // Welcome Header
                 Text(
-                  "Create Account",
+                  "Create ${ApiConfig.appName} Account",
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -282,219 +363,246 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  "Sign up to start tracking and managing your expenses",
+                  "Sign up to ${ApiConfig.appName} to start tracking and managing your expenses",
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
+                    height: 1.4,
                     color: textSecondary,
                   ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Visual Progress Stepper ──────────────────────────────────
+                Row(
+                  children: [
+                    _buildStepperPill("1. Account", true, accent, textSecondary),
+                    const SizedBox(width: 6),
+                    _buildStepperPill("2. Security", passText.isNotEmpty, accent, textSecondary),
+                    const SizedBox(width: 6),
+                    _buildStepperPill("3. Complete", false, accent, textSecondary),
+                  ],
                 ),
                 const SizedBox(height: 28),
 
-                // ── USERNAME ─────────────────────────────────────────────────
-                Text(
-                  "USERNAME",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                NeumorphicInputFieldWidget(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
+                // ── SECTION 1: ACCOUNT INFORMATION ────────────────────────────
+                _buildSectionLabel("ACCOUNT INFORMATION", textSecondary),
+                NeumorphicCardWidget(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.person_rounded,
-                          color: textSecondary, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _usernameController,
-                          style: TextStyle(color: textPrimary, fontSize: 14),
-                          autocorrect: false,
-                          onChanged: (_) {
-                            if (_usernameError != null)
-                              setState(() => _usernameError = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "Choose a username",
-                            hintStyle: TextStyle(
-                                color: textSecondary.withValues(alpha: 0.6),
-                                fontSize: 14),
-                            border: InputBorder.none,
+                      // Username Input
+                      Row(
+                        children: [
+                          Icon(Icons.person_rounded,
+                              color: textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _usernameController,
+                              style: TextStyle(color: textPrimary, fontSize: 14),
+                              autocorrect: false,
+                              onChanged: (_) {
+                                if (_usernameError != null) {
+                                  setState(() => _usernameError = null);
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Choose a username",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                    fontSize: 14),
+                                border: InputBorder.none,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
+                      ),
+                      Divider(
+                        height: 16,
+                        thickness: 0.5,
+                        color: textSecondary.withValues(alpha: 0.15),
+                      ),
+                      // Email Input
+                      Row(
+                        children: [
+                          Icon(Icons.email_rounded,
+                              color: textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              style: TextStyle(color: textPrimary, fontSize: 14),
+                              autocorrect: false,
+                              onChanged: (_) {
+                                if (_emailError != null) {
+                                  setState(() => _emailError = null);
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: "user@example.com",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                    fontSize: 14),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 _buildFieldError(_usernameError),
-                const SizedBox(height: 16),
-
-                // ── EMAIL ─────────────────────────────────────────────────────
-                Text(
-                  "EMAIL ADDRESS",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                NeumorphicInputFieldWidget(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      Icon(Icons.email_rounded, color: textSecondary, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          style: TextStyle(color: textPrimary, fontSize: 14),
-                          autocorrect: false,
-                          onChanged: (_) {
-                            if (_emailError != null)
-                              setState(() => _emailError = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "user@example.com",
-                            hintStyle: TextStyle(
-                                color: textSecondary.withValues(alpha: 0.6),
-                                fontSize: 14),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 _buildFieldError(_emailError),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // ── PASSWORD ──────────────────────────────────────────────────
-                Text(
-                  "PASSWORD",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                NeumorphicInputFieldWidget(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
+                // ── SECTION 2: SECURITY CREDENTIALS ───────────────────────────
+                _buildSectionLabel("SECURITY CREDENTIALS", textSecondary),
+                NeumorphicCardWidget(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.lock_rounded, color: textSecondary, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          style: TextStyle(color: textPrimary, fontSize: 14),
-                          onChanged: (_) {
-                            if (_passwordError != null)
-                              setState(() => _passwordError = null);
-                            // Also clear confirm error when password is edited
-                            if (_confirmPasswordError != null)
-                              setState(() => _confirmPasswordError = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "••••••••••••",
-                            hintStyle: TextStyle(
-                                color: textSecondary.withValues(alpha: 0.6),
-                                fontSize: 14),
-                            border: InputBorder.none,
+                      // Password Input
+                      Row(
+                        children: [
+                          Icon(Icons.lock_rounded,
+                              color: textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              style: TextStyle(color: textPrimary, fontSize: 14),
+                              onChanged: (_) {
+                                setState(() {
+                                  if (_passwordError != null) _passwordError = null;
+                                  if (_confirmPasswordError != null) {
+                                    _confirmPasswordError = null;
+                                  }
+                                });
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Password (min 6 characters)",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                    fontSize: 14),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            child: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                              color: textSecondary,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Password Strength Indicator Bar
+                      if (passText.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: List.generate(4, (index) {
+                            final isActive = index < strength;
+                            final color = _getPasswordStrengthColor(strength, accent);
+                            return Expanded(
+                              child: Container(
+                                height: 3.5,
+                                margin: EdgeInsets.only(
+                                    left: index == 0 ? 0 : 4,
+                                    right: index == 3 ? 0 : 4),
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? color
+                                      : textSecondary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getPasswordStrengthLabel(strength),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: _getPasswordStrengthColor(strength, accent),
                           ),
                         ),
+                        const SizedBox(height: 4),
+                      ],
+
+                      Divider(
+                        height: 16,
+                        thickness: 0.5,
+                        color: textSecondary.withValues(alpha: 0.15),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                        child: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off_rounded
-                              : Icons.visibility_rounded,
-                          color: textSecondary,
-                          size: 20,
-                        ),
+
+                      // Confirm Password Input
+                      Row(
+                        children: [
+                          Icon(Icons.lock_outline_rounded,
+                              color: textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _confirmPasswordController,
+                              obscureText: _obscureConfirmPassword,
+                              style: TextStyle(color: textPrimary, fontSize: 14),
+                              onChanged: (_) {
+                                if (_confirmPasswordError != null) {
+                                  setState(() => _confirmPasswordError = null);
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Confirm your password",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                    fontSize: 14),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                            child: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                              color: textSecondary,
+                              size: 20,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 _buildFieldError(_passwordError),
-                const SizedBox(height: 16),
-
-                // ── CONFIRM PASSWORD ──────────────────────────────────────────
-                Text(
-                  "CONFIRM PASSWORD",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                NeumorphicInputFieldWidget(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      Icon(Icons.lock_outline_rounded,
-                          color: textSecondary, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _confirmPasswordController,
-                          obscureText: _obscureConfirmPassword,
-                          style: TextStyle(color: textPrimary, fontSize: 14),
-                          onChanged: (_) {
-                            if (_confirmPasswordError != null)
-                              setState(() => _confirmPasswordError = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "••••••••••••",
-                            hintStyle: TextStyle(
-                                color: textSecondary.withValues(alpha: 0.6),
-                                fontSize: 14),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
-                        child: Icon(
-                          _obscureConfirmPassword
-                              ? Icons.visibility_off_rounded
-                              : Icons.visibility_rounded,
-                          color: textSecondary,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 _buildFieldError(_confirmPasswordError),
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
 
-                // Sign Up Button
+                // ── Create Account CTA Button ─────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -511,19 +619,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                             )
                           : const Text(
-                              "Sign Up",
+                              "Create Account",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: 0.2,
                               ),
                             ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // Already have an account link
+                // ── Centered Log In Link ──────────────────────────────────────
                 Center(
                   child: GestureDetector(
                     onTap: () {
@@ -535,26 +644,60 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         context.go('/login');
                       }
                     },
-                    child: RichText(
-                      text: TextSpan(
-                        style: TextStyle(fontSize: 13, color: textSecondary),
-                        children: [
-                          const TextSpan(text: "Already have an account? "),
-                          TextSpan(
-                            text: "Log In",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: accent,
-                              decoration: TextDecoration.underline,
-                              decorationColor: accent,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(fontSize: 13.5, color: textSecondary),
+                          children: [
+                            const TextSpan(text: "Already have an account? "),
+                            TextSpan(
+                              text: "Log In",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: accent,
+                                decoration: TextDecoration.underline,
+                                decorationColor: accent,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepperPill(
+      String label, bool isActive, Color accent, Color textSecondary) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive
+              ? accent.withValues(alpha: 0.15)
+              : textSecondary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isActive
+                ? accent.withValues(alpha: 0.35)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              color: isActive ? accent : textSecondary.withValues(alpha: 0.6),
             ),
           ),
         ),

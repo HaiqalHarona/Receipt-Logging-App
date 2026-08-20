@@ -5,27 +5,27 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/device_identity_service.dart';
 
 class ApiConfig {
-  ApiConfig._();
+  static String _env(String key, [String fallback = '']) {
+    if (!dotenv.isInitialized) return fallback;
+    return dotenv.maybeGet(key) ?? fallback;
+  }
+
+  /// Application display name read dynamically from .env
+  static String get appName => _env('APP_NAME', 'Receipt Logger');
 
   /// Base URL for backend read dynamically from .env.
   /// Defaults to localhost:8085 for Desktop/Web/iOS, with 10.0.2.2 for Android emulator.
-  static String get baseUrl {
-    final configured =
-        dotenv.get('API_BASE_URL', fallback: 'http://localhost:8085/api/v1');
-    // if (defaultTargetPlatform == TargetPlatform.android && configured.contains('localhost')) {
-    //   return configured.replaceAll('localhost', '10.0.2.2');
-    // }
-    return configured;
-  }
+  static String get baseUrl =>
+      _env('API_BASE_URL', 'http://localhost:8085/api/v1');
 
   /// Supabase Project URL read dynamically from .env
-  static String get supabaseUrl => dotenv.get('SUPABASE_URL', fallback: '');
+  static String get supabaseUrl => _env('SUPABASE_URL', '');
 
   /// Supabase Key read dynamically from .env
-  static String get supabaseKey => dotenv.get('SUPABASE_KEY', fallback: '');
+  static String get supabaseKey => _env('SUPABASE_KEY', '');
 
   /// Gemini API Key read dynamically from .env
-  static String get geminiApiKey => dotenv.get('GEMINI_API_KEY', fallback: '');
+  static String get geminiApiKey => _env('GEMINI_API_KEY', '');
 
   /// Persistent hardware device ID powered by DeviceIdentityService.
   static String get deviceId => DeviceIdentityService.instance.deviceId;

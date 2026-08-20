@@ -2,13 +2,19 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reciept_logging/ui/features/auth/views/signup_screen.dart';
 import 'package:reciept_logging/ui/features/auth/views/forgot_password_screen.dart';
 import 'package:reciept_logging/ui/features/auth/views/otp_verification_screen.dart';
 import 'package:reciept_logging/ui/core/theme/app_theme.dart';
+import 'package:reciept_logging/cloud/api/api_config.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   Widget buildTestableWidget(Widget child) {
     return NeumorphicApp(
@@ -30,12 +36,12 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(const SignUpScreen()));
       await tester.pumpAndSettle();
 
-      expect(find.text('Create Account'), findsOneWidget);
-      expect(find.text('USERNAME'), findsOneWidget);
-      expect(find.text('EMAIL ADDRESS'), findsOneWidget);
-      expect(find.text('PASSWORD'), findsOneWidget);
-      expect(find.text('CONFIRM PASSWORD'), findsOneWidget);
-      expect(find.text('Sign Up'), findsWidgets);
+      expect(find.text('Create ${ApiConfig.appName} Account'), findsOneWidget);
+      expect(find.widgetWithText(NeumorphicButtonWidget, 'Create Account'), findsOneWidget);
+      expect(find.text('ACCOUNT INFORMATION'), findsOneWidget);
+      expect(find.text('SECURITY CREDENTIALS'), findsOneWidget);
+      expect(find.text('1. Account'), findsOneWidget);
+      expect(find.text('2. Security'), findsOneWidget);
 
       final richTextFinder = find.byType(RichText);
       expect(richTextFinder, findsWidgets);
@@ -58,7 +64,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(const SignUpScreen()));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(NeumorphicButtonWidget, 'Sign Up'));
+      await tester.tap(find.widgetWithText(NeumorphicButtonWidget, 'Create Account'));
       await tester.pumpAndSettle();
 
       expect(find.text('Username is required.'), findsOneWidget);

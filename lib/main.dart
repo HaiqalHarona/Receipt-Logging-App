@@ -15,6 +15,7 @@ import 'cloud/services/auth_service.dart';
 import 'services/cloud_sync_service.dart';
 import 'services/currency_service.dart';
 import 'services/app_logger_service.dart';
+import 'cloud/api/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,7 +64,7 @@ class ReceiptLoggerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Receipt Logger',
+      title: ApiConfig.appName,
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       routerConfig: appRouter,
@@ -82,6 +83,8 @@ class ReceiptLoggerApp extends StatelessWidget {
               intensity: 0.88,
               shadowDarkColor: controller.shadowDarkColor,
               shadowLightColor: controller.shadowLightColor,
+              shadowDarkColorEmboss: controller.shadowDarkColorEmboss,
+              shadowLightColorEmboss: controller.shadowLightColorEmboss,
               textTheme: TextTheme(
                 bodyLarge: TextStyle(color: controller.textColor),
                 bodyMedium: TextStyle(color: controller.secondaryTextColor),
@@ -97,6 +100,8 @@ class ReceiptLoggerApp extends StatelessWidget {
               intensity: 0.80,
               shadowDarkColor: controller.shadowDarkColor,
               shadowLightColor: controller.shadowLightColor,
+              shadowDarkColorEmboss: controller.shadowDarkColorEmboss,
+              shadowLightColorEmboss: controller.shadowLightColorEmboss,
               textTheme: TextTheme(
                 bodyLarge: TextStyle(color: controller.textColor),
                 bodyMedium: TextStyle(color: controller.secondaryTextColor),

@@ -18,6 +18,9 @@ import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
 import '../models/user_models.dart';
 import 'user_preferences_service.dart';
+import '../../data/repositories/receipt_repository.dart';
+import '../../data/repositories/conversation_repository.dart';
+import '../../data/repositories/chat_message_repository.dart';
 
 class AuthService extends ChangeNotifier {
   AuthService._();
@@ -227,7 +230,8 @@ class AuthService extends ChangeNotifier {
 
       // Restore user preferences (currency, theme, presets) from cloud
       if (user.preferences.isNotEmpty) {
-        await UserPreferencesService.instance.applyCloudPreferences(user.preferences);
+        await UserPreferencesService.instance
+            .applyCloudPreferences(user.preferences);
       }
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to persist profile', e, st);
@@ -249,6 +253,26 @@ class AuthService extends ChangeNotifier {
       await CloudSyncService.instance.resetSyncState(oldUsername);
     }
     await CategoryService.instance.clearAll();
+
+    // Purge local Isar database collections & in-memory caches on logout
+    try {
+      await ReceiptRepository.instance.clearAll();
+    } catch (e, st) {
+      AppLogger.error('AuthService',
+          'Failed to purge ReceiptRepository during logout', e, st);
+    }
+    try {
+      await ConversationRepository.instance.clearAll();
+    } catch (e, st) {
+      AppLogger.error('AuthService',
+          'Failed to purge ConversationRepository during logout', e, st);
+    }
+    try {
+      await ChatMessageRepository.instance.clearAll();
+    } catch (e, st) {
+      AppLogger.error('AuthService',
+          'Failed to purge ChatMessageRepository during logout', e, st);
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();

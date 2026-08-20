@@ -11,7 +11,7 @@ import 'package:reciept_logging/data/repositories/receipt_repository.dart';
 void main() {
   group('Clean Architecture Mapper & Domain Equality Tests', () {
     test('Conversation domain equality and mapper round-trip', () {
-      final now = DateTime.now();
+      final now = DateTime.now().toUtc();
       final conv = Conversation(
         id: 'conv_123',
         title: 'Original Title',
@@ -44,7 +44,7 @@ void main() {
     });
 
     test('ChatMessage domain equality and mapper round-trip', () {
-      final now = DateTime.now();
+      final now = DateTime.now().toUtc();
       final msg = ChatMessage(
         id: 'msg_1',
         conversationId: 'conv_123',

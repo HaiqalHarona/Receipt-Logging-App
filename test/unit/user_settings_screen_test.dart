@@ -2,6 +2,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reciept_logging/ui/features/settings/views/user_settings_screen.dart';
 import 'package:reciept_logging/cloud/services/auth_service.dart';
 import 'package:reciept_logging/cloud/models/user_models.dart';
@@ -9,6 +10,10 @@ import 'package:reciept_logging/ui/core/theme/app_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   Widget buildTestableWidget(Widget child) {
     return NeumorphicApp(
@@ -28,23 +33,27 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       // Seed mock profile in AuthService
-      await AuthService.instance.saveSession(const UserRecordDto(
-        id: 'usr-mock-12345',
-        username: 'TestUserQA',
-        email: 'testuser@example.com',
-        createdAt: '2026-08-10T12:00:00Z',
-      ));
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-mock-12345',
+          username: 'TestUserQA',
+          email: 'testuser@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+        ),
+        userToken: 'mock-token-xyz',
+      );
 
       await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('User Settings'), findsOneWidget);
+      expect(find.text('Account & Profile'), findsOneWidget);
       expect(find.text('TestUserQA'), findsOneWidget);
-      expect(find.text('User ID: usr-mock-12345'), findsOneWidget);
+      expect(find.text('UID: usr-mock-12345'), findsOneWidget);
       expect(find.text('testuser@example.com'), findsOneWidget);
-      expect(find.text('EMAIL'), findsOneWidget);
-      expect(find.text('MOBILE'), findsOneWidget);
-      expect(find.text('Add'), findsOneWidget);
+      expect(find.text('EMAIL ADDRESS'), findsOneWidget);
+      expect(find.text('MOBILE NUMBER'), findsOneWidget);
+      expect(find.text('+ Add'), findsOneWidget);
       expect(find.text('Log Out'), findsOneWidget);
     });
 

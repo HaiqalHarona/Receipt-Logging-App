@@ -168,17 +168,17 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/auth',
       pageBuilder: (context, state) =>
-          _buildVerticalSlidePage(state: state, child: const AuthScreen()),
+          _buildHorizontalSlidePage(state: state, child: const AuthScreen()),
     ),
     GoRoute(
       path: '/login',
       pageBuilder: (context, state) =>
-          _buildVerticalSlidePage(state: state, child: const LoginScreen()),
+          _buildHorizontalSlidePage(state: state, child: const LoginScreen()),
     ),
     GoRoute(
       path: '/signup',
       pageBuilder: (context, state) =>
-          _buildVerticalSlidePage(state: state, child: const SignUpScreen()),
+          _buildHorizontalSlidePage(state: state, child: const SignUpScreen()),
     ),
     GoRoute(
       path: '/forgot-password',

@@ -42,22 +42,27 @@ class UserPreferencesService {
     final username = AuthService.instance.currentUsername;
     final userToken = AuthService.instance.currentUserToken;
 
-    if (!AuthService.instance.isLoggedIn || username == null || userToken == null) {
+    if (!AuthService.instance.isLoggedIn ||
+        username == null ||
+        userToken == null) {
       return;
     }
 
     final payload = buildPreferencesPayload();
     try {
-      AppLogger.info('UserPreferencesService', 'Syncing preferences to cloud: $payload');
+      AppLogger.info(
+          'UserPreferencesService', 'Syncing preferences to cloud: $payload');
       await BackendApiClient.instance.updateUserPreferences(
         username: username,
         userToken: userToken,
         preferences: payload,
       );
-      AppLogger.info('UserPreferencesService', 'Preferences successfully synced to cloud.');
+      AppLogger.info('UserPreferencesService',
+          'Preferences successfully synced to cloud.');
     } catch (e, st) {
       // Offline-safe: gracefully log without crashing or interrupting UI
-      AppLogger.warning('UserPreferencesService', 'Deferred preferences cloud sync: $e', st);
+      AppLogger.warning(
+          'UserPreferencesService', 'Deferred preferences cloud sync: $e', st);
     }
   }
 
@@ -82,7 +87,8 @@ class UserPreferencesService {
 
     _isApplyingCloudPreferences = true;
     try {
-      AppLogger.info('UserPreferencesService', 'Applying cloud preferences: $preferences');
+      AppLogger.info(
+          'UserPreferencesService', 'Applying cloud preferences: $preferences');
 
       // 1. Currency
       final currency = preferences['currency'] as String?;
@@ -93,7 +99,9 @@ class UserPreferencesService {
       // 2. Theme Mode
       final theme = AppThemeController.instance;
       final modeIdx = preferences['theme_mode'] as int?;
-      if (modeIdx != null && modeIdx >= 0 && modeIdx < ThemeMode.values.length) {
+      if (modeIdx != null &&
+          modeIdx >= 0 &&
+          modeIdx < ThemeMode.values.length) {
         theme.setThemeMode(ThemeMode.values[modeIdx]);
       }
 
@@ -121,7 +129,8 @@ class UserPreferencesService {
         theme.setFontScale(fontScale);
       }
     } catch (e, st) {
-      AppLogger.error('UserPreferencesService', 'Failed to apply cloud preferences', e, st);
+      AppLogger.error(
+          'UserPreferencesService', 'Failed to apply cloud preferences', e, st);
     } finally {
       _isApplyingCloudPreferences = false;
     }

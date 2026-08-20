@@ -1,9 +1,9 @@
-// File: lib/ui/features/settings/views/settings_screen.dart
-
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_snack_bar.dart';
+import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/currency_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -18,12 +18,124 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   bool get wantKeepAlive => true;
 
+  Future<void> _onLogout(BuildContext context) async {
+    final controller = AppThemeController.instance;
+    final textPrimary = controller.textColor;
+    final textSecondary = controller.secondaryTextColor;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Neumorphic(
+            style: NeumorphicStyle(
+              depth: 0,
+              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+              color: NeumorphicTheme.baseColor(ctx),
+              border: NeumorphicBorder(
+                color: Colors.red.shade700.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.logout_rounded,
+                          color: Colors.red.shade600, size: 26),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "Log Out",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    "Are you sure you want to log out? Your cloud session will be cleared and the app will return to guest mode.",
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.4,
+                      color: textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade700,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 11),
+                        ),
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text(
+                          "Log Out",
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await AuthService.instance.clearSession();
+      if (context.mounted) {
+        AppSnackBar.show(
+          context,
+          message: "Logged out successfully.",
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     return AnimatedBuilder(
-      animation: Listenable.merge(
-          [AppThemeController.instance, CurrencyService.instance]),
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        CurrencyService.instance,
+        AuthService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -31,6 +143,9 @@ class _SettingsScreenState extends State<SettingsScreen>
         final accent = controller.accentColor;
         final currentCurrency = CurrencyService.instance.currentCurrency;
         final currentSymbol = CurrencyService.instance.currentSymbol;
+        final isLoggedIn = AuthService.instance.isLoggedIn;
+        final username = AuthService.instance.currentUsername ?? "User";
+        final email = AuthService.instance.currentEmail ?? "";
 
         return NeumorphicBackground(
           child: Scaffold(
@@ -60,7 +175,186 @@ class _SettingsScreenState extends State<SettingsScreen>
                         color: textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+
+                    // ── SECTION 0: ACCOUNT / GUEST BANNER ───────────────────
+                    if (!isLoggedIn) ...[
+                      // Guest Onboarding Banner
+                      NeumorphicCardWidget(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                NeumorphicIconBadge(
+                                  icon: Icons.cloud_sync_rounded,
+                                  iconSize: 22,
+                                  iconColor: accent,
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Sign In or Register",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Sync receipts across devices with cloud backup",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              width: double.infinity,
+                              child: NeumorphicButtonWidget(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 11),
+                                onPressed: () => context.push('/auth'),
+                                child: const Center(
+                                  child: Text(
+                                    "Get Started",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ] else ...[
+                      // Logged-in Account Section
+                      _buildSectionHeader("ACCOUNT", textSecondary),
+                      const SizedBox(height: 8),
+                      _buildSectionContainer(
+                        children: [
+                          // Profile Summary Row
+                          InkWell(
+                            onTap: () => context.push('/user-settings'),
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(18)),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  // Avatar Initial Badge
+                                  Neumorphic(
+                                    style: NeumorphicStyle(
+                                      depth: 3,
+                                      boxShape: const NeumorphicBoxShape.circle(),
+                                      color: accent.withValues(alpha: 0.15),
+                                      border: NeumorphicBorder(
+                                        color: accent.withValues(alpha: 0.3),
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    child: SizedBox(
+                                      width: 40,
+                                      height: 40,
+                                      child: Center(
+                                        child: Text(
+                                          username.isNotEmpty
+                                              ? username[0].toUpperCase()
+                                              : "U",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: accent,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          username,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: textPrimary,
+                                          ),
+                                        ),
+                                        if (email.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            email,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: textSecondary,
+                                    size: 22,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          _buildDivider(textSecondary),
+                          // Log Out Action Row
+                          InkWell(
+                            onTap: () => _onLogout(context),
+                            borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(18)),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 13),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.logout_rounded,
+                                    color: Colors.redAccent.shade200,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    "Log Out",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.redAccent.shade200,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
 
                     // ── SECTION 1: APPEARANCE ─────────────────────────────
                     _buildSectionHeader("APPEARANCE", textSecondary),
