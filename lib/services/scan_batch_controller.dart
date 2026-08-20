@@ -253,10 +253,14 @@ class ScanBatchController extends ChangeNotifier {
           _completedReceipts = [];
           notifyListeners();
           final count = total > 0 ? total : dto.jobs.length;
+          final firstError =
+              failedJobs.isNotEmpty ? failedJobs.first.error : null;
           final message = count == 1
-              ? (failedJobs.isNotEmpty && failedJobs.first.filename != null
-                  ? 'Scan failed for ${failedJobs.first.filename}. Please try again.'
-                  : 'Scan failed for receipt. Please try again.')
+              ? (firstError != null && firstError.isNotEmpty
+                  ? firstError
+                  : (failedJobs.isNotEmpty && failedJobs.first.filename != null
+                      ? 'Scan failed for ${failedJobs.first.filename}. Please try again.'
+                      : 'Scan failed for receipt. Please try again.'))
               : 'Scan failed for $count receipts. Please try again.';
 
           _showError(message, _activeImages.isNotEmpty ? _activeImages : null);
@@ -354,9 +358,35 @@ class ScanBatchController extends ChangeNotifier {
 
   // ── Error Snack ───────────────────────────────────────────────────────────
 
+  static const String _kFriendlyErrorMessage =
+      'Oops, something went wrong! Please try again later.';
+
+  String _sanitizeErrorMessage(String? raw) {
+    if (raw == null || raw.isEmpty) return _kFriendlyErrorMessage;
+    final lower = raw.toLowerCase();
+    if (lower.contains('token usage limit') ||
+        lower.contains('high demand') ||
+        lower.contains('429') ||
+        lower.contains('500') ||
+        lower.contains('502') ||
+        lower.contains('503') ||
+        lower.contains('504') ||
+        lower.contains('quota') ||
+        lower.contains('resource_exhausted') ||
+        lower.contains('resourceexhausted') ||
+        lower.contains('rate limit') ||
+        lower.contains('too many requests') ||
+        lower.contains('internal error') ||
+        lower.contains('oops, something went wrong')) {
+      return _kFriendlyErrorMessage;
+    }
+    return raw;
+  }
+
   void _showError(String message, List<XFile>? retryImages) {
+    final friendlyMessage = _sanitizeErrorMessage(message);
     ScanProgressSnackBar.showError(
-      message: message,
+      message: friendlyMessage,
       onRetry: retryImages != null ? () => startBatchScan(retryImages) : null,
     );
   }
