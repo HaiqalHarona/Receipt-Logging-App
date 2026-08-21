@@ -26,7 +26,11 @@ import '../mappers/conversation_mapper.dart';
 import '../../domain/models/conversation.dart';
 
 class ConversationRepository extends ChangeNotifier {
-  ConversationRepository._();
+  ConversationRepository._() {
+    AuthService.instance.addListener(() {
+      notifyListeners();
+    });
+  }
 
   static final ConversationRepository instance = ConversationRepository._();
 
@@ -35,8 +39,14 @@ class ConversationRepository extends ChangeNotifier {
 
   /// Returns an immutable snapshot of all active (non-deleted) conversations,
   /// sorted by [updatedAt] descending (most recently active first).
-  List<Conversation> get conversations =>
-      List.unmodifiable(_conversations.where((c) => c.isActive));
+  /// When unauthenticated (guest mode), filters out any cloud user conversations (UUIDs).
+  List<Conversation> get conversations {
+    if (!AuthService.instance.isLoggedIn) {
+      return List.unmodifiable(_conversations
+          .where((c) => c.isActive && !_isUuid(c.id)));
+    }
+    return List.unmodifiable(_conversations.where((c) => c.isActive));
+  }
 
   // ── LIFECYCLE ─────────────────────────────────────────────────────────────────
 

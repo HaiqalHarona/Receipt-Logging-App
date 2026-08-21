@@ -10,6 +10,7 @@
 //   5. Provides clearSession() for logout.
 
 import 'package:flutter/foundation.dart';
+import 'package:isar/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/app_logger_service.dart';
 import '../../services/category_service.dart';
@@ -18,6 +19,10 @@ import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
 import '../models/user_models.dart';
 import 'user_preferences_service.dart';
+import '../../services/isar_service.dart';
+import '../../data/models/receipt_isar.dart';
+import '../../data/models/conversation_isar.dart';
+import '../../data/models/chat_message_isar.dart';
 import '../../data/repositories/receipt_repository.dart';
 import '../../data/repositories/conversation_repository.dart';
 import '../../data/repositories/chat_message_repository.dart';
@@ -86,6 +91,9 @@ class AuthService extends ChangeNotifier {
           mobileNumber: _mobileNumber,
           createdAt: '',
         );
+      } else {
+        // Not logged in (guest mode): sanitize any lingering cloud records from previous sessions
+        await _sanitizeUnauthenticatedState();
       }
 
       AppLogger.info('AuthService',
@@ -93,6 +101,57 @@ class AuthService extends ChangeNotifier {
       notifyListeners();
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to load session', e, st);
+    }
+  }
+
+  bool _isUuid(String id) {
+    if (id.isEmpty) return false;
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    return uuidRegex.hasMatch(id);
+  }
+
+  /// Sanitizes local database collections when booting in unauthenticated/guest state.
+  /// Removes any cloud user conversations, messages, and cloud receipts to guarantee
+  /// zero leakage of prior account data to guest users.
+  Future<void> _sanitizeUnauthenticatedState() async {
+    try {
+      if (IsarService.isInitialized) {
+        final isar = IsarService.isar;
+        await isar.writeTxn(() async {
+          // 1. Remove cloud user conversations
+          final allConvs = await isar.conversationIsarModels.where().findAll();
+          final cloudConvs =
+              allConvs.where((c) => _isUuid(c.conversationId)).toList();
+          for (final c in cloudConvs) {
+            await isar.conversationIsarModels.delete(c.id);
+          }
+
+          // 2. Remove chat messages belonging to cloud conversations or with UUID message IDs
+          final allMsgs = await isar.chatMessageIsarModels.where().findAll();
+          final cloudMsgs = allMsgs
+              .where((m) => _isUuid(m.conversationId) || _isUuid(m.messageId))
+              .toList();
+          for (final m in cloudMsgs) {
+            await isar.chatMessageIsarModels.delete(m.id);
+          }
+
+          // 3. Remove cloud receipts
+          final allReceipts = await isar.receiptIsarModels.where().findAll();
+          final cloudReceipts =
+              allReceipts.where((r) => _isUuid(r.receiptId)).toList();
+          for (final r in cloudReceipts) {
+            await isar.receiptIsarModels.delete(r.id);
+          }
+        });
+        AppLogger.info('AuthService',
+            'Sanitized unauthenticated state (purged lingering cloud records).');
+      }
+      _cachedProfile = null;
+    } catch (e, st) {
+      AppLogger.error(
+          'AuthService', 'Failed to sanitize unauthenticated state', e, st);
     }
   }
 

@@ -19,7 +19,7 @@ class AuthScreen extends StatelessWidget {
         final textPrimary = controller.textColor;
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;
-        final canPop = GoRouter.of(context).canPop();
+        final canPop = GoRouter.maybeOf(context)?.canPop() ?? false;
 
         return NeumorphicBackground(
           child: Scaffold(
@@ -150,7 +150,7 @@ class AuthScreen extends StatelessWidget {
                                   _buildFeatureRow(
                                     icon: Icons.flash_on_rounded,
                                     title: "AI Vision Parsing",
-                                    subtitle: "Instant structured line-item extraction",
+                                    subtitle: "Clean & structured line-item extraction",
                                     accent: accent,
                                     textPrimary: textPrimary,
                                     textSecondary: textSecondary,
@@ -159,7 +159,7 @@ class AuthScreen extends StatelessWidget {
                                   _buildFeatureRow(
                                     icon: Icons.shield_rounded,
                                     title: "Offline-First Privacy",
-                                    subtitle: "Receipts stored locally on your device",
+                                    subtitle: "Private local storage on your device",
                                     accent: accent,
                                     textPrimary: textPrimary,
                                     textSecondary: textSecondary,

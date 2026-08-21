@@ -8,6 +8,7 @@ import 'data/models/receipt_isar.dart';
 import 'data/models/conversation_isar.dart';
 import 'data/models/chat_message_isar.dart';
 import 'data/repositories/receipt_repository.dart';
+import 'data/repositories/conversation_repository.dart';
 
 import 'services/device_identity_service.dart';
 import 'services/api/backend_api_client.dart';
@@ -28,9 +29,10 @@ void main() async {
     ConversationIsarModelSchema,
     ChatMessageIsarModelSchema,
   ]);
-  await ReceiptRepository.instance.init();
   await DeviceIdentityService.instance.init(BackendApiClient.instance);
   await AuthService.instance.init();
+  await ReceiptRepository.instance.init();
+  await ConversationRepository.instance.init();
   await CloudSyncService.instance.syncOnLogin();
   await CurrencyService.instance.init();
   await AppThemeController.instance.loadPersistedTheme();

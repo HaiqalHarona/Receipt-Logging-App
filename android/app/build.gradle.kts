@@ -44,3 +44,28 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+tasks.register("adbReverse") {
+    description = "Automatically reverses backend ports 8085 and 8000 via ADB to connected devices"
+    doLast {
+        try {
+            val adb = android.adbExecutable.absolutePath
+            exec {
+                commandLine(adb, "reverse", "tcp:8085", "tcp:8085")
+                isIgnoreExitValue = true
+            }
+            exec {
+                commandLine(adb, "reverse", "tcp:8000", "tcp:8000")
+                isIgnoreExitValue = true
+            }
+        } catch (_: Exception) {
+            // Gracefully ignore if ADB is unavailable or offline
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.findByName("assembleDebug")?.dependsOn("adbReverse")
+    tasks.findByName("installDebug")?.dependsOn("adbReverse")
+}
+

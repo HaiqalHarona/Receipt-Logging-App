@@ -6,6 +6,7 @@ import '../models/chat_message_isar.dart';
 import '../mappers/chat_message_mapper.dart';
 import '../../domain/models/chat_message.dart';
 import '../../services/cloud_sync_service.dart';
+import '../../cloud/services/auth_service.dart';
 import 'conversation_repository.dart';
 
 class ChatMessageRepository extends ChangeNotifier {
@@ -63,8 +64,10 @@ class ChatMessageRepository extends ChangeNotifier {
       AppLogger.debug('Isar',
           '[ChatMessageRepository] Query result: found ${isarModels.length} local messages for conversation $conversationId.');
 
-      // If no local messages exist for this conversation, lazy load from backend
-      if (isarModels.isEmpty && offset == 0) {
+      // If no local messages exist for this conversation, lazy load from backend ONLY if authenticated
+      if (isarModels.isEmpty &&
+          offset == 0 &&
+          AuthService.instance.isLoggedIn) {
         AppLogger.info('Isar',
             '[ChatMessageRepository] No local messages for $conversationId, triggering cloud sync lazy load...');
         await CloudSyncService.instance.ensureChatHistoryLoaded(conversationId);

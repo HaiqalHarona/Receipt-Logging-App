@@ -26,6 +26,9 @@ class ReceiptRepository extends ChangeNotifier {
     if (_isTestEnvironment) {
       _receipts = List.of(_getTestSampleReceipts());
     }
+    AuthService.instance.addListener(() {
+      notifyListeners();
+    });
   }
   static final ReceiptRepository instance = ReceiptRepository._();
 
@@ -36,7 +39,11 @@ class ReceiptRepository extends ChangeNotifier {
       Platform.environment.containsKey('FLUTTER_TEST');
 
   /// Returns an immutable list of all stored receipts.
+  /// When unauthenticated (guest mode), filters out any cloud receipts with UUIDs.
   List<Receipt> get receipts {
+    if (!AuthService.instance.isLoggedIn) {
+      return List.unmodifiable(_receipts.where((r) => !_isUuid(r.id)));
+    }
     return List.unmodifiable(_receipts);
   }
 
