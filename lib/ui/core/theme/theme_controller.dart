@@ -86,8 +86,9 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
   int get selectedPresetIndex =>
       isDarkMode ? _selectedDarkPresetIndex : _selectedLightPresetIndex;
 
-  ThemePreset get currentPreset =>
-      isDarkMode ? darkPresets[_selectedDarkPresetIndex] : lightPresets[_selectedLightPresetIndex];
+  ThemePreset get currentPreset => isDarkMode
+      ? darkPresets[_selectedDarkPresetIndex]
+      : lightPresets[_selectedLightPresetIndex];
 
   Color get currentBaseColor {
     return isDarkMode
@@ -141,10 +142,30 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
     if (isDarkMode) {
       final hsl = HSLColor.fromColor(base);
       return hsl
-          .withLightness((hsl.lightness + 0.10).clamp(0.0, 1.0))
+          .withLightness((hsl.lightness + 0.08).clamp(0.0, 1.0))
           .toColor();
     } else {
       return Colors.white.withValues(alpha: 0.95);
+    }
+  }
+
+  /// Dark shadow specifically used for inset / embossed containers (negative depth).
+  Color get shadowDarkColorEmboss {
+    if (isDarkMode) {
+      return Colors.black.withValues(alpha: 0.75);
+    } else {
+      return shadowDarkColor;
+    }
+  }
+
+  /// Highlight shadow specifically used for inset / embossed containers (negative depth).
+  /// Subdues the harsh white glow / drop shadows in dark mode.
+  Color get shadowLightColorEmboss {
+    final base = currentBaseColor;
+    if (isDarkMode) {
+      return base.withValues(alpha: 0.10);
+    } else {
+      return shadowLightColor;
     }
   }
 
@@ -333,7 +354,7 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
   ];
 
   static List<ThemePreset> get currentPresets =>
-      instance._themeMode == ThemeMode.dark ? darkPresets : lightPresets;
+      instance.isDarkMode ? darkPresets : lightPresets;
 
   // ── Persistence ──────────────────────────────────────────────────────────
 

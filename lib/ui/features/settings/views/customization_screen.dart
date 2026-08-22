@@ -41,7 +41,7 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
       animation: AppThemeController.instance,
       builder: (context, _) {
         final controller = AppThemeController.instance;
-        final isDark = controller.themeMode == ThemeMode.dark;
+        final isDark = controller.isDarkMode;
         final textPrimary = controller.textColor;
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;

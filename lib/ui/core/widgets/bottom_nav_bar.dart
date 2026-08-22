@@ -21,7 +21,7 @@ class AppBottomNavBar extends StatelessWidget {
       ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
-        final isDark = controller.themeMode == ThemeMode.dark;
+        final isDark = controller.isDarkMode;
         final accent = controller.accentColor;
         final inactiveColor = controller.secondaryTextColor;
         final navBg = controller.currentBaseColor;

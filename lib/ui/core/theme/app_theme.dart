@@ -26,7 +26,7 @@ class AppTheme {
 
   /// Dark Neumorphic Theme with Classic Charcoal Base & #00FF85 Accent
   static NeumorphicThemeData get darkNeumorphicTheme {
-    return NeumorphicThemeData(
+    return const NeumorphicThemeData(
       baseColor: darkBackground,
       accentColor: darkAccentPinkishRed,
       variantColor: darkCardBackground,
@@ -34,9 +34,11 @@ class AppTheme {
       depth: 6,
       intensity: 0.85,
       // Reduced highlight to prevent harsh bright edge cut in dark mode
-      shadowDarkColor: const Color(0xFF080810),
-      shadowLightColor: const Color(0xFF303048),
-      textTheme: const TextTheme(
+      shadowDarkColor: Color(0xFF080810),
+      shadowLightColor: Color(0xFF282838),
+      shadowDarkColorEmboss: Color(0xFF06060C),
+      shadowLightColorEmboss: Color(0x18282838),
+      textTheme: TextTheme(
         bodyLarge: TextStyle(color: darkTextPrimary),
         bodyMedium: TextStyle(color: darkTextSecondary),
       ),
@@ -45,16 +47,18 @@ class AppTheme {
 
   /// Light Neumorphic Theme with Crisp Legibility & Soft Shadows
   static NeumorphicThemeData get lightNeumorphicTheme {
-    return NeumorphicThemeData(
+    return const NeumorphicThemeData(
       baseColor: lightBackground,
       accentColor: lightAccentTeal,
       variantColor: lightCardBackground,
       lightSource: LightSource.topLeft,
       depth: 5,
       intensity: 0.7,
-      shadowDarkColor: const Color(0xFFA3B1C6),
-      shadowLightColor: const Color(0xFFFFFFFF),
-      textTheme: const TextTheme(
+      shadowDarkColor: Color(0xFFA3B1C6),
+      shadowLightColor: Color(0xFFFFFFFF),
+      shadowDarkColorEmboss: Color(0xFFA3B1C6),
+      shadowLightColorEmboss: Color(0xFFFFFFFF),
+      textTheme: TextTheme(
         bodyLarge: TextStyle(color: lightTextPrimary),
         bodyMedium: TextStyle(color: lightTextSecondary),
       ),
@@ -90,7 +94,7 @@ class NeumorphicCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppThemeController.instance;
-    final isDark = controller.themeMode == ThemeMode.dark;
+    final isDark = controller.isDarkMode;
     final cardColor = color ?? controller.currentBaseColor;
 
     final card = Neumorphic(
@@ -193,29 +197,38 @@ class NeumorphicInputFieldWidget extends StatelessWidget {
     required this.child,
     this.padding,
     this.borderRadius = 14,
-    this.depth = -4,
+    this.depth = -2.5,
   });
 
   @override
   Widget build(BuildContext context) {
     final controller = AppThemeController.instance;
-    final isDark = controller.themeMode == ThemeMode.dark;
+    final isDark = controller.isDarkMode;
     final bg = controller.currentBaseColor;
+    final inputBg = isDark
+        ? Color.alphaBlend(Colors.black.withValues(alpha: 0.18), bg)
+        : bg;
 
     return Neumorphic(
       padding:
           padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       style: NeumorphicStyle(
         depth: depth,
-        intensity: 0.9,
-        color: bg,
+        intensity: isDark ? 0.35 : 0.75,
+        color: inputBg,
+        shadowDarkColorEmboss: isDark
+            ? Colors.black.withValues(alpha: 0.75)
+            : controller.shadowDarkColor,
+        shadowLightColorEmboss: isDark
+            ? inputBg.withValues(alpha: 0.05)
+            : controller.shadowLightColor,
         boxShape:
             NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
         border: NeumorphicBorder(
           color: isDark
-              ? Colors.black.withValues(alpha: 0.4)
+              ? Colors.white.withValues(alpha: 0.04)
               : Colors.black.withValues(alpha: 0.05),
-          width: 1.0,
+          width: 0.8,
         ),
       ),
       child: child,
@@ -245,7 +258,7 @@ class NeumorphicIconBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppThemeController.instance;
-    final isDark = controller.themeMode == ThemeMode.dark;
+    final isDark = controller.isDarkMode;
     final accent = controller.accentColor;
     final base = controller.currentBaseColor;
 

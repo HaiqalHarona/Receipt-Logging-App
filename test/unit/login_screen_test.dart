@@ -1,7 +1,6 @@
-// File: test/unit/login_screen_test.dart
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reciept_logging/ui/features/auth/views/login_screen.dart';
 import 'package:reciept_logging/ui/features/dashboard/view_models/dashboard_view_model.dart';
 import 'package:reciept_logging/ui/features/dashboard/views/dashboard_screen.dart';
@@ -12,10 +11,16 @@ import 'package:reciept_logging/cloud/models/user_models.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('DashboardViewModel Auth State Tests', () {
     late DashboardViewModel viewModel;
 
-    setUp(() {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await AuthService.instance.clearSession();
       viewModel = DashboardViewModel();
     });
 
@@ -85,17 +90,29 @@ void main() {
       expect(find.text('USERNAME OR EMAIL'), findsOneWidget);
       expect(find.text('PASSWORD'), findsOneWidget);
       expect(find.text('Sign In'), findsOneWidget);
-      expect(find.text('Forget Password'), findsOneWidget);
-      expect(find.text('Sign Up'), findsOneWidget);
+      expect(find.text('Forgot Password?'), findsOneWidget);
+
+      final richTextFinder = find.byType(RichText);
+      expect(richTextFinder, findsWidgets);
+      final plainTexts = richTextFinder
+          .evaluate()
+          .map((e) => (e.widget as RichText).text.toPlainText());
+      expect(plainTexts.any((t) => t.contains('Sign Up')), isTrue);
     });
 
-    testWidgets('Forget Password and Sign Up links are present on LoginScreen',
+    testWidgets('Forgot Password and Sign Up links are present on LoginScreen',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestableWidget(const LoginScreen()));
       await tester.pumpAndSettle();
 
-      expect(find.text('Forget Password'), findsOneWidget);
-      expect(find.text('Sign Up'), findsOneWidget);
+      expect(find.text('Forgot Password?'), findsOneWidget);
+
+      final richTextFinder = find.byType(RichText);
+      expect(richTextFinder, findsWidgets);
+      final plainTexts = richTextFinder
+          .evaluate()
+          .map((e) => (e.widget as RichText).text.toPlainText());
+      expect(plainTexts.any((t) => t.contains('Sign Up')), isTrue);
     });
   });
 

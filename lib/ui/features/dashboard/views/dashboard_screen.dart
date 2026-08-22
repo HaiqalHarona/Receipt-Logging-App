@@ -183,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     Color fallbackColor,
     AppThemeController controller,
   ) {
-    final isDark = controller.themeMode == ThemeMode.dark;
+    final isDark = controller.isDarkMode;
     final base = controller.currentBaseColor;
 
     return Neumorphic(

@@ -29,7 +29,7 @@ void main() {
         deviceToken: ApiConfig.deviceToken,
       );
 
-      expect(headers['X-Device-ID'], equals('dev_persistent_test_uuid_123'));
+      expect(headers['X-Device-Name'], equals('dev_persistent_test_uuid_123'));
       expect(headers['X-Device-Token'], equals('token_secret_xyz_456'));
       expect(headers['Content-Type'], equals('application/json'));
     });

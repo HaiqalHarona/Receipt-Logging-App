@@ -18,6 +18,7 @@ import '../../../../data/models/receipt_isar.dart';
 import '../../../../data/models/chat_message_isar.dart';
 import '../../../../domain/models/receipt.dart';
 import 'package:isar/isar.dart';
+import '../../../../cloud/api/api_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -392,30 +393,51 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Navigation Bar
+                // Top Navigation Back Pill
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    NeumorphicIconBadge(
-                      icon: Icons.arrow_back_rounded,
-                      iconSize: 20,
+                    GestureDetector(
                       onTap: () {
                         AppLogger.info('UI', 'User tapped Back on LoginScreen');
-                        context.pop();
+                        if (GoRouter.of(context).canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/auth');
+                        }
                       },
-                    ),
-                    Text(
-                      "Login",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: textPrimary,
+                      child: Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: 4,
+                          intensity: 0.85,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(12)),
+                          color: controller.currentBaseColor,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.arrow_back_rounded,
+                                  color: textPrimary, size: 18),
+                              const SizedBox(width: 6),
+                              Text(
+                                "Back",
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 40), // Spacer balancing back button
                   ],
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: 28),
 
                 // Welcome Header
                 Text(
@@ -429,15 +451,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "Sign in to your account to manage your receipts",
+                  "Sign in to your account to sync and manage your receipts on ${ApiConfig.appName}",
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
+                    height: 1.4,
                     color: textSecondary,
                   ),
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: 32),
 
-                // Username or Email Input Field
+                // ── USERNAME OR EMAIL ─────────────────────────────────────────
                 Text(
                   "USERNAME OR EMAIL",
                   style: TextStyle(
@@ -463,8 +486,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.emailAddress,
                           autocorrect: false,
                           onChanged: (_) {
-                            if (_errorMessage != null)
+                            if (_errorMessage != null) {
                               setState(() => _errorMessage = null);
+                            }
                           },
                           decoration: InputDecoration(
                             hintText: "Enter your username or email",
@@ -480,7 +504,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Password Input Field
+                // ── PASSWORD ──────────────────────────────────────────────────
                 Text(
                   "PASSWORD",
                   style: TextStyle(
@@ -504,8 +528,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: _obscurePassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           onChanged: (_) {
-                            if (_errorMessage != null)
+                            if (_errorMessage != null) {
                               setState(() => _errorMessage = null);
+                            }
                           },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
@@ -533,7 +558,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+
+                // Repositioned Forgot Password Link (Directly below Password)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: _onForgetPassword,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 4),
+                      child: Text(
+                        "Forgot Password?",
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: accent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 // Inline Error Banner
                 if (_errorMessage != null) ...[
@@ -569,7 +613,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ] else
                   const SizedBox(height: 12),
 
-                // Sign In Button
+                // ── Sign In Button ────────────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -591,44 +635,39 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: 0.2,
                               ),
                             ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // Bottom Links: Forget Password (Left) & Sign Up (Right)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: _onForgetPassword,
-                      child: Text(
-                        "Forget Password",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                          decoration: TextDecoration.underline,
-                          decorationColor: textSecondary,
+                // ── Bottom Centered Sign Up Link ──────────────────────────────
+                Center(
+                  child: GestureDetector(
+                    onTap: _onSignUp,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(fontSize: 13.5, color: textSecondary),
+                          children: [
+                            const TextSpan(text: "Don't have an account? "),
+                            TextSpan(
+                              text: "Sign Up",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: accent,
+                                decoration: TextDecoration.underline,
+                                decorationColor: accent,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: _onSignUp,
-                      child: Text(
-                        "Sign Up",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: accent,
-                          decoration: TextDecoration.underline,
-                          decorationColor: accent,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),

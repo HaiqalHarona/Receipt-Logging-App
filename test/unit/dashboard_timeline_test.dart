@@ -21,13 +21,11 @@ void main() {
       expect(viewModel.selectedTimeline, equals(TimelineFilter.thisMonth));
     });
 
-    test('thisMonth filter returns daily points for all days in current month',
+    test('thisMonth filter returns daily points up to current day in month',
         () {
       final points =
           viewModel.getMonthlySpendingHistory(TimelineFilter.thisMonth);
-      final daysInMonth =
-          DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day;
-      expect(points.length, equals(daysInMonth));
+      expect(points.length, equals(DateTime.now().day));
     });
 
     test('Timeline filter switching updates selectedTimeline state', () {

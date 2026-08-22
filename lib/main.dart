@@ -8,6 +8,7 @@ import 'data/models/receipt_isar.dart';
 import 'data/models/conversation_isar.dart';
 import 'data/models/chat_message_isar.dart';
 import 'data/repositories/receipt_repository.dart';
+import 'data/repositories/conversation_repository.dart';
 
 import 'services/device_identity_service.dart';
 import 'services/api/backend_api_client.dart';
@@ -15,6 +16,7 @@ import 'cloud/services/auth_service.dart';
 import 'services/cloud_sync_service.dart';
 import 'services/currency_service.dart';
 import 'services/app_logger_service.dart';
+import 'cloud/api/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,9 +29,10 @@ void main() async {
     ConversationIsarModelSchema,
     ChatMessageIsarModelSchema,
   ]);
-  await ReceiptRepository.instance.init();
   await DeviceIdentityService.instance.init(BackendApiClient.instance);
   await AuthService.instance.init();
+  await ReceiptRepository.instance.init();
+  await ConversationRepository.instance.init();
   await CloudSyncService.instance.syncOnLogin();
   await CurrencyService.instance.init();
   await AppThemeController.instance.loadPersistedTheme();
@@ -63,7 +66,7 @@ class ReceiptLoggerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Receipt Logger',
+      title: ApiConfig.appName,
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       routerConfig: appRouter,
@@ -82,6 +85,8 @@ class ReceiptLoggerApp extends StatelessWidget {
               intensity: 0.88,
               shadowDarkColor: controller.shadowDarkColor,
               shadowLightColor: controller.shadowLightColor,
+              shadowDarkColorEmboss: controller.shadowDarkColorEmboss,
+              shadowLightColorEmboss: controller.shadowLightColorEmboss,
               textTheme: TextTheme(
                 bodyLarge: TextStyle(color: controller.textColor),
                 bodyMedium: TextStyle(color: controller.secondaryTextColor),
@@ -97,6 +102,8 @@ class ReceiptLoggerApp extends StatelessWidget {
               intensity: 0.80,
               shadowDarkColor: controller.shadowDarkColor,
               shadowLightColor: controller.shadowLightColor,
+              shadowDarkColorEmboss: controller.shadowDarkColorEmboss,
+              shadowLightColorEmboss: controller.shadowLightColorEmboss,
               textTheme: TextTheme(
                 bodyLarge: TextStyle(color: controller.textColor),
                 bodyMedium: TextStyle(color: controller.secondaryTextColor),

@@ -23,54 +23,11 @@ import '../../../../domain/models/conversation.dart';
 import '../../../cloud/services/auth_service.dart';
 import '../../../../services/scan_batch_controller.dart';
 
-Page<dynamic> _buildHorizontalSlidePage(
+Page<dynamic> _buildInstantPage(
     {required GoRouterState state, required Widget child}) {
-  return CustomTransitionPage<void>(
+  return NoTransitionPage<void>(
     key: state.pageKey,
     child: child,
-    transitionDuration: const Duration(milliseconds: 300),
-    reverseTransitionDuration: const Duration(milliseconds: 240),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final curved = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      );
-      return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1.0, 0.0),
-          end: Offset.zero,
-        ).animate(curved),
-        child: FadeTransition(
-          opacity: Tween<double>(begin: 0.5, end: 1.0).animate(curved),
-          child: child,
-        ),
-      );
-    },
-  );
-}
-
-Page<dynamic> _buildVerticalSlidePage(
-    {required GoRouterState state, required Widget child}) {
-  return CustomTransitionPage<void>(
-    key: state.pageKey,
-    child: child,
-    transitionDuration: const Duration(milliseconds: 350),
-    reverseTransitionDuration: const Duration(milliseconds: 260),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final curved = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      );
-      return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0.0, 1.0),
-          end: Offset.zero,
-        ).animate(curved),
-        child: child,
-      );
-    },
   );
 }
 
@@ -133,7 +90,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/chat',
-      pageBuilder: (context, state) => _buildHorizontalSlidePage(
+      pageBuilder: (context, state) => _buildInstantPage(
         state: state,
         child: ChatDetailScreen(
           conversation: state.extra as Conversation?,
@@ -142,47 +99,47 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/verification',
-      pageBuilder: (context, state) => _buildVerticalSlidePage(
-          state: state, child: const VerificationScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const VerificationScreen()),
     ),
     GoRoute(
       path: '/receipt-detail',
-      pageBuilder: (context, state) => _buildHorizontalSlidePage(
-          state: state, child: const ReceiptDetailScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const ReceiptDetailScreen()),
     ),
     GoRoute(
       path: '/edit-receipt',
-      pageBuilder: (context, state) => _buildHorizontalSlidePage(
-          state: state, child: const EditReceiptScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const EditReceiptScreen()),
     ),
     GoRoute(
       path: '/analytics',
-      pageBuilder: (context, state) => _buildHorizontalSlidePage(
-          state: state, child: const AnalyticsScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const AnalyticsScreen()),
     ),
     GoRoute(
       path: '/paywall',
       pageBuilder: (context, state) =>
-          _buildVerticalSlidePage(state: state, child: const PaywallScreen()),
+          _buildInstantPage(state: state, child: const PaywallScreen()),
     ),
     GoRoute(
       path: '/auth',
       pageBuilder: (context, state) =>
-          _buildVerticalSlidePage(state: state, child: const AuthScreen()),
+          _buildInstantPage(state: state, child: const AuthScreen()),
     ),
     GoRoute(
       path: '/login',
       pageBuilder: (context, state) =>
-          _buildVerticalSlidePage(state: state, child: const LoginScreen()),
+          _buildInstantPage(state: state, child: const LoginScreen()),
     ),
     GoRoute(
       path: '/signup',
       pageBuilder: (context, state) =>
-          _buildVerticalSlidePage(state: state, child: const SignUpScreen()),
+          _buildInstantPage(state: state, child: const SignUpScreen()),
     ),
     GoRoute(
       path: '/forgot-password',
-      pageBuilder: (context, state) => _buildVerticalSlidePage(
+      pageBuilder: (context, state) => _buildInstantPage(
           state: state, child: const ForgotPasswordScreen()),
     ),
     GoRoute(
@@ -191,7 +148,7 @@ final GoRouter appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>? ?? {};
         final identifier = extra['identifier'] as String? ?? '';
         final devOtp = extra['dev_otp'] as String?;
-        return _buildVerticalSlidePage(
+        return _buildInstantPage(
           state: state,
           child: OtpVerificationScreen(
             identifier: identifier,
@@ -205,7 +162,7 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
         final resetToken = extra['reset_token'] as String? ?? '';
-        return _buildVerticalSlidePage(
+        return _buildInstantPage(
           state: state,
           child: ResetPasswordScreen(resetToken: resetToken),
         );
@@ -213,23 +170,23 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/customization',
-      pageBuilder: (context, state) => _buildHorizontalSlidePage(
-          state: state, child: const CustomizationScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const CustomizationScreen()),
     ),
     GoRoute(
       path: '/settings/db-viewer',
-      pageBuilder: (context, state) => _buildHorizontalSlidePage(
-          state: state, child: const DbViewerScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const DbViewerScreen()),
     ),
     GoRoute(
       path: '/user-settings',
-      pageBuilder: (context, state) => _buildHorizontalSlidePage(
-          state: state, child: const UserSettingsScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const UserSettingsScreen()),
     ),
     GoRoute(
       path: '/scanner',
       pageBuilder: (context, state) =>
-          _buildVerticalSlidePage(state: state, child: const ScannerScreen()),
+          _buildInstantPage(state: state, child: const ScannerScreen()),
     ),
   ],
 );
