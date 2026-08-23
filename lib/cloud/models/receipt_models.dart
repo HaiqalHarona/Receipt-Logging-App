@@ -289,6 +289,7 @@ class ReceiptRecordDto {
     required this.receipt,
     required this.createdAt,
     this.userId,
+    this.receiptImagePath,
     this.deletedAt,
   });
 
@@ -296,6 +297,7 @@ class ReceiptRecordDto {
   final String? userId;
   final String deviceId;
   final ReceiptDto receipt;
+  final String? receiptImagePath;
   final String createdAt;
   final String? deletedAt;
 
@@ -305,6 +307,7 @@ class ReceiptRecordDto {
       userId: json['user_id'] as String?,
       deviceId: (json['device_id'] as String?) ?? '',
       receipt: ReceiptDto.fromJson(json['receipt'] as Map<String, dynamic>),
+      receiptImagePath: json['receipt_image_path'] as String?,
       createdAt: (json['created_at'] as String?) ?? '',
       deletedAt: json['deleted_at'] as String?,
     );

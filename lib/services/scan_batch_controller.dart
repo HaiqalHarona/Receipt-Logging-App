@@ -396,9 +396,12 @@ class ScanBatchController extends ChangeNotifier {
   Receipt _jobToReceipt(
       BulkJobStatusDto job, Map<String, String> imagePathMap) {
     final dto = job.data!;
-    final id = job.jobId.isNotEmpty
-        ? job.jobId
-        : 'res-${DateTime.now().millisecondsSinceEpoch}';
+    final isGuest = !AuthService.instance.isLoggedIn;
+    final id = isGuest
+        ? 'res-guest-${job.jobId.isNotEmpty ? job.jobId : DateTime.now().millisecondsSinceEpoch}'
+        : (job.jobId.isNotEmpty
+            ? job.jobId
+            : 'res-${DateTime.now().millisecondsSinceEpoch}');
     final lineItems = dto.lineItems.map((li) => li.toDomain()).toList();
     final items = dto.lineItems.map((li) {
       final parts = <String>[li.description];

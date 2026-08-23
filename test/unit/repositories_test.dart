@@ -9,6 +9,8 @@ import 'package:reciept_logging/data/repositories/chat_message_repository.dart';
 import 'package:reciept_logging/data/repositories/receipt_repository.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('Clean Architecture Mapper & Domain Equality Tests', () {
     test('Conversation domain equality and mapper round-trip', () {
       final now = DateTime.now().toUtc();
@@ -114,6 +116,40 @@ void main() {
 
       final totalUSD = repo.calculateTotalSpent('USD');
       expect(totalUSD, greaterThan(0.0));
+    });
+
+    test('ReceiptRepository saveReceipt and saveAllReceipts operations',
+        () async {
+      final repo = ReceiptRepository.instance;
+
+      const singleReceipt = Receipt(
+        id: 'test_guest_r1',
+        merchant: 'Costco Wholesale',
+        date: '2026-08-20',
+        amount: 85.50,
+        currency: 'USD',
+        category: 'Groceries',
+        items: ['Kirkland Paper Towels - \$25.00', 'Organic Berries - \$15.50'],
+      );
+
+      await repo.saveReceipt(singleReceipt);
+      expect(repo.receipts.any((r) => r.id == 'test_guest_r1'), isTrue);
+
+      const batchReceipt = Receipt(
+        id: 'test_guest_r2',
+        merchant: 'Shell Gas',
+        date: '2026-08-21',
+        amount: 45.00,
+        currency: 'USD',
+        category: 'Transport',
+        items: ['Fuel - \$45.00'],
+      );
+
+      await repo.saveAllReceipts([batchReceipt]);
+      expect(repo.receipts.any((r) => r.id == 'test_guest_r2'), isTrue);
+
+      await repo.deleteReceipt('test_guest_r1');
+      expect(repo.receipts.any((r) => r.id == 'test_guest_r1'), isFalse);
     });
 
     test('ConversationRepository memory operations', () async {

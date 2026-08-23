@@ -1,9 +1,11 @@
 // File: lib/ui/features/settings/views/user_settings_screen.dart
 
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
@@ -16,6 +18,7 @@ import '../../../../data/repositories/conversation_repository.dart';
 import '../../../../services/category_service.dart';
 import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
+import '../../../../services/local_image_cache_service.dart';
 import '../../../../services/app_logger_service.dart';
 
 class UserSettingsScreen extends StatefulWidget {
@@ -30,6 +33,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   bool _isLoading = true;
   bool _isLoggingOut = false;
   bool _isManualSyncing = false;
+  bool _isUploadingAvatar = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -48,6 +53,180 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _pickAndUploadAvatar(ImageSource source) async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 2048,
+        maxHeight: 2048,
+      );
+      if (pickedFile == null) return;
+
+      final bytes = await pickedFile.readAsBytes();
+
+      // Client-side validation: 20MB ceiling
+      if (bytes.length > 20 * 1024 * 1024) {
+        if (mounted) {
+          AppSnackBar.show(
+            context,
+            message:
+                "Image size exceeds 20MB limit. Please select a smaller photo.",
+            isError: true,
+          );
+        }
+        return;
+      }
+
+      setState(() => _isUploadingAvatar = true);
+      AppLogger.info('UI', 'Uploading new avatar (${bytes.length} bytes)...');
+
+      final success = await AuthService.instance.updateAvatar(
+        imageBytes: bytes,
+        filename: pickedFile.name,
+      );
+
+      if (mounted) {
+        if (success) {
+          // Clear cached image instances so updated avatar renders immediately
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
+          setState(() {
+            _profile = AuthService.instance.cachedProfile;
+          });
+          AppSnackBar.show(context, message: "Avatar updated successfully!");
+        } else {
+          AppSnackBar.show(
+            context,
+            message: "Failed to upload avatar. Please try again.",
+            isError: true,
+          );
+        }
+      }
+    } catch (e, st) {
+      AppLogger.error('UI', 'Error picking or uploading avatar', e, st);
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: "Error selecting image: $e",
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingAvatar = false);
+      }
+    }
+  }
+
+  Future<void> _showAvatarPickerBottomSheet(BuildContext context, Color accent,
+      Color textPrimary, Color textSecondary) async {
+    AppLogger.info('UI', 'User opened Avatar Picker bottom sheet');
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: NeumorphicTheme.baseColor(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Update Profile Photo",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Choose how you would like to select your avatar image (max 20MB).",
+                style: TextStyle(fontSize: 13, color: textSecondary),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _pickAndUploadAvatar(ImageSource.camera);
+                      },
+                      child: Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: 4,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(16)),
+                          color: NeumorphicTheme.baseColor(context),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.camera_alt_rounded,
+                                size: 32, color: accent),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Take Photo",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _pickAndUploadAvatar(ImageSource.gallery);
+                      },
+                      child: Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: 4,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(16)),
+                          color: NeumorphicTheme.baseColor(context),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.photo_library_rounded,
+                                size: 32, color: accent),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Choose Gallery",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _copyToClipboard(String text, String label) {
@@ -600,35 +779,102 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      // Avatar Circle with Ring
-                                      Neumorphic(
-                                        style: NeumorphicStyle(
-                                          depth: 5,
-                                          boxShape:
-                                              const NeumorphicBoxShape.circle(),
-                                          color: accent.withValues(alpha: 0.15),
-                                          border: NeumorphicBorder(
-                                            color:
-                                                accent.withValues(alpha: 0.4),
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                        child: SizedBox(
-                                          width: 58,
-                                          height: 58,
-                                          child: Center(
-                                            child: Text(
-                                              username.isNotEmpty
-                                                  ? username[0].toUpperCase()
-                                                  : "U",
-                                              style: TextStyle(
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.bold,
-                                                color: accent,
+                                      // Avatar Circle with Ring and '+' Badge
+                                      Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          GestureDetector(
+                                            onTap: _isUploadingAvatar
+                                                ? null
+                                                : () =>
+                                                    _showAvatarPickerBottomSheet(
+                                                      context,
+                                                      accent,
+                                                      textPrimary,
+                                                      textSecondary,
+                                                    ),
+                                            child: Neumorphic(
+                                              style: NeumorphicStyle(
+                                                depth: 5,
+                                                boxShape:
+                                                    const NeumorphicBoxShape
+                                                        .circle(),
+                                                color: accent.withValues(
+                                                    alpha: 0.15),
+                                                border: NeumorphicBorder(
+                                                  color: accent.withValues(
+                                                      alpha: 0.4),
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                              child: SizedBox(
+                                                width: 60,
+                                                height: 60,
+                                                child: _isUploadingAvatar
+                                                    ? Center(
+                                                        child: SizedBox(
+                                                          width: 22,
+                                                          height: 22,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                            strokeWidth: 2.5,
+                                                            color: accent,
+                                                          ),
+                                                        ),
+                                                      )
+                                                    : _buildAvatarContent(
+                                                        username, accent),
                                               ),
                                             ),
                                           ),
-                                        ),
+                                          Positioned(
+                                            bottom: -2,
+                                            right: -2,
+                                            child: GestureDetector(
+                                              onTap: _isUploadingAvatar
+                                                  ? null
+                                                  : () =>
+                                                      _showAvatarPickerBottomSheet(
+                                                        context,
+                                                        accent,
+                                                        textPrimary,
+                                                        textSecondary,
+                                                      ),
+                                              child: Neumorphic(
+                                                style: NeumorphicStyle(
+                                                  depth: 3,
+                                                  boxShape:
+                                                      const NeumorphicBoxShape
+                                                          .circle(),
+                                                  color:
+                                                      NeumorphicTheme.baseColor(
+                                                          context),
+                                                  border: NeumorphicBorder(
+                                                    color: accent.withValues(
+                                                        alpha: 0.5),
+                                                    width: 1.5,
+                                                  ),
+                                                ),
+                                                child: Container(
+                                                  width: 22,
+                                                  height: 22,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: accent.withValues(
+                                                        alpha: 0.2),
+                                                  ),
+                                                  child: Center(
+                                                    child: Icon(
+                                                      Icons.add_rounded,
+                                                      size: 15,
+                                                      color: accent,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       const SizedBox(width: 16),
                                       // User Info & Badges
@@ -1310,6 +1556,56 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarContent(String username, Color accent) {
+    final avatarPath = _profile?.avatarImagePath;
+    if (avatarPath != null && avatarPath.isNotEmpty) {
+      if (File(avatarPath).existsSync()) {
+        return ClipOval(
+          child: Image.file(
+            File(avatarPath),
+            fit: BoxFit.cover,
+            width: 60,
+            height: 60,
+            errorBuilder: (_, __, ___) => _buildAvatarInitial(username, accent),
+          ),
+        );
+      }
+
+      return FutureBuilder<File?>(
+        future: LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium'),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            return ClipOval(
+              child: Image.file(
+                snapshot.data!,
+                fit: BoxFit.cover,
+                width: 60,
+                height: 60,
+                errorBuilder: (_, __, ___) => _buildAvatarInitial(username, accent),
+              ),
+            );
+          }
+          return _buildAvatarInitial(username, accent);
+        },
+      );
+    }
+
+    return _buildAvatarInitial(username, accent);
+  }
+
+  Widget _buildAvatarInitial(String username, Color accent) {
+    return Center(
+      child: Text(
+        username.isNotEmpty ? username[0].toUpperCase() : "U",
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: accent,
         ),
       ),
     );

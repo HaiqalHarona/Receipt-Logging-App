@@ -73,9 +73,27 @@ class ReceiptRepository extends ChangeNotifier {
 
   /// Saves a single receipt to the Isar database.
   Future<void> saveReceipt(Receipt receipt) async {
-    final receiptToSave = receipt.createdAt != null
+    var receiptToSave = receipt.createdAt != null
         ? receipt
         : receipt.copyWith(createdAt: DateTime.now());
+
+    // In guest mode, ensure ID is prefixed with 'res-guest-' if bare UUID and copy image locally
+    if (!AuthService.instance.isLoggedIn) {
+      if (_isUuid(receiptToSave.id)) {
+        receiptToSave =
+            receiptToSave.copyWith(id: 'res-guest-${receiptToSave.id}');
+      }
+      if (receiptToSave.imagePath != null) {
+        final permPath = await _persistGuestImageLocally(
+          receiptToSave.id,
+          receiptToSave.imagePath,
+        );
+        if (permPath != null) {
+          receiptToSave = receiptToSave.copyWith(imagePath: permPath);
+        }
+      }
+    }
+
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
       AppLogger.info('Isar',
@@ -113,14 +131,34 @@ class ReceiptRepository extends ChangeNotifier {
 
   /// Saves multiple receipts at once (e.g., from Bulk Review).
   Future<void> saveAllReceipts(List<Receipt> newReceipts) async {
+    final List<Receipt> preparedReceipts = [];
+    for (final r in newReceipts) {
+      var receiptToSave =
+          r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
+      if (!AuthService.instance.isLoggedIn) {
+        if (_isUuid(receiptToSave.id)) {
+          receiptToSave =
+              receiptToSave.copyWith(id: 'res-guest-${receiptToSave.id}');
+        }
+        if (receiptToSave.imagePath != null) {
+          final permPath = await _persistGuestImageLocally(
+            receiptToSave.id,
+            receiptToSave.imagePath,
+          );
+          if (permPath != null) {
+            receiptToSave = receiptToSave.copyWith(imagePath: permPath);
+          }
+        }
+      }
+      preparedReceipts.add(receiptToSave);
+    }
+
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
       AppLogger.info('Isar',
-          '[ReceiptRepository] Transaction write: batch saving ${newReceipts.length} receipts');
+          '[ReceiptRepository] Transaction write: batch saving ${preparedReceipts.length} receipts');
       await isar.writeTxn(() async {
-        for (final r in newReceipts) {
-          final receiptToSave =
-              r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
+        for (final receiptToSave in preparedReceipts) {
           final existing = await isar.receiptIsarModels
               .where()
               .receiptIdEqualTo(receiptToSave.id)
@@ -128,7 +166,7 @@ class ReceiptRepository extends ChangeNotifier {
           final model = ReceiptIsarModel.fromDomain(receiptToSave);
           if (existing != null) {
             model.id = existing.id;
-            if (r.createdAt == null) {
+            if (receiptToSave.createdAt == null) {
               model.createdAt = existing.createdAt;
             }
           }
@@ -136,12 +174,10 @@ class ReceiptRepository extends ChangeNotifier {
         }
       });
       AppLogger.debug('Isar',
-          '[ReceiptRepository] Batch saved ${newReceipts.length} receipts to Isar DB.');
+          '[ReceiptRepository] Batch saved ${preparedReceipts.length} receipts to Isar DB.');
       await _loadFromIsar();
     } else {
-      for (final r in newReceipts) {
-        final receiptToSave =
-            r.createdAt != null ? r : r.copyWith(createdAt: DateTime.now());
+      for (final receiptToSave in preparedReceipts) {
         final index =
             _receipts.indexWhere((existing) => existing.id == receiptToSave.id);
         if (index >= 0) {
@@ -151,13 +187,43 @@ class ReceiptRepository extends ChangeNotifier {
         }
       }
       AppLogger.debug('Isar',
-          '[ReceiptRepository] Batch saved ${newReceipts.length} receipts to in-memory store.');
+          '[ReceiptRepository] Batch saved ${preparedReceipts.length} receipts to in-memory store.');
     }
     notifyListeners();
-    for (final r in newReceipts) {
+    for (final r in preparedReceipts) {
       if (!_isUuid(r.id)) {
         _createInCloudIfLoggedIn(r);
       }
+    }
+  }
+
+  Future<String?> _persistGuestImageLocally(
+      String receiptId, String? tempImagePath) async {
+    if (tempImagePath == null || tempImagePath.isEmpty) return null;
+    try {
+      final tempFile = File(tempImagePath);
+      if (!tempFile.existsSync()) return tempImagePath;
+
+      final docsDir = await getApplicationDocumentsDirectory();
+      final guestImagesDir = Directory('${docsDir.path}/guest_receipts');
+      if (!await guestImagesDir.exists()) {
+        await guestImagesDir.create(recursive: true);
+      }
+
+      final ext = tempImagePath.split('.').last;
+      final permFile = File('${guestImagesDir.path}/$receiptId.$ext');
+
+      // If already stored at destination, keep it
+      if (tempFile.path == permFile.path) return permFile.path;
+
+      await tempFile.copy(permFile.path);
+      AppLogger.info('GuestStorage',
+          '[ReceiptRepository] Copied guest receipt image to permanent storage: ${permFile.path}');
+      return permFile.path;
+    } catch (e) {
+      AppLogger.warning('GuestStorage',
+          '[ReceiptRepository] Failed to copy guest receipt image: $e');
+      return tempImagePath;
     }
   }
 
@@ -169,22 +235,52 @@ class ReceiptRepository extends ChangeNotifier {
     return uuidRegex.hasMatch(id);
   }
 
-  void _createInCloudIfLoggedIn(Receipt receipt) {
+  void _createInCloudIfLoggedIn(Receipt receipt) async {
     if (!_isUuid(receipt.id) && AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
       final userToken = AuthService.instance.currentUserToken;
       if (username != null && userToken != null) {
         AppLogger.info('CloudSync',
-            '[ReceiptRepository] Triggering backend POST /receipts/ on Supabase for ${receipt.id} (${receipt.merchant})...');
+            '[ReceiptRepository] Triggering backend POST /receipts/create on Supabase for ${receipt.id} (${receipt.merchant})...');
+
+        List<int>? imageBytes;
+        String? filename;
+        if (receipt.imagePath != null && receipt.imagePath!.isNotEmpty) {
+          try {
+            final file = File(receipt.imagePath!);
+            if (await file.exists()) {
+              final bytes = await file.readAsBytes();
+              if (bytes.length <= 20 * 1024 * 1024) {
+                imageBytes = bytes;
+                filename = receipt.imagePath!.split(Platform.pathSeparator).last;
+              } else {
+                AppLogger.warning('CloudSync',
+                    '[ReceiptRepository] Receipt image exceeds 20MB ceiling, omitting image upload.');
+              }
+            }
+          } catch (e) {
+            AppLogger.warning('CloudSync',
+                '[ReceiptRepository] Could not read local receipt image at ${receipt.imagePath}: $e');
+          }
+        }
+
         BackendApiClient.instance
             .saveReceipt(
           receipt: ReceiptDto.fromDomain(receipt),
           username: username,
           userToken: userToken,
+          imageBytes: imageBytes,
+          filename: filename,
         )
             .then((record) async {
           AppLogger.info('CloudSync',
               '[ReceiptRepository] Cloud receipt created on Supabase (id=${record.id}, orig=${receipt.id}). Updating local Isar DB...');
+          
+          // Local storage optimization: clean up local temp scan file once uploaded to cloud
+          if (record.receiptImagePath != null && receipt.imagePath != null) {
+            _cleanupLocalTemporaryFile(receipt.imagePath);
+          }
+
           final r = record.receipt;
           final syncedReceipt = Receipt(
             id: record.id,
@@ -196,7 +292,7 @@ class ReceiptRepository extends ChangeNotifier {
             createdAt: DateTime.tryParse(record.createdAt)?.toUtc() ??
                 receipt.createdAt ??
                 DateTime.now(),
-            imagePath: receipt.imagePath,
+            imagePath: record.receiptImagePath ?? receipt.imagePath,
             items: receipt.items,
             lineItems: r.lineItems
                 .map((l) => LineItem(
@@ -243,23 +339,71 @@ class ReceiptRepository extends ChangeNotifier {
     }
   }
 
-  void _updateCloudIfSynced(Receipt receipt) {
+  void _updateCloudIfSynced(Receipt receipt) async {
     if (_isUuid(receipt.id) && AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
       final userToken = AuthService.instance.currentUserToken;
       if (username != null && userToken != null) {
         AppLogger.info('CloudSync',
             '[ReceiptRepository] Triggering backend PATCH /receipts/${receipt.id} on Supabase...');
+
+        List<int>? imageBytes;
+        String? filename;
+        final originalLocalPath = receipt.imagePath;
+        if (receipt.imagePath != null && receipt.imagePath!.isNotEmpty) {
+          try {
+            final file = File(receipt.imagePath!);
+            if (await file.exists()) {
+              final bytes = await file.readAsBytes();
+              if (bytes.length <= 20 * 1024 * 1024) {
+                imageBytes = bytes;
+                filename = receipt.imagePath!.split(Platform.pathSeparator).last;
+              } else {
+                AppLogger.warning('CloudSync',
+                    '[ReceiptRepository] Receipt image exceeds 20MB ceiling, omitting image upload.');
+              }
+            }
+          } catch (e) {
+            AppLogger.warning('CloudSync',
+                '[ReceiptRepository] Could not read local receipt image at ${receipt.imagePath}: $e');
+          }
+        }
+
         BackendApiClient.instance
             .updateReceipt(
           receiptId: receipt.id,
           receipt: ReceiptDto.fromDomain(receipt),
           username: username,
           userToken: userToken,
+          imageBytes: imageBytes,
+          filename: filename,
         )
-            .then((record) {
+            .then((record) async {
           AppLogger.info('CloudSync',
               '[ReceiptRepository] Cloud receipt ${receipt.id} updated on Supabase (id=${record.id}).');
+
+          // Local storage optimization: clean up local temp replacement file once uploaded to cloud
+          if (record.receiptImagePath != null && originalLocalPath != null) {
+            _cleanupLocalTemporaryFile(originalLocalPath);
+          }
+
+          if (record.receiptImagePath != null &&
+              record.receiptImagePath != receipt.imagePath) {
+            final updatedWithCloudPath =
+                receipt.copyWith(imagePath: record.receiptImagePath);
+            if (IsarService.isInitialized) {
+              final isar = IsarService.isar;
+              await isar.writeTxn(() async {
+                final model = ReceiptIsarModel.fromDomain(updatedWithCloudPath);
+                final existing = await isar.receiptIsarModels
+                    .where()
+                    .receiptIdEqualTo(receipt.id)
+                    .findFirst();
+                if (existing != null) model.id = existing.id;
+                await isar.receiptIsarModels.put(model);
+              });
+            }
+          }
         }).catchError((e, st) {
           AppLogger.error(
               'CloudSync',
@@ -268,6 +412,21 @@ class ReceiptRepository extends ChangeNotifier {
               st);
         });
       }
+    }
+  }
+
+  void _cleanupLocalTemporaryFile(String? path) {
+    if (path == null || path.isEmpty) return;
+    try {
+      final file = File(path);
+      if (file.existsSync()) {
+        file.deleteSync();
+        AppLogger.info('LocalOptimization',
+            '[ReceiptRepository] Cleaned up temporary local image file: $path');
+      }
+    } catch (e) {
+      AppLogger.warning('LocalOptimization',
+          '[ReceiptRepository] Could not delete temporary local file $path: $e');
     }
   }
 
@@ -382,6 +541,7 @@ class ReceiptRepository extends ChangeNotifier {
   /// Deletes a receipt by ID.
   Future<void> deleteReceipt(String id) async {
     _deleteFromCloudIfSynced(id);
+    _cleanupGuestImageLocally(id);
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
       AppLogger.info('Isar',
@@ -408,6 +568,7 @@ class ReceiptRepository extends ChangeNotifier {
 
   /// Clears all receipts from the Isar database.
   Future<void> clearAll() async {
+    _purgeAllGuestImagesLocally();
     if (IsarService.isInitialized) {
       final isar = IsarService.isar;
       AppLogger.info('Isar',
@@ -424,6 +585,40 @@ class ReceiptRepository extends ChangeNotifier {
           '[ReceiptRepository] Cleared all receipts from in-memory store.');
     }
     notifyListeners();
+  }
+
+  Future<void> _cleanupGuestImageLocally(String id) async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final guestImagesDir = Directory('${docsDir.path}/guest_receipts');
+      if (await guestImagesDir.exists()) {
+        final matches =
+            guestImagesDir.listSync().where((f) => f.path.contains(id));
+        for (final m in matches) {
+          try {
+            m.deleteSync();
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      AppLogger.warning('GuestStorage',
+          '[ReceiptRepository] Failed to delete guest image file: $e');
+    }
+  }
+
+  Future<void> _purgeAllGuestImagesLocally() async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final guestImagesDir = Directory('${docsDir.path}/guest_receipts');
+      if (await guestImagesDir.exists()) {
+        await guestImagesDir.delete(recursive: true);
+        AppLogger.info('GuestStorage',
+            '[ReceiptRepository] Purged guest receipt images directory.');
+      }
+    } catch (e) {
+      AppLogger.warning('GuestStorage',
+          '[ReceiptRepository] Failed to purge guest images directory: $e');
+    }
   }
 
   /// Calculates the total amount spent across all receipts, converted
@@ -447,6 +642,24 @@ class ReceiptRepository extends ChangeNotifier {
       final isarModels = await isar.receiptIsarModels.where().findAll();
       AppLogger.debug('Isar',
           '[ReceiptRepository] Query result: fetched ${isarModels.length} receiptIsarModels from Isar DB.');
+
+      // If in guest mode, repair any lingering bare UUIDs so they are recognized as guest records
+      if (!AuthService.instance.isLoggedIn) {
+        final needsRepair =
+            isarModels.where((m) => _isUuid(m.receiptId)).toList();
+        if (needsRepair.isNotEmpty) {
+          await isar.writeTxn(() async {
+            for (final m in needsRepair) {
+              m.receiptId = 'res-guest-${m.receiptId}';
+              await isar.receiptIsarModels.put(m);
+            }
+          });
+          final reloaded = await isar.receiptIsarModels.where().findAll();
+          _receipts = reloaded.map((m) => m.toDomain()).toList();
+          return;
+        }
+      }
+
       _receipts = isarModels.map((m) => m.toDomain()).toList();
     } catch (e, stackTrace) {
       AppLogger.error(

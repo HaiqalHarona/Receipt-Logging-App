@@ -20,6 +20,7 @@ import '../api/api_config.dart';
 import '../models/user_models.dart';
 import 'user_preferences_service.dart';
 import '../../services/isar_service.dart';
+import '../../services/local_image_cache_service.dart';
 import '../../data/models/receipt_isar.dart';
 import '../../data/models/conversation_isar.dart';
 import '../../data/models/chat_message_isar.dart';
@@ -38,6 +39,7 @@ class AuthService extends ChangeNotifier {
   static const String _keyEmail = 'session_email';
   static const String _keyCountryCode = 'session_country_code';
   static const String _keyMobileNumber = 'session_mobile_number';
+  static const String _keyAvatarImagePath = 'session_avatar_image_path';
 
   String? _userId;
   String? _username;
@@ -45,6 +47,7 @@ class AuthService extends ChangeNotifier {
   String? _email;
   String? _countryCode;
   String? _mobileNumber;
+  String? _avatarImagePath;
 
   UserRecordDto? _cachedProfile;
 
@@ -78,6 +81,7 @@ class AuthService extends ChangeNotifier {
       _email = prefs.getString(_keyEmail);
       _countryCode = prefs.getString(_keyCountryCode);
       _mobileNumber = prefs.getString(_keyMobileNumber);
+      _avatarImagePath = prefs.getString(_keyAvatarImagePath);
 
       if (_userId != null &&
           _userId!.isNotEmpty &&
@@ -89,6 +93,7 @@ class AuthService extends ChangeNotifier {
           email: _email!,
           countryCode: _countryCode,
           mobileNumber: _mobileNumber,
+          avatarImagePath: _avatarImagePath,
           createdAt: '',
         );
       } else {
@@ -218,6 +223,56 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Uploads and updates user avatar image via `PATCH /user/me` and updates local cache.
+  Future<bool> updateAvatar({
+    required List<int> imageBytes,
+    required String filename,
+  }) async {
+    if (!isLoggedIn || _username == null || _userToken == null) return false;
+
+    // Enforce 20MB client-side validation
+    if (imageBytes.length > 20 * 1024 * 1024) {
+      AppLogger.warning('AuthService',
+          'Avatar upload rejected: image exceeds 20MB ceiling (${imageBytes.length} bytes)');
+      return false;
+    }
+
+    try {
+      final updated = await BackendApiClient.instance.updateUserProfile(
+        username: _username!,
+        userToken: _userToken!,
+        avatarBytes: imageBytes,
+        avatarFilename: filename,
+      );
+
+      _cachedProfile = updated;
+      _avatarImagePath = updated.avatarImagePath;
+      await _persistProfile(updated);
+
+      // Save directly to local session cache for all sizes
+      await LocalImageCacheService.instance.saveLocalAvatar(
+        size: 'medium',
+        bytes: imageBytes,
+      );
+      await LocalImageCacheService.instance.saveLocalAvatar(
+        size: 'small',
+        bytes: imageBytes,
+      );
+      await LocalImageCacheService.instance.saveLocalAvatar(
+        size: 'large',
+        bytes: imageBytes,
+      );
+
+      AppLogger.info('AuthService',
+          'Avatar updated in backend and cache: ${updated.avatarImagePath}');
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      AppLogger.error('AuthService', 'Failed to update avatar image', e, st);
+      return false;
+    }
+  }
+
   /// Updates custom user categories via `PATCH /user/me` and updates local cache.
   Future<bool> updateCustomCategories(
       List<CustomCategoryDto> customCategories) async {
@@ -255,6 +310,7 @@ class AuthService extends ChangeNotifier {
     _email = user.email;
     _countryCode = user.countryCode;
     _mobileNumber = user.mobileNumber;
+    _avatarImagePath = user.avatarImagePath;
     _cachedProfile = user;
 
     await _persistProfile(user);
@@ -281,6 +337,11 @@ class AuthService extends ChangeNotifier {
       } else {
         await prefs.remove(_keyMobileNumber);
       }
+      if (user.avatarImagePath != null) {
+        await prefs.setString(_keyAvatarImagePath, user.avatarImagePath!);
+      } else {
+        await prefs.remove(_keyAvatarImagePath);
+      }
 
       // Sync custom categories from cloud into CategoryService (Cloud Priority: overwrite local with user's exact cloud list)
       await CategoryService.instance.syncFromCloud(
@@ -300,18 +361,24 @@ class AuthService extends ChangeNotifier {
   /// Clears the local user session (logout).
   Future<void> clearSession() async {
     final oldUsername = _username;
+    final oldUserId = _userId;
     _userId = null;
     _username = null;
     _userToken = null;
     _email = null;
     _countryCode = null;
     _mobileNumber = null;
+    _avatarImagePath = null;
     _cachedProfile = null;
     CloudSyncService.instance.cancelBackgroundSync();
     if (oldUsername != null) {
       await CloudSyncService.instance.resetSyncState(oldUsername);
     }
     await CategoryService.instance.clearAll();
+
+    // Purge local session image cache on logout
+    await LocalImageCacheService.instance.purgeUserSessionCache(oldUserId ?? oldUsername);
+    await LocalImageCacheService.instance.purgeAllSessionCaches();
 
     // Purge local Isar database collections & in-memory caches on logout
     try {

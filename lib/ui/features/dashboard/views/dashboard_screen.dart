@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';
@@ -218,15 +219,37 @@ class _DashboardScreenState extends State<DashboardScreen>
         return Image.network(
           path,
           fit: BoxFit.cover,
+          width: 38,
+          height: 38,
+          errorBuilder: (_, __, ___) =>
+              Icon(Icons.person_rounded, color: accent, size: 22),
+        );
+      } else if (File(path).existsSync()) {
+        return Image.file(
+          File(path),
+          fit: BoxFit.cover,
+          width: 38,
+          height: 38,
           errorBuilder: (_, __, ___) =>
               Icon(Icons.person_rounded, color: accent, size: 22),
         );
       } else {
-        return Image.file(
-          File(path),
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              Icon(Icons.person_rounded, color: accent, size: 22),
+        // Fetch securely from local session image cache or authenticated backend streaming
+        return FutureBuilder<File?>(
+          future: LocalImageCacheService.instance.getOrFetchAvatar(size: 'small'),
+          builder: (context, snapshot) {
+            if (snapshot.hasData && snapshot.data != null) {
+              return Image.file(
+                snapshot.data!,
+                fit: BoxFit.cover,
+                width: 38,
+                height: 38,
+                errorBuilder: (_, __, ___) =>
+                    Icon(Icons.person_rounded, color: accent, size: 22),
+              );
+            }
+            return Icon(Icons.person_rounded, color: accent, size: 22);
+          },
         );
       }
     }

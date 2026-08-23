@@ -40,6 +40,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../../services/app_logger_service.dart';
@@ -406,7 +407,43 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Fetches authenticated user's avatar image binary from GET /user/me/avatar.
+  /// Supports size: 'small' (128x128), 'medium' (256x256), 'large' (512x512).
+  Future<Uint8List?> fetchUserAvatar({
+    required String username,
+    required String userToken,
+    String size = 'medium',
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/me/avatar?size=$size');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
+    );
+
+    final path = uri.path;
+    AppLogger.debug('HTTP', '--> GET $path?size=$size (fetch avatar binary)');
+    final stopwatch = Stopwatch()..start();
+    try {
+      final response =
+          await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+      stopwatch.stop();
+      AppLogger.info('HTTP',
+          '<-- ${response.statusCode} GET $path (${stopwatch.elapsedMilliseconds}ms)');
+
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+      return null;
+    } catch (e, st) {
+      if (stopwatch.isRunning) stopwatch.stop();
+      AppLogger.error('HTTP',
+          '<-- ERROR GET $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+      return null;
+    }
+  }
+
   /// Updates mutable profile fields for the authenticated user via PATCH /user/me.
+  /// Supports optional avatar image file upload (multipart/form-data).
   Future<UserRecordDto> updateUserProfile({
     required String username,
     required String userToken,
@@ -414,6 +451,8 @@ class BackendApiClient {
     String? countryCode,
     String? mobileNumber,
     String? avatarImagePath,
+    List<int>? avatarBytes,
+    String? avatarFilename,
     List<CustomCategoryDto>? customCategories,
     Map<String, dynamic>? preferences,
   }) async {
@@ -422,6 +461,62 @@ class BackendApiClient {
       username: username,
       userToken: userToken,
     );
+
+    if (avatarBytes != null && avatarBytes.isNotEmpty) {
+      final request = http.MultipartRequest('PATCH', uri);
+      final reqHeaders = Map<String, String>.from(headers);
+      reqHeaders.remove('Content-Type');
+      request.headers.addAll(reqHeaders);
+
+      final fname = avatarFilename ?? 'avatar.jpg';
+      final ext = fname.split('.').last.toLowerCase();
+      final mimeType = (ext == 'png')
+          ? 'image/png'
+          : (ext == 'webp')
+              ? 'image/webp'
+              : 'image/jpeg';
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'avatar',
+          avatarBytes,
+          filename: fname,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+
+      if (email != null) request.fields['email'] = email;
+      if (countryCode != null) request.fields['country_code'] = countryCode;
+      if (mobileNumber != null) request.fields['mobile_number'] = mobileNumber;
+      if (avatarImagePath != null) {
+        request.fields['avatar_image_path'] = avatarImagePath;
+      }
+      if (customCategories != null) {
+        request.fields['custom_categories_json'] =
+            jsonEncode(customCategories.map((c) => c.toJson()).toList());
+      }
+
+      final path = uri.path;
+      AppLogger.debug('HTTP',
+          '--> PATCH $path (multipart avatar, ${avatarBytes.length} bytes)');
+      final stopwatch = Stopwatch()..start();
+      try {
+        final streamed = await _http.send(request).timeout(ApiConfig.timeout);
+        final response = await http.Response.fromStream(streamed);
+        stopwatch.stop();
+        AppLogger.info('HTTP',
+            '<-- ${response.statusCode} PATCH $path (${stopwatch.elapsedMilliseconds}ms)');
+
+        _assertStatus(response, 200);
+        return UserRecordDto.fromJson(
+            jsonDecode(response.body) as Map<String, dynamic>);
+      } catch (e, st) {
+        if (stopwatch.isRunning) stopwatch.stop();
+        AppLogger.error('HTTP',
+            '<-- ERROR PATCH $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+        rethrow;
+      }
+    }
 
     final Map<String, dynamic> body = {};
     if (email != null) body['email'] = email;
@@ -726,16 +821,66 @@ class BackendApiClient {
   // ── RECEIPT CRUD ─────────────────────────────────────────────────────────────
 
   /// Persists a parsed [ReceiptDto] in the backend Supabase database.
+  /// Supports optional receipt image file upload (multipart/form-data).
   Future<ReceiptRecordDto> saveReceipt({
     required ReceiptDto receipt,
     required String username,
     required String userToken,
+    List<int>? imageBytes,
+    String? filename,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/create');
     final headers = ApiConfig.buildUserHeaders(
       username: username,
       userToken: userToken,
     );
+
+    if (imageBytes != null && imageBytes.isNotEmpty) {
+      final request = http.MultipartRequest('POST', uri);
+      final reqHeaders = Map<String, String>.from(headers);
+      reqHeaders.remove('Content-Type');
+      request.headers.addAll(reqHeaders);
+
+      final fname = filename ?? 'receipt.jpg';
+      final ext = fname.split('.').last.toLowerCase();
+      final mimeType = (ext == 'png')
+          ? 'image/png'
+          : (ext == 'webp')
+              ? 'image/webp'
+              : 'image/jpeg';
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'receipt_image',
+          imageBytes,
+          filename: fname,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+
+      request.fields['receipt_json'] = jsonEncode(receipt.toJson());
+
+      final path = uri.path;
+      AppLogger.debug('HTTP',
+          '--> POST $path (multipart receipt_image, ${imageBytes.length} bytes)');
+      final stopwatch = Stopwatch()..start();
+      try {
+        final streamed = await _http.send(request).timeout(ApiConfig.timeout);
+        final response = await http.Response.fromStream(streamed);
+        stopwatch.stop();
+        AppLogger.info('HTTP',
+            '<-- ${response.statusCode} POST $path (${stopwatch.elapsedMilliseconds}ms)');
+
+        _assertStatus(response, 201);
+        return ReceiptRecordDto.fromJson(
+            jsonDecode(response.body) as Map<String, dynamic>);
+      } catch (e, st) {
+        if (stopwatch.isRunning) stopwatch.stop();
+        AppLogger.error('HTTP',
+            '<-- ERROR POST $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+        rethrow;
+      }
+    }
 
     final response = await _sendRequest(
       'POST',
@@ -747,6 +892,85 @@ class BackendApiClient {
     _assertStatus(response, 201);
     return ReceiptRecordDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Batch-creates receipts in Supabase backend with optional receipt images.
+  Future<List<ReceiptRecordDto>> saveReceiptsBatch({
+    required List<ReceiptDto> receipts,
+    required String username,
+    required String userToken,
+    List<({List<int> bytes, String filename})>? imageFiles,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/create/batch');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
+    );
+
+    if (imageFiles != null && imageFiles.isNotEmpty) {
+      final request = http.MultipartRequest('POST', uri);
+      final reqHeaders = Map<String, String>.from(headers);
+      reqHeaders.remove('Content-Type');
+      request.headers.addAll(reqHeaders);
+
+      for (final f in imageFiles) {
+        final ext = f.filename.split('.').last.toLowerCase();
+        final mimeType = (ext == 'png')
+            ? 'image/png'
+            : (ext == 'webp')
+                ? 'image/webp'
+                : 'image/jpeg';
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'files',
+            f.bytes,
+            filename: f.filename,
+            contentType: MediaType.parse(mimeType),
+          ),
+        );
+      }
+
+      request.fields['receipts_json'] =
+          jsonEncode(receipts.map((r) => r.toJson()).toList());
+
+      final path = uri.path;
+      AppLogger.debug('HTTP',
+          '--> POST $path (batch multipart, ${receipts.length} receipts, ${imageFiles.length} images)');
+      final stopwatch = Stopwatch()..start();
+      try {
+        final streamed = await _http.send(request).timeout(ApiConfig.timeout);
+        final response = await http.Response.fromStream(streamed);
+        stopwatch.stop();
+        AppLogger.info('HTTP',
+            '<-- ${response.statusCode} POST $path (${stopwatch.elapsedMilliseconds}ms)');
+
+        _assertStatus(response, 201);
+        final list = jsonDecode(response.body) as List<dynamic>;
+        return list
+            .map((e) => ReceiptRecordDto.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (e, st) {
+        if (stopwatch.isRunning) stopwatch.stop();
+        AppLogger.error('HTTP',
+            '<-- ERROR POST $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+        rethrow;
+      }
+    }
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'receipts': receipts.map((r) => r.toJson()).toList(),
+      }),
+    );
+
+    _assertStatus(response, 201);
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => ReceiptRecordDto.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Fetches non-deleted receipts for the authenticated user, newest first.
@@ -797,19 +1021,102 @@ class BackendApiClient {
     return response.statusCode == 200;
   }
 
+  /// Fetches authenticated receipt's image binary from GET /receipts/{receiptId}/image.
+  Future<Uint8List?> fetchReceiptImage({
+    required String receiptId,
+    required String username,
+    required String userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/$receiptId/image');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username,
+      userToken: userToken,
+    );
+
+    final path = uri.path;
+    AppLogger.debug('HTTP', '--> GET $path (fetch receipt image binary)');
+    final stopwatch = Stopwatch()..start();
+    try {
+      final response =
+          await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+      stopwatch.stop();
+      AppLogger.info('HTTP',
+          '<-- ${response.statusCode} GET $path (${stopwatch.elapsedMilliseconds}ms)');
+
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+      return null;
+    } catch (e, st) {
+      if (stopwatch.isRunning) stopwatch.stop();
+      AppLogger.error('HTTP',
+          '<-- ERROR GET $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+      return null;
+    }
+  }
+
   /// Updates an existing receipt in the Supabase backend via PATCH.
-  /// Returns the updated [ReceiptRecordDto] on success.
+  /// Supports optional replacement receipt image file upload (multipart/form-data).
   Future<ReceiptRecordDto> updateReceipt({
     required String receiptId,
     required ReceiptDto receipt,
     required String username,
     required String userToken,
+    List<int>? imageBytes,
+    String? filename,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/$receiptId');
     final headers = ApiConfig.buildUserHeaders(
       username: username,
       userToken: userToken,
     );
+
+    if (imageBytes != null && imageBytes.isNotEmpty) {
+      final request = http.MultipartRequest('PATCH', uri);
+      final reqHeaders = Map<String, String>.from(headers);
+      reqHeaders.remove('Content-Type');
+      request.headers.addAll(reqHeaders);
+
+      final fname = filename ?? 'receipt.jpg';
+      final ext = fname.split('.').last.toLowerCase();
+      final mimeType = (ext == 'png')
+          ? 'image/png'
+          : (ext == 'webp')
+              ? 'image/webp'
+              : 'image/jpeg';
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'receipt_image',
+          imageBytes,
+          filename: fname,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+
+      request.fields['receipt_json'] = jsonEncode(receipt.toJson());
+
+      final path = uri.path;
+      AppLogger.debug('HTTP',
+          '--> PATCH $path (multipart receipt_image, ${imageBytes.length} bytes)');
+      final stopwatch = Stopwatch()..start();
+      try {
+        final streamed = await _http.send(request).timeout(ApiConfig.timeout);
+        final response = await http.Response.fromStream(streamed);
+        stopwatch.stop();
+        AppLogger.info('HTTP',
+            '<-- ${response.statusCode} PATCH $path (${stopwatch.elapsedMilliseconds}ms)');
+
+        _assertStatus(response, 200);
+        return ReceiptRecordDto.fromJson(
+            jsonDecode(response.body) as Map<String, dynamic>);
+      } catch (e, st) {
+        if (stopwatch.isRunning) stopwatch.stop();
+        AppLogger.error('HTTP',
+            '<-- ERROR PATCH $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+        rethrow;
+      }
+    }
 
     final response = await _sendRequest(
       'PATCH',

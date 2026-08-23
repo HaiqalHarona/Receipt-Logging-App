@@ -100,6 +100,7 @@ class DashboardViewModel extends ChangeNotifier {
     if (AuthService.instance.isLoggedIn) {
       _isLoggedIn = true;
       _username = AuthService.instance.currentUsername;
+      _avatarImagePath = AuthService.instance.cachedProfile?.avatarImagePath;
     } else {
       _isLoggedIn = false;
       _username = null;
@@ -116,7 +117,9 @@ class DashboardViewModel extends ChangeNotifier {
   String? get username => AuthService.instance.isLoggedIn
       ? (AuthService.instance.currentUsername ?? _username)
       : (_isLoggedIn ? _username : null);
-  String? get avatarImagePath => _avatarImagePath;
+  String? get avatarImagePath => AuthService.instance.isLoggedIn
+      ? (AuthService.instance.cachedProfile?.avatarImagePath ?? _avatarImagePath)
+      : _avatarImagePath;
 
   void setLoginState(
       {required bool isLoggedIn, String? username, String? avatarImagePath}) {
