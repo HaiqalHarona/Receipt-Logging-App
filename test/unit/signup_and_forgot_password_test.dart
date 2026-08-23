@@ -37,7 +37,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Create ${ApiConfig.appName} Account'), findsOneWidget);
-      expect(find.widgetWithText(NeumorphicButtonWidget, 'Create Account'), findsOneWidget);
+      expect(find.widgetWithText(NeumorphicButtonWidget, 'Create Account'),
+          findsOneWidget);
       expect(find.text('ACCOUNT INFORMATION'), findsOneWidget);
       expect(find.text('SECURITY CREDENTIALS'), findsOneWidget);
       expect(find.text('1. Account'), findsOneWidget);
@@ -64,7 +65,8 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(const SignUpScreen()));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(NeumorphicButtonWidget, 'Create Account'));
+      await tester
+          .tap(find.widgetWithText(NeumorphicButtonWidget, 'Create Account'));
       await tester.pumpAndSettle();
 
       expect(find.text('Username is required.'), findsOneWidget);

@@ -126,14 +126,14 @@ void main() {
     }
 
     testWidgets(
-        'DashboardScreen omits Hello Nino placeholder when logged out and shows Login button',
+        'DashboardScreen omits Hello Nino placeholder when logged out and shows guest account badge',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestableDashboard());
       await tester.pumpAndSettle();
 
       expect(find.text('Hello, Nino'), findsNothing);
       expect(find.text('Here is your spending breakdown'), findsOneWidget);
-      expect(find.text('Login'), findsOneWidget);
+      expect(find.byIcon(Icons.person_outline_rounded), findsOneWidget);
     });
   });
 }

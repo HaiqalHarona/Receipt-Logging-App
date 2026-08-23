@@ -17,12 +17,18 @@ class PaywallScreen extends StatelessWidget {
         final accent = controller.accentColor;
 
         final features = [
-          (icon: Icons.bolt_rounded, title: "Unlimited Vision AI Receipt Parsing"),
+          (
+            icon: Icons.bolt_rounded,
+            title: "Unlimited Vision AI Receipt Parsing"
+          ),
           (
             icon: Icons.cloud_done_rounded,
             title: "Automatic Cloud Sync & Offsite Backup"
           ),
-          (icon: Icons.bar_chart_rounded, title: "Advanced Analytics & CSV Export"),
+          (
+            icon: Icons.bar_chart_rounded,
+            title: "Advanced Analytics & CSV Export"
+          ),
           (
             icon: Icons.auto_awesome_rounded,
             title: "Priority AI Assistant Queries"
@@ -48,7 +54,8 @@ class PaywallScreen extends StatelessWidget {
             ),
             body: SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 child: Column(
                   children: [
                     Center(

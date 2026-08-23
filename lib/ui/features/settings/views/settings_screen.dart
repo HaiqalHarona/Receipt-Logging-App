@@ -28,7 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (ctx) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Neumorphic(
             style: NeumorphicStyle(
               depth: 0,
@@ -262,7 +263,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   Neumorphic(
                                     style: NeumorphicStyle(
                                       depth: 3,
-                                      boxShape: const NeumorphicBoxShape.circle(),
+                                      boxShape:
+                                          const NeumorphicBoxShape.circle(),
                                       color: accent.withValues(alpha: 0.15),
                                       border: NeumorphicBorder(
                                         color: accent.withValues(alpha: 0.3),

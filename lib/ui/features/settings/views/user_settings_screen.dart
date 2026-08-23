@@ -63,7 +63,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   Future<void> _onManualSync() async {
     if (_isManualSyncing) return;
     setState(() => _isManualSyncing = true);
-    AppLogger.info('UI', 'User triggered manual cloud sync from UserSettingsScreen');
+    AppLogger.info(
+        'UI', 'User triggered manual cloud sync from UserSettingsScreen');
 
     try {
       await CloudSyncService.instance.syncOnLogin();
@@ -96,7 +97,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       if (mounted) {
         AppSnackBar.show(
           context,
-          message: "Export generated: $receiptsCount receipts ready for backup.",
+          message:
+              "Export generated: $receiptsCount receipts ready for backup.",
         );
       }
     } catch (e) {
@@ -325,8 +327,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           child: Neumorphic(
             style: NeumorphicStyle(
               depth: 0,
-              boxShape:
-                  NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
               color: NeumorphicTheme.baseColor(ctx),
               border: NeumorphicBorder(
                 color: Colors.red.shade700.withValues(alpha: 0.5),
@@ -509,8 +510,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     final totalReceipts = ReceiptRepository.instance.receipts.length;
     final totalConversations =
         ConversationRepository.instance.conversations.length;
-    final totalCategories =
-        6 + CategoryService.instance.customCategoryCount;
+    final totalCategories = 6 + CategoryService.instance.customCategoryCount;
 
     return NeumorphicBackground(
       child: Scaffold(
@@ -529,8 +529,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       icon: Icons.arrow_back_rounded,
                       iconSize: 20,
                       onTap: () {
-                        AppLogger.info('UI',
-                            'User tapped Back on UserSettingsScreen');
+                        AppLogger.info(
+                            'UI', 'User tapped Back on UserSettingsScreen');
                         context.pop();
                       },
                     ),
@@ -608,7 +608,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                               const NeumorphicBoxShape.circle(),
                                           color: accent.withValues(alpha: 0.15),
                                           border: NeumorphicBorder(
-                                            color: accent.withValues(alpha: 0.4),
+                                            color:
+                                                accent.withValues(alpha: 0.4),
                                             width: 1.5,
                                           ),
                                         ),
@@ -660,7 +661,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                       vertical: 2),
                                                   decoration: BoxDecoration(
                                                     color: Colors.green
-                                                        .withValues(alpha: 0.15),
+                                                        .withValues(
+                                                            alpha: 0.15),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             6),
@@ -670,7 +672,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                         MainAxisSize.min,
                                                     children: [
                                                       Icon(
-                                                        Icons.cloud_done_rounded,
+                                                        Icons
+                                                            .cloud_done_rounded,
                                                         color: Colors.green,
                                                         size: 11,
                                                       ),
@@ -711,8 +714,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       color: controller.currentBaseColor,
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color:
-                                            textSecondary.withValues(alpha: 0.12),
+                                        color: textSecondary.withValues(
+                                            alpha: 0.12),
                                         width: 0.8,
                                       ),
                                     ),
@@ -890,8 +893,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                             fontWeight: FontWeight.w600,
                                             color: hasMobile
                                                 ? textPrimary
-                                                : textSecondary
-                                                    .withValues(alpha: 0.7),
+                                                : textSecondary.withValues(
+                                                    alpha: 0.7),
                                           ),
                                         ),
                                       ],
@@ -910,7 +913,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                            color: accent.withValues(alpha: 0.5),
+                                            color:
+                                                accent.withValues(alpha: 0.5),
                                             width: 1),
                                       ),
                                       child: Text(
@@ -978,7 +982,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       const SizedBox(height: 20),
 
                       // ── 4. LINKED HARDWARE DEVICE ──────────────────────────
-                      _buildSectionHeader("LINKED HARDWARE DEVICE", textSecondary),
+                      _buildSectionHeader(
+                          "LINKED HARDWARE DEVICE", textSecondary),
                       const SizedBox(height: 8),
                       NeumorphicCardWidget(
                         padding: const EdgeInsets.all(16),

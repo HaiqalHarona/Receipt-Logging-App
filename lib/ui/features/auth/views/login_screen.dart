@@ -651,7 +651,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: RichText(
                         text: TextSpan(
-                          style: TextStyle(fontSize: 13.5, color: textSecondary),
+                          style:
+                              TextStyle(fontSize: 13.5, color: textSecondary),
                           children: [
                             const TextSpan(text: "Don't have an account? "),
                             TextSpan(

@@ -74,17 +74,23 @@ void main() {
       expect(controller.accentColor, isNot(equals(customColor)));
     });
 
-    test('currentPresets returns darkPresets when isDarkMode is true and lightPresets when false', () {
+    test(
+        'currentPresets returns darkPresets when isDarkMode is true and lightPresets when false',
+        () {
       final controller = AppThemeController.instance;
 
       controller.setThemeMode(ThemeMode.dark);
-      expect(AppThemeController.currentPresets, equals(AppThemeController.darkPresets));
+      expect(AppThemeController.currentPresets,
+          equals(AppThemeController.darkPresets));
 
       controller.setThemeMode(ThemeMode.light);
-      expect(AppThemeController.currentPresets, equals(AppThemeController.lightPresets));
+      expect(AppThemeController.currentPresets,
+          equals(AppThemeController.lightPresets));
     });
 
-    test('shadowDarkColorEmboss and shadowLightColorEmboss subdue glow in dark mode', () {
+    test(
+        'shadowDarkColorEmboss and shadowLightColorEmboss subdue glow in dark mode',
+        () {
       final controller = AppThemeController.instance;
 
       controller.setThemeMode(ThemeMode.dark);
@@ -92,8 +98,10 @@ void main() {
       expect(controller.shadowLightColorEmboss.a, lessThan(0.5));
 
       controller.setThemeMode(ThemeMode.light);
-      expect(controller.shadowDarkColorEmboss, equals(controller.shadowDarkColor));
-      expect(controller.shadowLightColorEmboss, equals(controller.shadowLightColor));
+      expect(
+          controller.shadowDarkColorEmboss, equals(controller.shadowDarkColor));
+      expect(controller.shadowLightColorEmboss,
+          equals(controller.shadowLightColor));
     });
   });
 }

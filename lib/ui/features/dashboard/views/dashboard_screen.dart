@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';
@@ -96,28 +95,32 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 controller),
                           )
                         else
-                          NeumorphicButtonWidget(
-                            color: Colors.transparent,
-                            borderRadius: 10,
-                            depth: 4,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            onPressed: () => context.push('/login'),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.login_rounded,
-                                    size: 13, color: accent),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "Login",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                          GestureDetector(
+                            onTap: () => context.push('/auth'),
+                            child: Neumorphic(
+                              style: NeumorphicStyle(
+                                depth: 4,
+                                intensity: 0.85,
+                                boxShape: const NeumorphicBoxShape.circle(),
+                                color: controller.currentBaseColor,
+                                border: NeumorphicBorder(
+                                  color: controller.isDarkMode
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.white.withValues(alpha: 0.6),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: SizedBox(
+                                width: 38,
+                                height: 38,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.person_outline_rounded,
+                                    size: 20,
                                     color: accent,
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                       ],

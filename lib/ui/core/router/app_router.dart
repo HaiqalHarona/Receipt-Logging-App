@@ -139,8 +139,8 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/forgot-password',
-      pageBuilder: (context, state) => _buildInstantPage(
-          state: state, child: const ForgotPasswordScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const ForgotPasswordScreen()),
     ),
     GoRoute(
       path: '/verify-otp',

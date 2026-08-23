@@ -24,9 +24,6 @@ class ApiConfig {
   /// Supabase Key read dynamically from .env
   static String get supabaseKey => _env('SUPABASE_KEY', '');
 
-  /// Gemini API Key read dynamically from .env
-  static String get geminiApiKey => _env('GEMINI_API_KEY', '');
-
   /// Persistent hardware device ID powered by DeviceIdentityService.
   static String get deviceId => DeviceIdentityService.instance.deviceId;
 
