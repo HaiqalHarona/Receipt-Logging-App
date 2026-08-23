@@ -42,8 +42,8 @@ class ConversationRepository extends ChangeNotifier {
   /// When unauthenticated (guest mode), filters out any cloud user conversations (UUIDs).
   List<Conversation> get conversations {
     if (!AuthService.instance.isLoggedIn) {
-      return List.unmodifiable(_conversations
-          .where((c) => c.isActive && !_isUuid(c.id)));
+      return List.unmodifiable(
+          _conversations.where((c) => c.isActive && !_isUuid(c.id)));
     }
     return List.unmodifiable(_conversations.where((c) => c.isActive));
   }

@@ -21,7 +21,9 @@ void main() {
   });
 
   group('Unauthenticated State & User Data Isolation Tests', () {
-    test('Unauthenticated guest cannot see cloud user conversations in ConversationRepository', () async {
+    test(
+        'Unauthenticated guest cannot see cloud user conversations in ConversationRepository',
+        () async {
       // Setup: ensure logged out
       expect(AuthService.instance.isLoggedIn, isFalse);
 
@@ -33,7 +35,8 @@ void main() {
       );
 
       // Also create a local guest conversation
-      final guestConv = await ConversationRepository.instance.createConversation(
+      final guestConv =
+          await ConversationRepository.instance.createConversation(
         id: 'local_123456',
         title: 'Guest Inquiry',
       );
@@ -44,7 +47,8 @@ void main() {
       expect(activeConvs.any((c) => c.id == guestConv.id), isTrue);
     });
 
-    test('Unauthenticated guest cannot see cloud receipts in ReceiptRepository', () async {
+    test('Unauthenticated guest cannot see cloud receipts in ReceiptRepository',
+        () async {
       // Setup: ensure logged out
       expect(AuthService.instance.isLoggedIn, isFalse);
 
@@ -75,7 +79,9 @@ void main() {
       expect(visibleReceipts.any((r) => r.id == guestReceipt.id), isTrue);
     });
 
-    test('AuthService.init in unauthenticated state sanitizes profile and keeps auth null', () async {
+    test(
+        'AuthService.init in unauthenticated state sanitizes profile and keeps auth null',
+        () async {
       // Mock SharedPreferences with empty session
       SharedPreferences.setMockInitialValues({});
       await AuthService.instance.init();
@@ -87,7 +93,9 @@ void main() {
       expect(AuthService.instance.cachedProfile, isNull);
     });
 
-    test('DashboardViewModel reacts to login and logout without lingering user traces', () async {
+    test(
+        'DashboardViewModel reacts to login and logout without lingering user traces',
+        () async {
       final viewModel = DashboardViewModel();
       expect(viewModel.isLoggedIn, isFalse);
       expect(viewModel.username, isNull);
@@ -113,7 +121,9 @@ void main() {
       viewModel.dispose();
     });
 
-    test('Logging in exposes cloud conversations, and logging out removes all records', () async {
+    test(
+        'Logging in exposes cloud conversations, and logging out removes all records',
+        () async {
       // 1. Log in
       await AuthService.instance.saveSession(const UserRecordDto(
         id: 'usr-flow-999',
@@ -130,7 +140,10 @@ void main() {
       );
 
       // Authenticated user can see their cloud conversations
-      expect(ConversationRepository.instance.conversations.any((c) => c.id == convUuid), isTrue);
+      expect(
+          ConversationRepository.instance.conversations
+              .any((c) => c.id == convUuid),
+          isTrue);
 
       // 2. Log out
       await AuthService.instance.clearSession();

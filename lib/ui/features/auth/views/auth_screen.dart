@@ -37,7 +37,8 @@ class AuthScreen extends StatelessWidget {
                         if (canPop)
                           GestureDetector(
                             onTap: () {
-                              AppLogger.info('UI', 'User tapped Back on AuthScreen');
+                              AppLogger.info(
+                                  'UI', 'User tapped Back on AuthScreen');
                               context.pop();
                             },
                             child: Neumorphic(
@@ -150,16 +151,18 @@ class AuthScreen extends StatelessWidget {
                                   _buildFeatureRow(
                                     icon: Icons.flash_on_rounded,
                                     title: "AI Vision Parsing",
-                                    subtitle: "Clean & structured line-item extraction",
+                                    subtitle:
+                                        "Clean & structured line-item extraction",
                                     accent: accent,
                                     textPrimary: textPrimary,
                                     textSecondary: textSecondary,
                                   ),
                                   const SizedBox(height: 12),
                                   _buildFeatureRow(
-                                    icon: Icons.shield_rounded,
-                                    title: "Offline-First Privacy",
-                                    subtitle: "Private local storage on your device",
+                                    icon: Icons.auto_graph_rounded,
+                                    title: "Smart Spending Insights",
+                                    subtitle:
+                                        "Interactive analytics & expense breakdown",
                                     accent: accent,
                                     textPrimary: textPrimary,
                                     textSecondary: textSecondary,
@@ -168,7 +171,8 @@ class AuthScreen extends StatelessWidget {
                                   _buildFeatureRow(
                                     icon: Icons.cloud_sync_rounded,
                                     title: "Multi-Device Sync",
-                                    subtitle: "Seamless cloud backup when signed in",
+                                    subtitle:
+                                        "Seamless cloud backup when signed in",
                                     accent: accent,
                                     textPrimary: textPrimary,
                                     textSecondary: textSecondary,
@@ -184,7 +188,8 @@ class AuthScreen extends StatelessWidget {
                               height: 52,
                               child: NeumorphicButtonWidget(
                                 onPressed: () {
-                                  AppLogger.info('UI', 'User tapped Sign In on AuthScreen');
+                                  AppLogger.info('UI',
+                                      'User tapped Sign In on AuthScreen');
                                   context.push('/login');
                                 },
                                 child: const Center(
@@ -208,7 +213,8 @@ class AuthScreen extends StatelessWidget {
                               height: 52,
                               child: GestureDetector(
                                 onTap: () {
-                                  AppLogger.info('UI', 'User tapped Create Account on AuthScreen');
+                                  AppLogger.info('UI',
+                                      'User tapped Create Account on AuthScreen');
                                   context.push('/signup');
                                 },
                                 child: Neumorphic(
@@ -242,7 +248,8 @@ class AuthScreen extends StatelessWidget {
                             // ── Continue as Guest ─────────────────────────────
                             GestureDetector(
                               onTap: () {
-                                AppLogger.info('UI', 'User tapped Continue as Guest on AuthScreen');
+                                AppLogger.info('UI',
+                                    'User tapped Continue as Guest on AuthScreen');
                                 if (canPop) {
                                   context.pop();
                                 } else {
@@ -250,7 +257,8 @@ class AuthScreen extends StatelessWidget {
                                 }
                               },
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [

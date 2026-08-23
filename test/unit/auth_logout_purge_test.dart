@@ -21,7 +21,9 @@ void main() {
       await AuthService.instance.clearSession();
     });
 
-    test('clearSession purges all local repositories, categories, and session state', () async {
+    test(
+        'clearSession purges all local repositories, categories, and session state',
+        () async {
       // 1. Setup authenticated session
       await AuthService.instance.saveSession(const UserRecordDto(
         id: 'usr_test_logout_123',
@@ -47,7 +49,10 @@ void main() {
         id: 'conv_test_logout',
         title: 'Logout Test Chat',
       );
-      expect(ConversationRepository.instance.conversations.any((c) => c.id == 'conv_test_logout'), isTrue);
+      expect(
+          ConversationRepository.instance.conversations
+              .any((c) => c.id == 'conv_test_logout'),
+          isTrue);
 
       await ChatMessageRepository.instance.init();
       await ChatMessageRepository.instance.addMessage(
@@ -56,10 +61,17 @@ void main() {
         content: 'Hello before logout',
         id: 'msg_test_logout',
       );
-      expect(ChatMessageRepository.instance.currentHistory.any((m) => m.id == 'msg_test_logout'), isTrue);
+      expect(
+          ChatMessageRepository.instance.currentHistory
+              .any((m) => m.id == 'msg_test_logout'),
+          isTrue);
 
-      await CategoryService.instance.addCategory('CustomCat', 0xFF10B981, 0xe318);
-      expect(CategoryService.instance.customCategories.any((c) => c.name == 'CustomCat'), isTrue);
+      await CategoryService.instance
+          .addCategory('CustomCat', 0xFF10B981, 0xe318);
+      expect(
+          CategoryService.instance.customCategories
+              .any((c) => c.name == 'CustomCat'),
+          isTrue);
 
       // 3. Trigger logout
       await AuthService.instance.clearSession();

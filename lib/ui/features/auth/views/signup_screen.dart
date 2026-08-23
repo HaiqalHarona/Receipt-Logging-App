@@ -216,7 +216,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     int score = 0;
     if (pass.length >= 6) score++;
     if (pass.length >= 8 && RegExp(r'[0-9]').hasMatch(pass)) score++;
-    if (RegExp(r'[A-Z]').hasMatch(pass) && RegExp(r'[a-z]').hasMatch(pass)) score++;
+    if (RegExp(r'[A-Z]').hasMatch(pass) && RegExp(r'[a-z]').hasMatch(pass))
+      score++;
     if (RegExp(r'[!@#\$&*~-]').hasMatch(pass) || pass.length >= 12) score++;
     return score.clamp(1, 4);
   }
@@ -377,11 +378,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 // ── Visual Progress Stepper ──────────────────────────────────
                 Row(
                   children: [
-                    _buildStepperPill("1. Account", true, accent, textSecondary),
+                    _buildStepperPill(
+                        "1. Account", true, accent, textSecondary),
                     const SizedBox(width: 6),
-                    _buildStepperPill("2. Security", passText.isNotEmpty, accent, textSecondary),
+                    _buildStepperPill("2. Security", passText.isNotEmpty,
+                        accent, textSecondary),
                     const SizedBox(width: 6),
-                    _buildStepperPill("3. Complete", false, accent, textSecondary),
+                    _buildStepperPill(
+                        "3. Complete", false, accent, textSecondary),
                   ],
                 ),
                 const SizedBox(height: 28),
@@ -389,7 +393,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 // ── SECTION 1: ACCOUNT INFORMATION ────────────────────────────
                 _buildSectionLabel("ACCOUNT INFORMATION", textSecondary),
                 NeumorphicCardWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -402,7 +407,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           Expanded(
                             child: TextField(
                               controller: _usernameController,
-                              style: TextStyle(color: textPrimary, fontSize: 14),
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
                               autocorrect: false,
                               onChanged: (_) {
                                 if (_usernameError != null) {
@@ -435,7 +441,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             child: TextField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
-                              style: TextStyle(color: textPrimary, fontSize: 14),
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
                               autocorrect: false,
                               onChanged: (_) {
                                 if (_emailError != null) {
@@ -463,7 +470,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 // ── SECTION 2: SECURITY CREDENTIALS ───────────────────────────
                 _buildSectionLabel("SECURITY CREDENTIALS", textSecondary),
                 NeumorphicCardWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -477,10 +485,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             child: TextField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
-                              style: TextStyle(color: textPrimary, fontSize: 14),
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
                               onChanged: (_) {
                                 setState(() {
-                                  if (_passwordError != null) _passwordError = null;
+                                  if (_passwordError != null)
+                                    _passwordError = null;
                                   if (_confirmPasswordError != null) {
                                     _confirmPasswordError = null;
                                   }
@@ -518,7 +528,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         Row(
                           children: List.generate(4, (index) {
                             final isActive = index < strength;
-                            final color = _getPasswordStrengthColor(strength, accent);
+                            final color =
+                                _getPasswordStrengthColor(strength, accent);
                             return Expanded(
                               child: Container(
                                 height: 3.5,
@@ -563,7 +574,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             child: TextField(
                               controller: _confirmPasswordController,
                               obscureText: _obscureConfirmPassword,
-                              style: TextStyle(color: textPrimary, fontSize: 14),
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
                               onChanged: (_) {
                                 if (_confirmPasswordError != null) {
                                   setState(() => _confirmPasswordError = null);
@@ -648,7 +660,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: RichText(
                         text: TextSpan(
-                          style: TextStyle(fontSize: 13.5, color: textSecondary),
+                          style:
+                              TextStyle(fontSize: 13.5, color: textSecondary),
                           children: [
                             const TextSpan(text: "Already have an account? "),
                             TextSpan(
@@ -685,9 +698,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               : textSecondary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isActive
-                ? accent.withValues(alpha: 0.35)
-                : Colors.transparent,
+            color:
+                isActive ? accent.withValues(alpha: 0.35) : Colors.transparent,
             width: 1,
           ),
         ),

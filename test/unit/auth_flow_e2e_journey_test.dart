@@ -38,7 +38,8 @@ void main() {
     });
 
     // ── JOURNEY 1: Guest Discovery & Onboarding Gateway ────────────────────────
-    testWidgets('Journey 1: Guest mode in Settings displays onboarding banner and AuthScreen renders gateway',
+    testWidgets(
+        'Journey 1: Guest mode in Settings displays onboarding banner and AuthScreen renders gateway',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
@@ -53,7 +54,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Sign In or Register'), findsOneWidget);
-      expect(find.text('Sync receipts across devices with cloud backup'), findsOneWidget);
+      expect(find.text('Sync receipts across devices with cloud backup'),
+          findsOneWidget);
       expect(find.text('Get Started'), findsOneWidget);
 
       // 2. AuthScreen Gateway landing verification
@@ -61,9 +63,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(ApiConfig.appName), findsOneWidget);
-      expect(find.text('Smart receipt scanning & automated expense management'), findsOneWidget);
+      expect(find.text('Smart receipt scanning & automated expense management'),
+          findsOneWidget);
       expect(find.text('AI Vision Parsing'), findsOneWidget);
-      expect(find.text('Offline-First Privacy'), findsOneWidget);
+      expect(find.text('Smart Spending Insights'), findsOneWidget);
       expect(find.text('Multi-Device Sync'), findsOneWidget);
       expect(find.text('Sign In'), findsOneWidget);
       expect(find.text('Create Account'), findsOneWidget);
@@ -71,7 +74,8 @@ void main() {
     });
 
     // ── JOURNEY 2: User Registration & Visual Password Feedback ────────────────
-    testWidgets('Journey 2: SignUpScreen displays stepper, sections, live password meter, and CTA',
+    testWidgets(
+        'Journey 2: SignUpScreen displays stepper, sections, live password meter, and CTA',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
@@ -93,7 +97,8 @@ void main() {
 
       // Enter password to test dynamic strength meter
       final textFields = find.byType(TextField);
-      expect(textFields, findsNWidgets(4)); // username, email, password, confirmPassword
+      expect(textFields,
+          findsNWidgets(4)); // username, email, password, confirmPassword
 
       // Type weak password into 3rd TextField (Password)
       await tester.enterText(textFields.at(2), 'abc');
@@ -106,8 +111,9 @@ void main() {
       expect(find.text('Strong'), findsOneWidget);
 
       // Verify CTA button & bottom link
-      expect(find.widgetWithText(NeumorphicButtonWidget, 'Create Account'), findsOneWidget);
-      
+      expect(find.widgetWithText(NeumorphicButtonWidget, 'Create Account'),
+          findsOneWidget);
+
       final richTextFinder = find.byType(RichText);
       expect(richTextFinder, findsWidgets);
       final plainTexts = richTextFinder
@@ -119,7 +125,8 @@ void main() {
     });
 
     // ── JOURNEY 3: Returning User Sign-In & Error Handling ─────────────────────
-    testWidgets('Journey 3: LoginScreen renders welcome hero, input fields, and links',
+    testWidgets(
+        'Journey 3: LoginScreen renders welcome hero, input fields, and links',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
@@ -134,18 +141,22 @@ void main() {
       expect(find.text('USERNAME OR EMAIL'), findsOneWidget);
       expect(find.text('PASSWORD'), findsOneWidget);
       expect(find.text('Forgot Password?'), findsOneWidget);
-      expect(find.widgetWithText(NeumorphicButtonWidget, 'Sign In'), findsOneWidget);
+      expect(find.widgetWithText(NeumorphicButtonWidget, 'Sign In'),
+          findsOneWidget);
 
       final richTextFinder = find.byType(RichText);
       expect(richTextFinder, findsWidgets);
       final plainTexts = richTextFinder
           .evaluate()
           .map((e) => (e.widget as RichText).text.toPlainText());
-      expect(plainTexts.any((t) => t.contains("Don't have an account? Sign Up")), isTrue);
+      expect(
+          plainTexts.any((t) => t.contains("Don't have an account? Sign Up")),
+          isTrue);
     });
 
     // ── JOURNEY 4: Profile & Settings in Logged-In Mode ────────────────────────
-    testWidgets('Journey 4: Logged-in user sees ACCOUNT section and UserSettingsScreen',
+    testWidgets(
+        'Journey 4: Logged-in user sees ACCOUNT section and UserSettingsScreen',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
@@ -183,7 +194,8 @@ void main() {
     });
 
     // ── JOURNEY 5: Guaranteed Logout & Database Purge ──────────────────────────
-    test('Journey 5: Logging out completely purges all Isar repositories and session cache',
+    test(
+        'Journey 5: Logging out completely purges all Isar repositories and session cache',
         () async {
       // 1. Setup session
       await AuthService.instance.saveSession(const UserRecordDto(
@@ -220,7 +232,8 @@ void main() {
       );
       expect(ChatMessageRepository.instance.currentHistory.isNotEmpty, isTrue);
 
-      await CategoryService.instance.addCategory('Electronics', 0xFF3B82F6, 0xe318);
+      await CategoryService.instance
+          .addCategory('Electronics', 0xFF3B82F6, 0xe318);
       expect(CategoryService.instance.customCategories.isNotEmpty, isTrue);
 
       // 3. Perform logout
@@ -239,7 +252,8 @@ void main() {
     });
 
     // ── JOURNEY 6: Offline Resilience on Logout ────────────────────────────────
-    test('Journey 6: clearSession executes reliably in offline/disconnected mode',
+    test(
+        'Journey 6: clearSession executes reliably in offline/disconnected mode',
         () async {
       // Setup authenticated state with cached data
       await AuthService.instance.saveSession(const UserRecordDto(

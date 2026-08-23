@@ -47,6 +47,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Format code
+        run: dart format lib test
+
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test
 
@@ -68,7 +71,6 @@ jobs:
     name: Build Android APK
     needs: analyze-and-test
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -142,7 +144,6 @@ jobs:
     name: Build Web App
     needs: analyze-and-test
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

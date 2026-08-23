@@ -107,7 +107,7 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
     }
   }
 
-  Widget _buildTimelineChip({
+  Widget _buildSegmentItem({
     required String label,
     required TimelineFilter filter,
     required TimelineFilter activeFilter,
@@ -124,33 +124,45 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
             widget.viewModel.setTimeline(filter);
           }
         },
-        child: Neumorphic(
-          style: NeumorphicStyle(
-            depth: isSelected ? -2 : 2,
-            intensity: 0.85,
-            color: isSelected
-                ? widget.accent.withValues(alpha: 0.15)
-                : NeumorphicTheme.baseColor(context),
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-            border: isSelected
-                ? NeumorphicBorder(
-                    color: widget.accent.withValues(alpha: 0.4),
+        behavior: HitTestBehavior.opaque,
+        child: isSelected
+            ? Neumorphic(
+                style: NeumorphicStyle(
+                  depth: 2.5,
+                  intensity: 0.9,
+                  color: NeumorphicTheme.baseColor(context),
+                  boxShape:
+                      NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
+                  border: NeumorphicBorder(
+                    color: widget.accent.withValues(alpha: 0.35),
                     width: 1.0,
-                  )
-                : const NeumorphicBorder.none(),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? widget.accent : widget.textSecondary,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Center(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: widget.accent,
+                    ),
+                  ),
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Center(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: widget.textSecondary,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -200,45 +212,50 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
 
             const SizedBox(height: 12),
 
-            // ── Segmented Month Selector Row (1M · 3M · 6M · 12M · YTD · ALL) ──
-            Row(
-              children: [
-                _buildTimelineChip(
-                  label: '1M',
-                  filter: TimelineFilter.thisMonth,
-                  activeFilter: activeTimeline,
-                ),
-                const SizedBox(width: 6),
-                _buildTimelineChip(
-                  label: '3M',
-                  filter: TimelineFilter.threeMonths,
-                  activeFilter: activeTimeline,
-                ),
-                const SizedBox(width: 6),
-                _buildTimelineChip(
-                  label: '6M',
-                  filter: TimelineFilter.sixMonths,
-                  activeFilter: activeTimeline,
-                ),
-                const SizedBox(width: 6),
-                _buildTimelineChip(
-                  label: '12M',
-                  filter: TimelineFilter.twelveMonths,
-                  activeFilter: activeTimeline,
-                ),
-                const SizedBox(width: 6),
-                _buildTimelineChip(
-                  label: 'YTD',
-                  filter: TimelineFilter.ytd,
-                  activeFilter: activeTimeline,
-                ),
-                const SizedBox(width: 6),
-                _buildTimelineChip(
-                  label: 'ALL',
-                  filter: TimelineFilter.allTime,
-                  activeFilter: activeTimeline,
-                ),
-              ],
+            // ── Grouped Segmented Month Selector (1M · 3M · 6M · 12M · YTD · ALL) ──
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: -2.5,
+                intensity: 0.85,
+                boxShape:
+                    NeumorphicBoxShape.roundRect(BorderRadius.circular(11)),
+                color: NeumorphicTheme.baseColor(context),
+              ),
+              padding: const EdgeInsets.all(3),
+              child: Row(
+                children: [
+                  _buildSegmentItem(
+                    label: '1M',
+                    filter: TimelineFilter.thisMonth,
+                    activeFilter: activeTimeline,
+                  ),
+                  _buildSegmentItem(
+                    label: '3M',
+                    filter: TimelineFilter.threeMonths,
+                    activeFilter: activeTimeline,
+                  ),
+                  _buildSegmentItem(
+                    label: '6M',
+                    filter: TimelineFilter.sixMonths,
+                    activeFilter: activeTimeline,
+                  ),
+                  _buildSegmentItem(
+                    label: '12M',
+                    filter: TimelineFilter.twelveMonths,
+                    activeFilter: activeTimeline,
+                  ),
+                  _buildSegmentItem(
+                    label: 'YTD',
+                    filter: TimelineFilter.ytd,
+                    activeFilter: activeTimeline,
+                  ),
+                  _buildSegmentItem(
+                    label: 'ALL',
+                    filter: TimelineFilter.allTime,
+                    activeFilter: activeTimeline,
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 14),
