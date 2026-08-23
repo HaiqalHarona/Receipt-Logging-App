@@ -36,6 +36,7 @@ dependencies:
 
   # ── Neumorphic UI ────────────────────────────────────────────────────────────
   flutter_neumorphic_plus: ^3.3.0
+  flutter_markdown: ^0.7.5
 
   # ── Supabase Client ──────────────────────────────────────────────────────────
   supabase_flutter: ^2.8.4

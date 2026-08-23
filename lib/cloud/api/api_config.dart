@@ -24,7 +24,7 @@ class ApiConfig {
   /// Supabase Key read dynamically from .env
   static String get supabaseKey => dotenv.get('SUPABASE_KEY', fallback: '');
 
-  /// Gemini API Key read dynamically from .env
+  /// AI API Key read dynamically from .env (optional fallback)
   static String get geminiApiKey => dotenv.get('GEMINI_API_KEY', fallback: '');
 
   /// Persistent hardware device ID powered by DeviceIdentityService.
@@ -33,7 +33,7 @@ class ApiConfig {
   /// Persistent device auth token powered by DeviceIdentityService.
   static String get deviceToken => DeviceIdentityService.instance.deviceToken;
 
-  /// Default request timeout — Gemini vision can take ~3s.
+  /// Default request timeout — AI vision parsing can take ~3s.
   static const Duration timeout = Duration(seconds: 40);
 
   /// Builds device-scoped headers (GET /devices/me, DELETE /devices/me).

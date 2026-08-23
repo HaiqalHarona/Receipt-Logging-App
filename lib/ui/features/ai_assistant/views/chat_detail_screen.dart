@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../cloud/api/api_config.dart';
@@ -957,12 +958,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       ),
                     ),
                     Expanded(
-                      child: Text(
-                        "👋 Hi there! I'm your AI financial assistant. Ask me anything about your spending, merchant details, or budgets.",
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          color: textPrimary,
-                          height: 1.45,
+                      child: MarkdownBody(
+                        data:
+                            "👋 Hi there! I'm your AI financial assistant. Ask me anything about your spending, merchant details, or budgets.",
+                        selectable: true,
+                        styleSheet: _buildMarkdownStyleSheet(
+                          textPrimary: textPrimary,
+                          textSecondary: textSecondary,
+                          accent: accent,
+                          baseColor: baseColor,
                         ),
                       ),
                     ),
@@ -1034,6 +1038,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       timestamp: msg.createdAt,
       textPrimary: textPrimary,
       textSecondary: textSecondary,
+      accent: accent,
       baseColor: baseColor,
     );
   }
@@ -1092,6 +1097,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     required DateTime timestamp,
     required Color textPrimary,
     required Color textSecondary,
+    required Color accent,
     required Color baseColor,
   }) {
     final maxWidth = MediaQuery.of(context).size.width * 0.80;
@@ -1113,12 +1119,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  content,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: textPrimary,
-                    height: 1.45,
+                MarkdownBody(
+                  data: content,
+                  selectable: true,
+                  styleSheet: _buildMarkdownStyleSheet(
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    accent: accent,
+                    baseColor: baseColor,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1138,6 +1146,89 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  MarkdownStyleSheet _buildMarkdownStyleSheet({
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color accent,
+    required Color baseColor,
+  }) {
+    return MarkdownStyleSheet(
+      p: TextStyle(
+        fontSize: 14,
+        color: textPrimary,
+        height: 1.45,
+      ),
+      strong: TextStyle(
+        fontSize: 14,
+        color: textPrimary,
+        fontWeight: FontWeight.bold,
+      ),
+      em: TextStyle(
+        fontSize: 14,
+        color: textPrimary,
+        fontStyle: FontStyle.italic,
+      ),
+      h1: TextStyle(
+        fontSize: 17,
+        color: textPrimary,
+        fontWeight: FontWeight.bold,
+        height: 1.3,
+      ),
+      h2: TextStyle(
+        fontSize: 15.5,
+        color: textPrimary,
+        fontWeight: FontWeight.bold,
+        height: 1.3,
+      ),
+      h3: TextStyle(
+        fontSize: 14.5,
+        color: textPrimary,
+        fontWeight: FontWeight.w600,
+        height: 1.3,
+      ),
+      listBullet: TextStyle(
+        fontSize: 14,
+        color: accent,
+        fontWeight: FontWeight.bold,
+      ),
+      code: TextStyle(
+        fontFamily: 'monospace',
+        fontSize: 12.5,
+        color: accent,
+        backgroundColor: textSecondary.withValues(alpha: 0.12),
+      ),
+      codeblockDecoration: BoxDecoration(
+        color: textSecondary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      codeblockPadding: const EdgeInsets.all(8),
+      blockquote: TextStyle(
+        fontSize: 13.5,
+        color: textSecondary,
+        fontStyle: FontStyle.italic,
+      ),
+      blockquoteDecoration: BoxDecoration(
+        border: Border(left: BorderSide(color: accent, width: 3)),
+      ),
+      blockquotePadding: const EdgeInsets.only(left: 10, top: 4, bottom: 4),
+      tableHead: TextStyle(
+        fontSize: 13,
+        color: textPrimary,
+        fontWeight: FontWeight.bold,
+      ),
+      tableBody: TextStyle(
+        fontSize: 13,
+        color: textPrimary,
+      ),
+      tableBorder: TableBorder.all(
+        color: textSecondary.withValues(alpha: 0.2),
+        width: 1,
+      ),
+      pPadding: const EdgeInsets.only(bottom: 4),
+      listIndent: 20.0,
     );
   }
 
@@ -1163,14 +1254,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             children: [
               Icon(Icons.auto_awesome_rounded, size: 16, color: accent),
               const SizedBox(width: 8),
-              Text(
-                "AI is thinking...",
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: textSecondary,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
+              _TypingDots(color: accent),
             ],
           ),
         ),
@@ -1178,3 +1262,82 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 }
+
+/// Animated 3-dots typing indicator mimicking realistic chat generation.
+class _TypingDots extends StatefulWidget {
+  final Color color;
+
+  const _TypingDots({required this.color});
+
+  static const double dotSize = 5.5;
+  static const double spacing = 3.5;
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _buildDot(int index) {
+    final start = index * 0.2;
+    final end = start + 0.6;
+    final animation = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(start, end, curve: Curves.easeInOut),
+    );
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final progress = animation.value;
+        final bounce = (progress < 0.5) ? progress * 2 : (1.0 - progress) * 2;
+        return Opacity(
+          opacity: 0.35 + (0.65 * bounce),
+          child: Transform.translate(
+            offset: Offset(0, -3.5 * bounce),
+            child: Container(
+              width: _TypingDots.dotSize,
+              height: _TypingDots.dotSize,
+              decoration: BoxDecoration(
+                color: widget.color,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildDot(0),
+        const SizedBox(width: _TypingDots.spacing),
+        _buildDot(1),
+        const SizedBox(width: _TypingDots.spacing),
+        _buildDot(2),
+      ],
+    );
+  }
+}
+

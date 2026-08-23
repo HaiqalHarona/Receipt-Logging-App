@@ -86,8 +86,9 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
   int get selectedPresetIndex =>
       isDarkMode ? _selectedDarkPresetIndex : _selectedLightPresetIndex;
 
-  ThemePreset get currentPreset =>
-      isDarkMode ? darkPresets[_selectedDarkPresetIndex] : lightPresets[_selectedLightPresetIndex];
+  ThemePreset get currentPreset => isDarkMode
+      ? darkPresets[_selectedDarkPresetIndex]
+      : lightPresets[_selectedLightPresetIndex];
 
   Color get currentBaseColor {
     return isDarkMode

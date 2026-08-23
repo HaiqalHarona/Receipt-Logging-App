@@ -118,7 +118,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
         onTap: () {
           if (!isSelected) {
             setState(() {
-              _selectedIndex = null; // Clear graph point tooltip on filter switch
+              _selectedIndex =
+                  null; // Clear graph point tooltip on filter switch
             });
             widget.viewModel.setTimeline(filter);
           }

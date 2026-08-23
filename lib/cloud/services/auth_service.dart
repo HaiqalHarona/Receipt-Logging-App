@@ -227,7 +227,8 @@ class AuthService extends ChangeNotifier {
 
       // Restore user preferences (currency, theme, presets) from cloud
       if (user.preferences.isNotEmpty) {
-        await UserPreferencesService.instance.applyCloudPreferences(user.preferences);
+        await UserPreferencesService.instance
+            .applyCloudPreferences(user.preferences);
       }
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to persist profile', e, st);
