@@ -66,7 +66,7 @@ void main() {
       expect(find.text('Smart receipt scanning & automated expense management'),
           findsOneWidget);
       expect(find.text('AI Vision Parsing'), findsOneWidget);
-      expect(find.text('Offline-First Privacy'), findsOneWidget);
+      expect(find.text('Smart Spending Insights'), findsOneWidget);
       expect(find.text('Multi-Device Sync'), findsOneWidget);
       expect(find.text('Sign In'), findsOneWidget);
       expect(find.text('Create Account'), findsOneWidget);

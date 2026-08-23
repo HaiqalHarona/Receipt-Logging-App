@@ -159,10 +159,10 @@ class AuthScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 12),
                                   _buildFeatureRow(
-                                    icon: Icons.shield_rounded,
-                                    title: "Offline-First Privacy",
+                                    icon: Icons.auto_graph_rounded,
+                                    title: "Smart Spending Insights",
                                     subtitle:
-                                        "Private local storage on your device",
+                                        "Interactive analytics & expense breakdown",
                                     accent: accent,
                                     textPrimary: textPrimary,
                                     textSecondary: textSecondary,
