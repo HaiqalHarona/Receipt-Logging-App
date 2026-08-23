@@ -32,7 +32,7 @@ class OcrService {
     final List<Receipt> results = [];
     for (int i = 0; i < imagePaths.length; i++) {
       if (i > 0) {
-        // Pause 1.5 seconds between batch images to respect Gemini API rate limits
+        // Pause 1.5 seconds between batch images to respect API rate limits
         await Future.delayed(const Duration(milliseconds: 1500));
       }
       results.add(await _processSingleImage(

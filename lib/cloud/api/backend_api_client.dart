@@ -617,7 +617,7 @@ class BackendApiClient {
     }
   }
 
-  /// [DEPRECATED] Sends a single receipt image to Gemini 3.6 Flash Vision API synchronously.
+  /// [DEPRECATED] Sends a single receipt image to the Vision AI parsing API synchronously.
   ///
   /// Callers should migrate to [parseManyReceiptImages] (which supports 1–10 images).
   @Deprecated('Use parseManyReceiptImages instead')
@@ -669,7 +669,7 @@ class BackendApiClient {
       var body = jsonDecode(response.body) as Map<String, dynamic>;
       var dto = ScanResponseDto.fromJson(body);
 
-      // If Gemini rate-limited or transient error (and NOT an explicit invalid document error), retry once
+      // If AI provider rate-limited or transient error (and NOT an explicit invalid document error), retry once
       if (!dto.success || dto.data == null) {
         final errorMsg = dto.error ?? '';
         final isInvalidDocumentType =
@@ -873,7 +873,7 @@ class BackendApiClient {
         .toList();
   }
 
-  /// Sends a user message to Gemini 3.6 Flash via the backend (multi-store support).
+  /// Sends a user message to the AI Assistant via the backend (multi-store support).
   Future<ChatQueryResponseDto> sendChatQuery({
     required String message,
     required String requestType,
