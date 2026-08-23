@@ -252,7 +252,8 @@ class ReceiptRepository extends ChangeNotifier {
               final bytes = await file.readAsBytes();
               if (bytes.length <= 20 * 1024 * 1024) {
                 imageBytes = bytes;
-                filename = receipt.imagePath!.split(Platform.pathSeparator).last;
+                filename =
+                    receipt.imagePath!.split(Platform.pathSeparator).last;
               } else {
                 AppLogger.warning('CloudSync',
                     '[ReceiptRepository] Receipt image exceeds 20MB ceiling, omitting image upload.');
@@ -275,7 +276,7 @@ class ReceiptRepository extends ChangeNotifier {
             .then((record) async {
           AppLogger.info('CloudSync',
               '[ReceiptRepository] Cloud receipt created on Supabase (id=${record.id}, orig=${receipt.id}). Updating local Isar DB...');
-          
+
           // Local storage optimization: clean up local temp scan file once uploaded to cloud
           if (record.receiptImagePath != null && receipt.imagePath != null) {
             _cleanupLocalTemporaryFile(receipt.imagePath);
@@ -357,7 +358,8 @@ class ReceiptRepository extends ChangeNotifier {
               final bytes = await file.readAsBytes();
               if (bytes.length <= 20 * 1024 * 1024) {
                 imageBytes = bytes;
-                filename = receipt.imagePath!.split(Platform.pathSeparator).last;
+                filename =
+                    receipt.imagePath!.split(Platform.pathSeparator).last;
               } else {
                 AppLogger.warning('CloudSync',
                     '[ReceiptRepository] Receipt image exceeds 20MB ceiling, omitting image upload.');

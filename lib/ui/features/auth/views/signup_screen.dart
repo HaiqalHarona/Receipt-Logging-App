@@ -77,8 +77,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (username.isEmpty) {
       usernameErr = 'Username is required.';
       valid = false;
-    } else if (username.length < 3) {
-      usernameErr = 'Username must be at least 3 characters.';
+    } else if (!RegExp(r'^[a-zA-Z0-9_]{3,10}$').hasMatch(username)) {
+      usernameErr =
+          'Username must be 3-10 characters (letters, numbers, underscores only).';
       valid = false;
     }
 
@@ -93,8 +94,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (password.isEmpty) {
       passwordErr = 'Password is required.';
       valid = false;
-    } else if (password.length < 6) {
-      passwordErr = 'Password must be at least 6 characters.';
+    } else if (password.length < 8) {
+      passwordErr = 'Password must be at least 8 characters.';
+      valid = false;
+    } else if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      passwordErr = 'Password must contain at least one uppercase letter.';
+      valid = false;
+    } else if (!RegExp(r'[a-z]').hasMatch(password)) {
+      passwordErr = 'Password must contain at least one lowercase letter.';
+      valid = false;
+    } else if (!RegExp(r'[0-9]').hasMatch(password)) {
+      passwordErr = 'Password must contain at least one number.';
+      valid = false;
+    } else if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) {
+      passwordErr = 'Password must contain at least one special character.';
       valid = false;
     }
 

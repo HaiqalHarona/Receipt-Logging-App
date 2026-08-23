@@ -118,7 +118,8 @@ class DashboardViewModel extends ChangeNotifier {
       ? (AuthService.instance.currentUsername ?? _username)
       : (_isLoggedIn ? _username : null);
   String? get avatarImagePath => AuthService.instance.isLoggedIn
-      ? (AuthService.instance.cachedProfile?.avatarImagePath ?? _avatarImagePath)
+      ? (AuthService.instance.cachedProfile?.avatarImagePath ??
+          _avatarImagePath)
       : _avatarImagePath;
 
   void setLoginState(

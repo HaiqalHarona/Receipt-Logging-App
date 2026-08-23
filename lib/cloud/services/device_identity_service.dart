@@ -9,6 +9,7 @@
 //    Stored locally on device and sent in X-Device-Token for API requests.
 // 3. Registers device with backend via `POST /api/v1/devices/register` on boot.
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../services/app_logger_service.dart';
@@ -36,34 +37,47 @@ class DeviceIdentityService {
   bool get isInitialized => _isInitialized;
 
   /// Initializes device identity:
-  /// 1. Reads `deviceId` and `deviceToken` from SharedPreferences.
+  /// 1. Reads `deviceId` and `deviceToken` from SharedPreferences or `.env` fixed configuration.
   /// 2. Generates and saves them ONCE if missing.
   /// 3. Registers or refreshes the device with the backend (POST /api/v1/devices/register).
   Future<void> init(BackendApiClient apiClient) async {
     if (_isInitialized) return;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      const uuid = Uuid();
+      // Check if fixed development device ID is explicitly enabled via .env
+      final isFixedDevMode = dotenv.isInitialized &&
+          dotenv.maybeGet('USE_FIXED_DEVICE_ID') == 'true';
 
-      // Read or generate persistent deviceId
-      _deviceId = prefs.getString(_keyDeviceId);
-      if (_deviceId == null || _deviceId!.isEmpty) {
-        _deviceId = 'dev_${uuid.v4()}';
-        await prefs.setString(_keyDeviceId, _deviceId!);
-        AppLogger.info(
-            'DeviceIdentity', 'Generated new persistent deviceId: $_deviceId');
-      } else {
+      if (isFixedDevMode) {
+        _deviceId =
+            dotenv.maybeGet('FIXED_DEVICE_ID') ?? 'dev_fixed_debug_device_001';
+        _deviceToken = dotenv.maybeGet('FIXED_DEVICE_TOKEN') ??
+            'token_fixed_debug_secret_001';
         AppLogger.info('DeviceIdentity',
-            'Loaded existing persistent deviceId: $_deviceId');
-      }
+            'Loaded fixed development device identity from .env: $_deviceId');
+      } else {
+        final prefs = await SharedPreferences.getInstance();
+        const uuid = Uuid();
 
-      // Read or generate persistent deviceToken
-      _deviceToken = prefs.getString(_keyDeviceToken);
-      if (_deviceToken == null || _deviceToken!.isEmpty) {
-        _deviceToken = 'token_${uuid.v4()}';
-        await prefs.setString(_keyDeviceToken, _deviceToken!);
-        AppLogger.info('DeviceIdentity', 'Generated new deviceToken');
+        // Read or generate persistent deviceId
+        _deviceId = prefs.getString(_keyDeviceId);
+        if (_deviceId == null || _deviceId!.isEmpty) {
+          _deviceId = 'dev_${uuid.v4()}';
+          await prefs.setString(_keyDeviceId, _deviceId!);
+          AppLogger.info('DeviceIdentity',
+              'Generated new persistent deviceId: $_deviceId');
+        } else {
+          AppLogger.info('DeviceIdentity',
+              'Loaded existing persistent deviceId: $_deviceId');
+        }
+
+        // Read or generate persistent deviceToken
+        _deviceToken = prefs.getString(_keyDeviceToken);
+        if (_deviceToken == null || _deviceToken!.isEmpty) {
+          _deviceToken = 'token_${uuid.v4()}';
+          await prefs.setString(_keyDeviceToken, _deviceToken!);
+          AppLogger.info('DeviceIdentity', 'Generated new deviceToken');
+        }
       }
 
       // Register or refresh device identity with the backend

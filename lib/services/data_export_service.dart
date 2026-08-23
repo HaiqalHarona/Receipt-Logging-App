@@ -4,6 +4,8 @@
 // into a single JSON-serializable map for submission to POST /api/v1/devices/link
 // as `migrate_data` during sign-up.
 
+import 'dart:convert';
+import 'dart:io';
 import 'package:isar/isar.dart';
 import 'app_logger_service.dart';
 import 'category_service.dart';
@@ -20,7 +22,7 @@ class DataExportService {
   /// `DeviceLinkRequest.migrate_data` schema:
   /// ```json
   /// {
-  ///   "receipts": [ { "id": "...", "receipt": {...}, "created_at": "..." }, ... ],
+  ///   "receipts": [ { "id": "...", "receipt": {...}, "created_at": "...", "image_base64": "..." }, ... ],
   ///   "conversations": [ { "id": "...", "title": "...", "created_at": "...", "updated_at": "..." }, ... ],
   ///   "chat_messages": [ { "id": "...", "conversation_id": "...", "sender": "...", "content": "...", "created_at": "..." }, ... ]
   /// }
@@ -40,23 +42,49 @@ class DataExportService {
           conversations.where((c) => !_isUuid(c.id)).toList();
 
       // ── Receipts ────────────────────────────────────────────────────────────
-      final receiptsJson = guestReceipts
-          .map((r) => {
-                'id': r.id,
-                'receipt': {
-                  'merchant_name': r.merchant,
-                  'line_items': r.lineItems.map((l) => l.toJson()).toList(),
-                  'total_amount': r.amount,
-                  'currency': r.currency,
-                  'category': r.category,
-                  'date': r.date,
-                  'raw_text': '',
-                  'confidence_score': 0.0,
-                },
-                'created_at':
-                    (r.createdAt ?? DateTime.now()).toUtc().toIso8601String(),
-              })
-          .toList();
+      final List<Map<String, dynamic>> receiptsJson = [];
+      for (final r in guestReceipts) {
+        String? imageBase64;
+        String? imageFilename;
+        if (r.imagePath != null && r.imagePath!.isNotEmpty) {
+          try {
+            final file = File(r.imagePath!);
+            if (await file.exists()) {
+              final bytes = await file.readAsBytes();
+              if (bytes.length <= 10 * 1024 * 1024) {
+                imageBase64 = base64Encode(bytes);
+                imageFilename = r.imagePath!.split(Platform.pathSeparator).last;
+                AppLogger.debug('DataExport',
+                    'Exporting guest receipt image (${bytes.length} bytes) for receipt ${r.id}');
+              } else {
+                AppLogger.warning('DataExport',
+                    'Guest receipt image exceeds 10MB limit, omitting image for ${r.id}');
+              }
+            }
+          } catch (e) {
+            AppLogger.warning('DataExport',
+                'Could not read guest receipt image at ${r.imagePath}: $e');
+          }
+        }
+
+        receiptsJson.add({
+          'id': r.id,
+          'receipt': {
+            'merchant_name': r.merchant,
+            'line_items': r.lineItems.map((l) => l.toJson()).toList(),
+            'total_amount': r.amount,
+            'currency': r.currency,
+            'category': r.category,
+            'date': r.date,
+            'raw_text': '',
+            'confidence_score': 0.0,
+          },
+          'created_at':
+              (r.createdAt ?? DateTime.now()).toUtc().toIso8601String(),
+          if (imageBase64 != null) 'image_base64': imageBase64,
+          if (imageFilename != null) 'image_filename': imageFilename,
+        });
+      }
 
       // ── Conversations ────────────────────────────────────────────────────────
       final conversationsJson = guestConversations

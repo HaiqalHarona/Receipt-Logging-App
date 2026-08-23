@@ -847,8 +847,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
               depth: -2,
               intensity: 0.8,
               color: categoryColor.withValues(alpha: 0.08),
-              boxShape:
-                  NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
             ),
             child: SizedBox(
               width: 90,
@@ -892,8 +891,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
     Color baseColor,
   ) {
     return GestureDetector(
-      onTap: () =>
-          _showEnlargedReceiptDialog(context, imageProvider, merchant),
+      onTap: () => _showEnlargedReceiptDialog(context, imageProvider, merchant),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -902,8 +900,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
               depth: 3,
               intensity: 0.85,
               color: baseColor,
-              boxShape:
-                  NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
               border: NeumorphicBorder(
                 color: accent.withValues(alpha: 0.3),
                 width: 1.2,

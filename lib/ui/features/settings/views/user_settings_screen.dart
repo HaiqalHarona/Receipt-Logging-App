@@ -34,6 +34,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   bool _isLoggingOut = false;
   bool _isManualSyncing = false;
   bool _isUploadingAvatar = false;
+  bool _isExporting = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -89,13 +90,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
       if (mounted) {
         if (success) {
-          // Clear cached image instances so updated avatar renders immediately
+          await LocalImageCacheService.instance
+              .getOrFetchAvatar(size: 'medium', forceRefresh: true);
           PaintingBinding.instance.imageCache.clear();
           PaintingBinding.instance.imageCache.clearLiveImages();
-          setState(() {
-            _profile = AuthService.instance.cachedProfile;
-          });
-          AppSnackBar.show(context, message: "Avatar updated successfully!");
+          final updatedProfile =
+              await AuthService.instance.getOrFetchProfile(force: true);
+          if (mounted) {
+            setState(() {
+              _profile = updatedProfile ?? AuthService.instance.cachedProfile;
+            });
+            AppSnackBar.show(context, message: "Avatar updated successfully!");
+          }
         } else {
           AppSnackBar.show(
             context,
@@ -270,6 +276,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   Future<void> _onExportData() async {
+    if (_isExporting) return;
+    setState(() => _isExporting = true);
     try {
       final exportData = await DataExportService.instance.exportGuestData();
       final receiptsCount = (exportData['receipts'] as List).length;
@@ -287,6 +295,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           message: "Export failed: $e",
           isError: true,
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
       }
     }
   }
@@ -358,6 +370,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                   horizontal: 12, vertical: 2),
                               child: TextField(
                                 controller: countryCodeController,
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(10),
+                                ],
                                 style:
                                     TextStyle(color: textPrimary, fontSize: 14),
                                 decoration: const InputDecoration(
@@ -391,6 +406,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                               child: TextField(
                                 controller: mobileController,
                                 keyboardType: TextInputType.phone,
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(20),
+                                ],
                                 style:
                                     TextStyle(color: textPrimary, fontSize: 14),
                                 decoration: const InputDecoration(
@@ -1562,9 +1580,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   Widget _buildAvatarContent(String username, Color accent) {
-    final avatarPath = _profile?.avatarImagePath;
-    if (avatarPath != null && avatarPath.isNotEmpty) {
-      if (File(avatarPath).existsSync()) {
+    if (AuthService.instance.isLoggedIn) {
+      final avatarPath = _profile?.avatarImagePath;
+      if (avatarPath != null &&
+          avatarPath.isNotEmpty &&
+          File(avatarPath).existsSync()) {
         return ClipOval(
           child: Image.file(
             File(avatarPath),
@@ -1577,16 +1597,20 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       }
 
       return FutureBuilder<File?>(
-        future: LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium'),
+        future:
+            LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium'),
         builder: (context, snapshot) {
-          if (snapshot.hasData && snapshot.data != null) {
+          if (snapshot.hasData &&
+              snapshot.data != null &&
+              snapshot.data!.existsSync()) {
             return ClipOval(
               child: Image.file(
                 snapshot.data!,
                 fit: BoxFit.cover,
                 width: 60,
                 height: 60,
-                errorBuilder: (_, __, ___) => _buildAvatarInitial(username, accent),
+                errorBuilder: (_, __, ___) =>
+                    _buildAvatarInitial(username, accent),
               ),
             );
           }

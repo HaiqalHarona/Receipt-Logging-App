@@ -377,7 +377,8 @@ class AuthService extends ChangeNotifier {
     await CategoryService.instance.clearAll();
 
     // Purge local session image cache on logout
-    await LocalImageCacheService.instance.purgeUserSessionCache(oldUserId ?? oldUsername);
+    await LocalImageCacheService.instance
+        .purgeUserSessionCache(oldUserId ?? oldUsername);
     await LocalImageCacheService.instance.purgeAllSessionCaches();
 
     // Purge local Isar database collections & in-memory caches on logout

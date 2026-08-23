@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -5,6 +6,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/currency_service.dart';
+import '../../../../services/local_image_cache_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -136,6 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         AppThemeController.instance,
         CurrencyService.instance,
         AuthService.instance,
+        LocalImageCacheService.instance,
       ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
@@ -274,18 +277,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                                     child: SizedBox(
                                       width: 40,
                                       height: 40,
-                                      child: Center(
-                                        child: Text(
-                                          username.isNotEmpty
-                                              ? username[0].toUpperCase()
-                                              : "U",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: accent,
-                                          ),
-                                        ),
-                                      ),
+                                      child:
+                                          _buildAvatarBadge(username, accent),
                                     ),
                                   ),
                                   const SizedBox(width: 14),
@@ -771,6 +764,62 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAvatarBadge(String username, Color accent) {
+    if (AuthService.instance.isLoggedIn) {
+      final profile = AuthService.instance.cachedProfile;
+      final avatarPath = profile?.avatarImagePath;
+      if (avatarPath != null &&
+          avatarPath.isNotEmpty &&
+          File(avatarPath).existsSync()) {
+        return ClipOval(
+          child: Image.file(
+            File(avatarPath),
+            fit: BoxFit.cover,
+            width: 40,
+            height: 40,
+            errorBuilder: (_, __, ___) => _buildAvatarInitial(username, accent),
+          ),
+        );
+      }
+
+      return FutureBuilder<File?>(
+        future: LocalImageCacheService.instance.getOrFetchAvatar(size: 'small'),
+        builder: (context, snapshot) {
+          if (snapshot.hasData &&
+              snapshot.data != null &&
+              snapshot.data!.existsSync()) {
+            return ClipOval(
+              child: Image.file(
+                snapshot.data!,
+                fit: BoxFit.cover,
+                width: 40,
+                height: 40,
+                errorBuilder: (_, __, ___) =>
+                    _buildAvatarInitial(username, accent),
+              ),
+            );
+          }
+          return _buildAvatarInitial(username, accent);
+        },
+      );
+    }
+
+    return _buildAvatarInitial(username, accent);
+  }
+
+  Widget _buildAvatarInitial(String username, Color accent) {
+    return Center(
+      child: Text(
+        username.isNotEmpty ? username[0].toUpperCase() : "U",
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: accent,
+        ),
+      ),
     );
   }
 }

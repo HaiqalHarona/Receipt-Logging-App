@@ -512,8 +512,11 @@ class BackendApiClient {
             jsonDecode(response.body) as Map<String, dynamic>);
       } catch (e, st) {
         if (stopwatch.isRunning) stopwatch.stop();
-        AppLogger.error('HTTP',
-            '<-- ERROR PATCH $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+        AppLogger.error(
+            'HTTP',
+            '<-- ERROR PATCH $path (${stopwatch.elapsedMilliseconds}ms)',
+            e,
+            st);
         rethrow;
       }
     }
@@ -1112,8 +1115,11 @@ class BackendApiClient {
             jsonDecode(response.body) as Map<String, dynamic>);
       } catch (e, st) {
         if (stopwatch.isRunning) stopwatch.stop();
-        AppLogger.error('HTTP',
-            '<-- ERROR PATCH $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+        AppLogger.error(
+            'HTTP',
+            '<-- ERROR PATCH $path (${stopwatch.elapsedMilliseconds}ms)',
+            e,
+            st);
         rethrow;
       }
     }

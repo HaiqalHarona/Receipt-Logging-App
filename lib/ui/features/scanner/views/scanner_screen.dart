@@ -115,8 +115,12 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   Future<void> _capturePhoto() async {
-    if (_cameraController == null || !_isCameraInitialized || _isSubmitting)
+    if (_cameraController == null ||
+        !_isCameraInitialized ||
+        _cameraController!.value.isTakingPicture ||
+        _isSubmitting) {
       return;
+    }
 
     if (_isBulkMode && _queuedImages.length >= 10) {
       _showToast("Maximum of 10 receipts reached for bulk scan.");

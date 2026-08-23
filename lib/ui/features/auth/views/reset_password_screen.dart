@@ -49,8 +49,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (pwd.isEmpty) {
       pwdErr = 'Password is required.';
       valid = false;
-    } else if (pwd.length < 6) {
-      pwdErr = 'Password must be at least 6 characters.';
+    } else if (pwd.length < 8) {
+      pwdErr = 'Password must be at least 8 characters.';
+      valid = false;
+    } else if (!RegExp(r'[A-Z]').hasMatch(pwd)) {
+      pwdErr = 'Password must contain at least one uppercase letter.';
+      valid = false;
+    } else if (!RegExp(r'[a-z]').hasMatch(pwd)) {
+      pwdErr = 'Password must contain at least one lowercase letter.';
+      valid = false;
+    } else if (!RegExp(r'[0-9]').hasMatch(pwd)) {
+      pwdErr = 'Password must contain at least one number.';
+      valid = false;
+    } else if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(pwd)) {
+      pwdErr = 'Password must contain at least one special character.';
       valid = false;
     }
 

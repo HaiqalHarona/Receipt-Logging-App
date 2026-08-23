@@ -236,7 +236,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       } else {
         // Fetch securely from local session image cache or authenticated backend streaming
         return FutureBuilder<File?>(
-          future: LocalImageCacheService.instance.getOrFetchAvatar(size: 'small'),
+          future:
+              LocalImageCacheService.instance.getOrFetchAvatar(size: 'small'),
           builder: (context, snapshot) {
             if (snapshot.hasData && snapshot.data != null) {
               return Image.file(

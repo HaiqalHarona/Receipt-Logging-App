@@ -52,7 +52,8 @@ class LocalImageCacheService extends ChangeNotifier {
       return file;
     }
 
-    AppLogger.debug('LocalCache', 'Fetching avatar ($size) from backend for user $username...');
+    AppLogger.debug('LocalCache',
+        'Fetching avatar ($size) from backend for user $username...');
     final bytes = await BackendApiClient.instance.fetchUserAvatar(
       username: username,
       userToken: userToken,
@@ -61,7 +62,8 @@ class LocalImageCacheService extends ChangeNotifier {
 
     if (bytes != null && bytes.isNotEmpty) {
       await file.writeAsBytes(bytes, flush: true);
-      AppLogger.info('LocalCache', 'Saved avatar ($size) to session cache: ${file.path}');
+      AppLogger.info(
+          'LocalCache', 'Saved avatar ($size) to session cache: ${file.path}');
       notifyListeners();
       return file;
     }
@@ -103,7 +105,8 @@ class LocalImageCacheService extends ChangeNotifier {
       return file;
     }
 
-    AppLogger.debug('LocalCache', 'Fetching receipt image for $receiptId from backend...');
+    AppLogger.debug(
+        'LocalCache', 'Fetching receipt image for $receiptId from backend...');
     final bytes = await BackendApiClient.instance.fetchReceiptImage(
       receiptId: receiptId,
       username: username,
@@ -112,7 +115,8 @@ class LocalImageCacheService extends ChangeNotifier {
 
     if (bytes != null && bytes.isNotEmpty) {
       await file.writeAsBytes(bytes, flush: true);
-      AppLogger.info('LocalCache', 'Saved receipt image $receiptId to session cache: ${file.path}');
+      AppLogger.info('LocalCache',
+          'Saved receipt image $receiptId to session cache: ${file.path}');
       notifyListeners();
       return file;
     }
@@ -125,7 +129,8 @@ class LocalImageCacheService extends ChangeNotifier {
     required String size,
     required List<int> bytes,
   }) async {
-    final userId = AuthService.instance.currentUserId ?? AuthService.instance.currentUsername;
+    final userId = AuthService.instance.currentUserId ??
+        AuthService.instance.currentUsername;
     if (userId == null) return;
 
     final baseDir = await _getBaseDir();
@@ -136,7 +141,8 @@ class LocalImageCacheService extends ChangeNotifier {
 
     final file = File('${avatarDir.path}/$size.jpg');
     await file.writeAsBytes(bytes, flush: true);
-    AppLogger.info('LocalCache', 'Updated local session avatar ($size) at ${file.path}');
+    AppLogger.info(
+        'LocalCache', 'Updated local session avatar ($size) at ${file.path}');
     notifyListeners();
   }
 
@@ -145,7 +151,8 @@ class LocalImageCacheService extends ChangeNotifier {
     required String receiptId,
     required List<int> bytes,
   }) async {
-    final userId = AuthService.instance.currentUserId ?? AuthService.instance.currentUsername;
+    final userId = AuthService.instance.currentUserId ??
+        AuthService.instance.currentUsername;
     if (userId == null) return;
 
     final baseDir = await _getBaseDir();
@@ -156,7 +163,8 @@ class LocalImageCacheService extends ChangeNotifier {
 
     final file = File('${receiptsDir.path}/$receiptId.jpg');
     await file.writeAsBytes(bytes, flush: true);
-    AppLogger.info('LocalCache', 'Updated local session receipt image at ${file.path}');
+    AppLogger.info(
+        'LocalCache', 'Updated local session receipt image at ${file.path}');
     notifyListeners();
   }
 
@@ -168,10 +176,12 @@ class LocalImageCacheService extends ChangeNotifier {
       final userDir = Directory('${baseDir.path}/$userId');
       if (await userDir.exists()) {
         await userDir.delete(recursive: true);
-        AppLogger.info('LocalCache', 'Purged local session image cache for user: $userId');
+        AppLogger.info(
+            'LocalCache', 'Purged local session image cache for user: $userId');
       }
     } catch (e) {
-      AppLogger.warning('LocalCache', 'Error purging session cache for $userId: $e');
+      AppLogger.warning(
+          'LocalCache', 'Error purging session cache for $userId: $e');
     }
   }
 
