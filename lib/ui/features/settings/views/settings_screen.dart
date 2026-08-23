@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../cloud/services/device_identity_service.dart';
+import '../../../../services/app_logger_service.dart';
 import '../../../../services/currency_service.dart';
 import '../../../../services/local_image_cache_service.dart';
 
@@ -539,7 +542,63 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // ── SECTION 3: DEVELOPER TOOLS ────────────────────────
+                    // ── SECTION 3: SUPPORT & FEEDBACK ────────────────────
+                    _buildSectionHeader("SUPPORT & FEEDBACK", textSecondary),
+                    const SizedBox(height: 8),
+                    _buildSectionContainer(
+                      children: [
+                        // Submit Feedback Row
+                        InkWell(
+                          onTap: () => _showFeedbackBottomSheet(
+                            context,
+                            accent,
+                            textPrimary,
+                            textSecondary,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Submit Feedback",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Report an issue directly to our team",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.feedback_outlined,
+                                  color: accent,
+                                  size: 22,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ── SECTION 4: DEVELOPER TOOLS ────────────────────────
                     _buildSectionHeader("DEVELOPER TOOLS", textSecondary),
                     const SizedBox(height: 8),
                     _buildSectionContainer(
@@ -820,6 +879,398 @@ class _SettingsScreenState extends State<SettingsScreen>
           color: accent,
         ),
       ),
+    );
+  }
+
+  DateTime? _lastFeedbackSubmitTime;
+
+  void _showFeedbackBottomSheet(
+    BuildContext context,
+    Color accent,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    AppLogger.info('UI', 'User opened Submit Feedback bottom sheet');
+    final defaultSender = AuthService.instance.currentUsername ??
+        DeviceIdentityService.instance.deviceId;
+    final senderController = TextEditingController(text: defaultSender);
+    final descriptionController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (bottomSheetContext, setModalState) {
+            final descLength = descriptionController.text.trim().length;
+            final isValidLength = descLength >= 25;
+            final baseColor = NeumorphicTheme.baseColor(ctx);
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Handle bar
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: textSecondary.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Header Row
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.feedback_outlined,
+                              color: accent,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Submit Feedback",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Help us improve your receipt experience",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            icon: Icon(Icons.close_rounded,
+                                color: textSecondary, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Sender Input
+                      Text(
+                        "Sender",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: -3,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(12)),
+                          color: baseColor,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 4),
+                        child: TextField(
+                          controller: senderController,
+                          maxLength: 100,
+                          buildCounter: (
+                            _, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) =>
+                              null,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText: "Enter your username or ID",
+                            hintStyle: TextStyle(
+                              fontSize: 13,
+                              color: textSecondary.withValues(alpha: 0.6),
+                            ),
+                            prefixIcon: Icon(
+                              Icons.person_outline_rounded,
+                              size: 18,
+                              color: accent,
+                            ),
+                            prefixIconConstraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Description Input
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Feedback Description",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: textSecondary,
+                            ),
+                          ),
+                          Text(
+                            isValidLength
+                                ? "$descLength / 2000 chars"
+                                : "$descLength / 25 min chars",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isValidLength
+                                  ? (descLength <= 2000
+                                      ? const Color(0xFF10B981)
+                                      : Colors.red.shade400)
+                                  : Colors.orange.shade400,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Neumorphic(
+                        style: NeumorphicStyle(
+                          depth: -3,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(12)),
+                          color: baseColor,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        child: TextField(
+                          controller: descriptionController,
+                          maxLength: 2000,
+                          buildCounter: (
+                            _, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) =>
+                              null, // custom counter in header row above
+                          maxLines: 5,
+                          minLines: 3,
+                          onChanged: (_) => setModalState(() {}),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            hintText:
+                                "Tell us what you like or what we can improve (25 to 2000 characters)...",
+                            hintStyle: TextStyle(
+                              fontSize: 13,
+                              color: textSecondary.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+
+                      // Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: NeumorphicButtonWidget(
+                          borderRadius: 14,
+                          onPressed: (!isValidLength ||
+                                  descLength > 2000 ||
+                                  isSubmitting)
+                              ? null
+                              : () async {
+                                  final sender =
+                                      senderController.text.trim();
+                                  final desc =
+                                      descriptionController.text.trim();
+
+                                  if (sender.isEmpty) {
+                                    AppSnackBar.show(
+                                      context,
+                                      message: "Sender cannot be empty.",
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (sender.length > 100) {
+                                    AppSnackBar.show(
+                                      context,
+                                      message:
+                                          "Sender cannot exceed 100 characters.",
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (desc.length < 25) {
+                                    AppSnackBar.show(
+                                      context,
+                                      message:
+                                          "Feedback must be at least 25 characters long.",
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  if (desc.length > 2000) {
+                                    AppSnackBar.show(
+                                      context,
+                                      message:
+                                          "Feedback cannot exceed 2000 characters.",
+                                      isError: true,
+                                    );
+                                    return;
+                                  }
+
+                                  // Client-side 30s rate limit guard
+                                  if (_lastFeedbackSubmitTime != null) {
+                                    final elapsed = DateTime.now()
+                                        .difference(_lastFeedbackSubmitTime!)
+                                        .inSeconds;
+                                    if (elapsed < 30) {
+                                      final remaining = 30 - elapsed;
+                                      AppSnackBar.show(
+                                        context,
+                                        message:
+                                            "Please wait $remaining seconds before submitting feedback again.",
+                                        isError: true,
+                                      );
+                                      return;
+                                    }
+                                  }
+
+                                  setModalState(() => isSubmitting = true);
+                                  AppLogger.info('UI',
+                                      'Submitting feedback: sender=$sender, len=${desc.length}');
+
+                                  try {
+                                    final result = await BackendApiClient
+                                        .instance
+                                        .submitFeedback(
+                                      sender: sender,
+                                      description: desc,
+                                    );
+
+                                    _lastFeedbackSubmitTime = DateTime.now();
+
+                                    if (ctx.mounted) {
+                                      Navigator.of(ctx).pop();
+                                    }
+                                    if (context.mounted) {
+                                      AppSnackBar.show(
+                                        context,
+                                        message: result['message'] ??
+                                            "Thank you! Your feedback has been received.",
+                                      );
+                                    }
+                                  } catch (e) {
+                                    AppLogger.error('UI',
+                                        'Failed to submit feedback', e);
+                                    if (context.mounted) {
+                                      AppSnackBar.show(
+                                        context,
+                                        message:
+                                            "Failed to submit feedback: $e",
+                                        isError: true,
+                                      );
+                                    }
+                                  } finally {
+                                    if (ctx.mounted) {
+                                      setModalState(
+                                          () => isSubmitting = false);
+                                    }
+                                  }
+                                },
+                          child: Center(
+                            child: isSubmitting
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.send_rounded,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "Submit Feedback",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

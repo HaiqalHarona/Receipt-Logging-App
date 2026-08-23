@@ -40,6 +40,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -573,6 +574,49 @@ class BackendApiClient {
     final response = await _sendRequest('DELETE', uri, headers: headers);
 
     return response.statusCode == 200;
+  }
+
+  // ── HELP & FEEDBACK ─────────────────────────────────────────────────────────
+
+  /// Submits app feedback to POST /help/feedback (delivered via Discord Webhook).
+  ///
+  /// Returns a map with `{"success": true, "message": "..."}` on success.
+  /// Throws [ApiException] on error (e.g. HTTP 429 when rate-limited).
+  Future<Map<String, dynamic>> submitFeedback({
+    required String sender,
+    required String description,
+    String? appVersion,
+    String? deviceId,
+    String? platform,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/help/feedback');
+    final Map<String, String> headers = {
+      'Content-Type': 'application/json',
+      if (deviceId != null) 'X-Device-Name': deviceId,
+    };
+
+    final body = jsonEncode({
+      'sender': sender,
+      'description': description,
+      'app_version': appVersion ?? '1.0.0',
+      'device_id': deviceId,
+      'platform': platform ??
+          (Platform.isIOS
+              ? 'iOS'
+              : Platform.isAndroid
+                  ? 'Android'
+                  : 'Mobile'),
+    });
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: body,
+    );
+
+    _assertStatus(response, 200);
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   // ── RECEIPT SCANNING (AI OCR) ────────────────────────────────────────────────
