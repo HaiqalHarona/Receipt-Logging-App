@@ -163,3 +163,47 @@ jobs:
           name: ios-release-app
           path: build/ios/iphoneos/Runner.app
 
+  deploy-to-tailscale-server:
+    name: Deploy APK & Manifest to Tailscale Staging Server
+    needs: build-android
+    runs-on: ubuntu-latest
+    if: (github.ref_name == 'alpha' || github.ref_name == 'develop') && !cancelled()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Built APK
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-apk
+          path: ./staging_artifacts
+
+      - name: Download Staging Manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-manifest
+          path: ./staging_artifacts
+
+      - name: Connect to Tailscale
+        if: env.HAS_TS_SECRET == 'true'
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+        env:
+          HAS_TS_SECRET: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
+
+      - name: Copy APK and Manifest to Staging Server over Tailscale
+        if: env.HAS_TS_SECRET == 'true' && env.HAS_HOST_SECRET == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "./staging_artifacts/*"
+          target: ${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}
+          strip_components: 1
+        env:
+          HAS_TS_SECRET: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
+          HAS_HOST_SECRET: ${{ secrets.SERVER_HOST != '' && secrets.SERVER_SSH_KEY != '' }}
+
+
