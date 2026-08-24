@@ -83,14 +83,12 @@ class ScanBatchController extends ChangeNotifier {
 
     // ── Resolve identity credentials ─────────────────────────────────────
     final isUser = AuthService.instance.isLoggedIn &&
-        AuthService.instance.currentUsername != null &&
-        AuthService.instance.currentUserToken != null;
+        AuthService.instance.currentUsername != null;
 
     final requestType = isUser ? 'user' : 'guest';
     final deviceName = isUser ? null : ApiConfig.deviceId;
     final deviceToken = isUser ? null : ApiConfig.deviceToken;
     final username = isUser ? AuthService.instance.currentUsername : null;
-    final userToken = isUser ? AuthService.instance.currentUserToken : null;
 
     // ── Read image bytes ──────────────────────────────────────────────────
     List<({List<int> bytes, String filename})> imageFiles;
@@ -115,7 +113,6 @@ class ScanBatchController extends ChangeNotifier {
         deviceName: deviceName,
         deviceToken: deviceToken,
         username: username,
-        userToken: userToken,
       );
     } catch (e) {
       AppLogger.error('ScanBatch', 'POST /scan/parse-many failed', e);
@@ -150,7 +147,6 @@ class ScanBatchController extends ChangeNotifier {
       deviceName: deviceName,
       deviceToken: deviceToken,
       username: username,
-      userToken: userToken,
     );
 
     _listenSse(

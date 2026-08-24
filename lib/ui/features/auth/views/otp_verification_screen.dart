@@ -1,5 +1,6 @@
 // File: lib/ui/features/auth/views/otp_verification_screen.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -28,7 +29,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialDevOtp != null) {
+    if (kDebugMode && widget.initialDevOtp != null) {
       _otpController.text = widget.initialDevOtp!;
     }
   }

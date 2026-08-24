@@ -317,12 +317,16 @@ class _LoginScreenState extends State<LoginScreen> {
         await _purgeLocalGuestData();
       }
 
-      // Persist session locally
-      await AuthService.instance.saveSession(user, userToken: password);
+      // Persist session locally with JWT tokens
+      await AuthService.instance.saveSession(
+        user,
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
 
       // Perform hardware device linking and cloud data sync asynchronously in the background
       unawaited(AuthService.instance
-          .linkCurrentDevice(user, userToken: password)
+          .linkCurrentDevice(user)
           .then((_) => CloudSyncService.instance.syncOnLogin())
           .catchError((e, st) {
         AppLogger.error(

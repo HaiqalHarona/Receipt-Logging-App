@@ -70,8 +70,7 @@ class CloudSyncService {
 
     try {
       final username = AuthService.instance.currentUsername;
-      final token = AuthService.instance.currentUserToken;
-      if (username == null || token == null) return;
+      if (username == null) return;
 
       AppLogger.info('CloudSync',
           'Starting login sync for user $username (session: $sessionId)...');
@@ -82,7 +81,6 @@ class CloudSyncService {
       // ── 2. Conversations Load (Limit 20) ───────────────────────────────────
       final convDtos = await BackendApiClient.instance.fetchConversations(
         username: username,
-        userToken: token,
         limit: 20,
         offset: 0,
       );
@@ -108,7 +106,7 @@ class CloudSyncService {
       if (isFullSyncComplete) {
         AppLogger.info('CloudSync',
             'Full sync previously completed for $username and local receipts present (${ReceiptRepository.instance.receipts.length}). Running delta sync...');
-        await _runDeltaSync(username, token, prefs);
+        await _runDeltaSync(username, prefs);
       } else {
         AppLogger.info('CloudSync',
             'No local receipts or full sync incomplete for $username. Fetching initial 50 receipts for instant render...');
@@ -129,7 +127,6 @@ class CloudSyncService {
           // Launch non-blocking background hydration loop for the rest of history
           unawaited(_startBackgroundReceiptHydration(
             username: username,
-            userToken: token,
             startOffset: 50,
             chunkSize: 50,
             sessionId: sessionId,
@@ -149,7 +146,6 @@ class CloudSyncService {
   /// with a 1-second interval until the server returns an empty or partial page.
   Future<void> _startBackgroundReceiptHydration({
     required String username,
-    required String userToken,
     required int startOffset,
     required int chunkSize,
     required int sessionId,
@@ -202,7 +198,6 @@ class CloudSyncService {
   /// Fast Delta Sync: Fetches only receipts created/updated after the last sync timestamp.
   Future<void> _runDeltaSync(
     String username,
-    String token,
     SharedPreferences prefs,
   ) async {
     try {
@@ -219,7 +214,6 @@ class CloudSyncService {
 
       final recordDtos = await BackendApiClient.instance.fetchReceipts(
         username: username,
-        userToken: token,
         updatedAfter: lastSyncStr,
       );
 
@@ -245,10 +239,9 @@ class CloudSyncService {
   /// and saves them into local Isar DB. Returns the count of receipts loaded.
   Future<int> fetchMoreReceipts({required int offset, int limit = 50}) async {
     final username = AuthService.instance.currentUsername;
-    final token = AuthService.instance.currentUserToken;
-    if (username == null || token == null) {
+    if (!AuthService.instance.isLoggedIn || username == null) {
       AppLogger.warning(
-          'CloudSync', 'fetchMoreReceipts skipped: username or token null');
+          'CloudSync', 'fetchMoreReceipts skipped: user not logged in');
       return 0;
     }
 
@@ -257,7 +250,6 @@ class CloudSyncService {
           'Executing fetchReceipts for user $username (offset: $offset, limit: $limit)...');
       final recordDtos = await BackendApiClient.instance.fetchReceipts(
         username: username,
-        userToken: token,
         limit: limit,
         offset: offset,
       );
@@ -286,14 +278,12 @@ class CloudSyncService {
   Future<void> ensureChatHistoryLoaded(String conversationId,
       {int limit = 50}) async {
     final username = AuthService.instance.currentUsername;
-    final token = AuthService.instance.currentUserToken;
-    if (username == null || token == null) return;
+    if (!AuthService.instance.isLoggedIn || username == null) return;
 
     try {
       final messageDtos = await BackendApiClient.instance.fetchChatHistory(
         conversationId: conversationId,
         username: username,
-        userToken: token,
         limit: limit,
         offset: 0,
       );

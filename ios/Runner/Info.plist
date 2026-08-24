@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Receipt Logger requires camera access to scan and OCR physical receipts and invoices.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Receipt Logger requires photo library access to import receipt images for scanning and analysis.</string>
 </dict>
 </plist>

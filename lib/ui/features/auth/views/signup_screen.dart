@@ -160,12 +160,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
         password: password,
       );
 
+      // Obtain signed JWT session tokens
+      final loginResp = await BackendApiClient.instance.loginUser(
+        username: username,
+        password: password,
+      );
+
       // Auto login: persist session and link hardware device
       // Pass migrateData only when there is actual guest data to migrate.
-      await AuthService.instance.saveSession(user, userToken: password);
+      await AuthService.instance.saveSession(
+        user,
+        accessToken: loginResp.accessToken,
+        refreshToken: loginResp.refreshToken,
+      );
       await AuthService.instance.linkCurrentDevice(
         user,
-        userToken: password,
         migrateData: hasGuestData ? guestData : null,
       );
 

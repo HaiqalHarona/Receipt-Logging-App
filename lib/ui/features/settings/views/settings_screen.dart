@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -596,57 +597,58 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-
-                    // ── SECTION 4: DEVELOPER TOOLS ────────────────────────
-                    _buildSectionHeader("DEVELOPER TOOLS", textSecondary),
-                    const SizedBox(height: 8),
-                    _buildSectionContainer(
-                      children: [
-                        // Isar Database Viewer Row
-                        InkWell(
-                          onTap: () => context.push('/settings/db-viewer'),
-                          borderRadius: BorderRadius.circular(18),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Isar Database Viewer",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 24),
+                      // ── SECTION 4: DEVELOPER TOOLS ────────────────────────
+                      _buildSectionHeader("DEVELOPER TOOLS", textSecondary),
+                      const SizedBox(height: 8),
+                      _buildSectionContainer(
+                        children: [
+                          // Isar Database Viewer Row
+                          InkWell(
+                            onTap: () => context.push('/settings/db-viewer'),
+                            borderRadius: BorderRadius.circular(18),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Isar Database Viewer",
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: textPrimary,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Inspect stored receipts & live storage",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          "Inspect stored receipts & live storage",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: textSecondary,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                Icon(
-                                  Icons.storage_rounded,
-                                  color: accent,
-                                  size: 22,
-                                ),
-                              ],
+                                  Icon(
+                                    Icons.storage_rounded,
+                                    color: accent,
+                                    size: 22,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

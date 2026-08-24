@@ -10,6 +10,7 @@
 //   5. Provides clearSession() for logout.
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:isar/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/app_logger_service.dart';
@@ -41,9 +42,19 @@ class AuthService extends ChangeNotifier {
   static const String _keyMobileNumber = 'session_mobile_number';
   static const String _keyAvatarImagePath = 'session_avatar_image_path';
 
+  static const String _secureKeyAccessToken = 'secure_jwt_access_token';
+  static const String _secureKeyRefreshToken = 'secure_jwt_refresh_token';
+
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
   String? _userId;
   String? _username;
   String? _userToken;
+  String? _accessToken;
+  String? _refreshToken;
   String? _email;
   String? _countryCode;
   String? _mobileNumber;
@@ -60,8 +71,14 @@ class AuthService extends ChangeNotifier {
   /// Returns the persisted username, or null if not signed in.
   String? get currentUsername => _username;
 
-  /// Returns the persisted user authentication password token.
+  /// Returns the persisted user authentication password token (legacy fallback).
   String? get currentUserToken => _userToken;
+
+  /// Returns the cryptographically signed JWT access token.
+  String? get accessToken => _accessToken;
+
+  /// Returns the cryptographically signed JWT refresh token.
+  String? get refreshToken => _refreshToken;
 
   /// Returns the persisted email address, or null if not signed in.
   String? get currentEmail => _email;
@@ -71,7 +88,7 @@ class AuthService extends ChangeNotifier {
 
   // ── INITIALIZATION ──────────────────────────────────────────────────────────
 
-  /// Loads persisted session from SharedPreferences on app startup.
+  /// Loads persisted session from SharedPreferences & SecureStorage on app startup.
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -82,6 +99,14 @@ class AuthService extends ChangeNotifier {
       _countryCode = prefs.getString(_keyCountryCode);
       _mobileNumber = prefs.getString(_keyMobileNumber);
       _avatarImagePath = prefs.getString(_keyAvatarImagePath);
+
+      // Load secure JWT tokens from hardware-backed KeyStore / Keychain
+      try {
+        _accessToken = await _secureStorage.read(key: _secureKeyAccessToken);
+        _refreshToken = await _secureStorage.read(key: _secureKeyRefreshToken);
+      } catch (e) {
+        AppLogger.warning('AuthService', 'Secure storage read warning: $e');
+      }
 
       if (_userId != null &&
           _userId!.isNotEmpty &&
@@ -102,7 +127,7 @@ class AuthService extends ChangeNotifier {
       }
 
       AppLogger.info('AuthService',
-          'Session loaded: userId=$_userId, username=$_username');
+          'Session loaded: userId=$_userId, username=$_username, hasJwt=${_accessToken != null}');
       notifyListeners();
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to load session', e, st);
@@ -167,7 +192,7 @@ class AuthService extends ChangeNotifier {
   /// **Caching Rule**: Fetches from backend via `GET /user/me` ONLY ONCE if not cached (unless [force] is true).
   /// Subsequent reads immediately return the cached [UserRecordDto] without making extra HTTP calls.
   Future<UserRecordDto?> getOrFetchProfile({bool force = false}) async {
-    if (!isLoggedIn || _username == null || _userToken == null) return null;
+    if (!isLoggedIn || _username == null) return null;
 
     // Return cached profile if already present with complete details and not forced
     if (!force && _cachedProfile != null && _cachedProfile!.id.isNotEmpty) {
@@ -180,8 +205,7 @@ class AuthService extends ChangeNotifier {
       AppLogger.info('AuthService',
           'Fetching profile from backend for username: $_username');
       final fetched = await BackendApiClient.instance.fetchUserProfile(
-        username: _username!,
-        userToken: _userToken!,
+        username: _username,
       );
 
       _cachedProfile = fetched;
@@ -199,12 +223,11 @@ class AuthService extends ChangeNotifier {
     required String countryCode,
     required String mobileNumber,
   }) async {
-    if (!isLoggedIn || _username == null || _userToken == null) return false;
+    if (!isLoggedIn || _username == null) return false;
 
     try {
       final updated = await BackendApiClient.instance.updateUserProfile(
-        username: _username!,
-        userToken: _userToken!,
+        username: _username,
         countryCode: countryCode,
         mobileNumber: mobileNumber,
       );
@@ -228,7 +251,7 @@ class AuthService extends ChangeNotifier {
     required List<int> imageBytes,
     required String filename,
   }) async {
-    if (!isLoggedIn || _username == null || _userToken == null) return false;
+    if (!isLoggedIn || _username == null) return false;
 
     // Enforce 20MB client-side validation
     if (imageBytes.length > 20 * 1024 * 1024) {
@@ -239,8 +262,7 @@ class AuthService extends ChangeNotifier {
 
     try {
       final updated = await BackendApiClient.instance.updateUserProfile(
-        username: _username!,
-        userToken: _userToken!,
+        username: _username,
         avatarBytes: imageBytes,
         avatarFilename: filename,
       );
@@ -276,12 +298,11 @@ class AuthService extends ChangeNotifier {
   /// Updates custom user categories via `PATCH /user/me` and updates local cache.
   Future<bool> updateCustomCategories(
       List<CustomCategoryDto> customCategories) async {
-    if (!isLoggedIn || _username == null || _userToken == null) return false;
+    if (!isLoggedIn || _username == null) return false;
 
     try {
       final updated = await BackendApiClient.instance.updateUserProfile(
-        username: _username!,
-        userToken: _userToken!,
+        username: _username,
         customCategories: customCategories,
       );
 
@@ -300,12 +321,33 @@ class AuthService extends ChangeNotifier {
 
   // ── SESSION MANAGEMENT ──────────────────────────────────────────────────────
 
-  /// Persists a new user session and cached profile locally.
-  Future<void> saveSession(UserRecordDto user, {String? userToken}) async {
+  /// Persists a new user session, JWT tokens, and cached profile locally.
+  Future<void> saveSession(
+    UserRecordDto user, {
+    String? userToken,
+    String? accessToken,
+    String? refreshToken,
+  }) async {
     _userId = user.id;
     _username = user.username;
     if (userToken != null && userToken.isNotEmpty) {
       _userToken = userToken;
+    }
+    if (accessToken != null && accessToken.isNotEmpty) {
+      _accessToken = accessToken;
+      try {
+        await _secureStorage.write(key: _secureKeyAccessToken, value: accessToken);
+      } catch (e) {
+        AppLogger.warning('AuthService', 'Failed to write accessToken to secure storage: $e');
+      }
+    }
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      _refreshToken = refreshToken;
+      try {
+        await _secureStorage.write(key: _secureKeyRefreshToken, value: refreshToken);
+      } catch (e) {
+        AppLogger.warning('AuthService', 'Failed to write refreshToken to secure storage: $e');
+      }
     }
     _email = user.email;
     _countryCode = user.countryCode;
@@ -318,14 +360,26 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates JWT tokens in memory and secure storage after refresh.
+  Future<void> updateJwtTokens({required String accessToken, required String refreshToken}) async {
+    _accessToken = accessToken;
+    _refreshToken = refreshToken;
+    try {
+      await _secureStorage.write(key: _secureKeyAccessToken, value: accessToken);
+      await _secureStorage.write(key: _secureKeyRefreshToken, value: refreshToken);
+      AppLogger.info('AuthService', 'JWT tokens rotated successfully');
+    } catch (e) {
+      AppLogger.warning('AuthService', 'Failed to persist rotated tokens to secure storage: $e');
+    }
+  }
+
   Future<void> _persistProfile(UserRecordDto user) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyUserId, user.id);
       await prefs.setString(_keyUsername, user.username);
-      if (_userToken != null) {
-        await prefs.setString(_keyUserToken, _userToken!);
-      }
+      // Remove legacy plaintext password storage if present
+      await prefs.remove(_keyUserToken);
       await prefs.setString(_keyEmail, user.email);
       if (user.countryCode != null) {
         await prefs.setString(_keyCountryCode, user.countryCode!);
@@ -365,11 +419,34 @@ class AuthService extends ChangeNotifier {
     _userId = null;
     _username = null;
     _userToken = null;
+    _accessToken = null;
+    _refreshToken = null;
     _email = null;
     _countryCode = null;
     _mobileNumber = null;
     _avatarImagePath = null;
     _cachedProfile = null;
+
+    try {
+      await _secureStorage.delete(key: _secureKeyAccessToken);
+      await _secureStorage.delete(key: _secureKeyRefreshToken);
+    } catch (e) {
+      AppLogger.warning('AuthService', 'Failed to clear secure storage tokens: $e');
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyUserId);
+      await prefs.remove(_keyUsername);
+      await prefs.remove(_keyUserToken);
+      await prefs.remove(_keyEmail);
+      await prefs.remove(_keyCountryCode);
+      await prefs.remove(_keyMobileNumber);
+      await prefs.remove(_keyAvatarImagePath);
+    } catch (e) {
+      AppLogger.warning('AuthService', 'Failed to clear SharedPreferences: $e');
+    }
+
     CloudSyncService.instance.cancelBackgroundSync();
     if (oldUsername != null) {
       await CloudSyncService.instance.resetSyncState(oldUsername);

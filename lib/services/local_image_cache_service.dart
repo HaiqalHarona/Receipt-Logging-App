@@ -37,10 +37,9 @@ class LocalImageCacheService extends ChangeNotifier {
     bool forceRefresh = false,
   }) async {
     final username = AuthService.instance.currentUsername;
-    final userToken = AuthService.instance.currentUserToken;
     final userId = AuthService.instance.currentUserId ?? username;
 
-    if (username == null || userToken == null || userId == null) {
+    if (!AuthService.instance.isLoggedIn || username == null || userId == null) {
       return null;
     }
 
@@ -53,7 +52,6 @@ class LocalImageCacheService extends ChangeNotifier {
 
     final future = _fetchAvatarInternal(
       username: username,
-      userToken: userToken,
       userId: userId,
       size: size,
       forceRefresh: forceRefresh,
@@ -69,7 +67,6 @@ class LocalImageCacheService extends ChangeNotifier {
 
   Future<File?> _fetchAvatarInternal({
     required String username,
-    required String userToken,
     required String userId,
     required String size,
     required bool forceRefresh,
@@ -89,7 +86,6 @@ class LocalImageCacheService extends ChangeNotifier {
         'Fetching avatar ($size) from backend for user $username...');
     final bytes = await BackendApiClient.instance.fetchUserAvatar(
       username: username,
-      userToken: userToken,
       size: size,
     );
 
@@ -121,10 +117,9 @@ class LocalImageCacheService extends ChangeNotifier {
     }
 
     final username = AuthService.instance.currentUsername;
-    final userToken = AuthService.instance.currentUserToken;
     final userId = AuthService.instance.currentUserId ?? username;
 
-    if (username == null || userToken == null || userId == null) {
+    if (!AuthService.instance.isLoggedIn || username == null || userId == null) {
       return null;
     }
 
@@ -138,7 +133,6 @@ class LocalImageCacheService extends ChangeNotifier {
     final future = _fetchReceiptImageInternal(
       receiptId: receiptId,
       username: username,
-      userToken: userToken,
       userId: userId,
       forceRefresh: forceRefresh,
     );
@@ -154,7 +148,6 @@ class LocalImageCacheService extends ChangeNotifier {
   Future<File?> _fetchReceiptImageInternal({
     required String receiptId,
     required String username,
-    required String userToken,
     required String userId,
     required bool forceRefresh,
   }) async {
@@ -174,7 +167,6 @@ class LocalImageCacheService extends ChangeNotifier {
     final bytes = await BackendApiClient.instance.fetchReceiptImage(
       receiptId: receiptId,
       username: username,
-      userToken: userToken,
     );
 
     if (bytes != null && bytes.isNotEmpty) {

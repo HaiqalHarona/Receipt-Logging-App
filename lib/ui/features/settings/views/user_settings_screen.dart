@@ -620,7 +620,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
     try {
       final user = _profile ?? AuthService.instance.cachedProfile;
-      final token = AuthService.instance.currentUserToken;
 
       final exportData = await DataExportService.instance.exportGuestData();
       final hasLocalData = (exportData['receipts'] as List).isNotEmpty ||
@@ -628,11 +627,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           (exportData['chat_messages'] as List).isNotEmpty;
 
       // Best-effort pre-logout cloud sync
-      if (hasLocalData && user != null && token != null) {
+      if (hasLocalData && user != null) {
         try {
           await AuthService.instance.linkCurrentDevice(
             user,
-            userToken: token,
             migrateData: exportData,
           );
         } catch (e) {

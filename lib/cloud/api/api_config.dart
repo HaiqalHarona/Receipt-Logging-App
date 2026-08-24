@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../services/auth_service.dart';
 import '../services/device_identity_service.dart';
 
 class ApiConfig {
@@ -50,30 +51,52 @@ class ApiConfig {
 
   /// Builds user-scoped headers (GET/PATCH/DELETE /user/me, /receipts/*, /chat/*).
   static Map<String, String> buildUserHeaders({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
+    String? accessToken,
   }) {
-    return {
+    final token = accessToken ?? AuthService.instance.accessToken;
+    final user = username ?? AuthService.instance.currentUsername;
+    final headers = <String, String>{
       'Content-Type': 'application/json',
-      'X-User-Name': username,
-      'X-User-Token': userToken,
     };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (user != null && user.isNotEmpty) {
+      headers['X-User-Name'] = user;
+    }
+    if (userToken != null && userToken.isNotEmpty) {
+      headers['X-User-Token'] = userToken;
+    }
+    return headers;
   }
 
   /// Builds 4-header link bridge headers required by POST /devices/link.
   static Map<String, String> buildLinkBridgeHeaders({
     required String deviceName,
     required String deviceToken,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
+    String? accessToken,
   }) {
-    return {
+    final token = accessToken ?? AuthService.instance.accessToken;
+    final user = username ?? AuthService.instance.currentUsername;
+    final headers = <String, String>{
       'Content-Type': 'application/json',
       'X-Device-Name': deviceName,
       'X-Device-Token': deviceToken,
-      'X-User-Name': username,
-      'X-User-Token': userToken,
     };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (user != null && user.isNotEmpty) {
+      headers['X-User-Name'] = user;
+    }
+    if (userToken != null && userToken.isNotEmpty) {
+      headers['X-User-Token'] = userToken;
+    }
+    return headers;
   }
 
   /// Builds scoped headers required by /scan/* and POST /chat/query.
@@ -83,6 +106,7 @@ class ApiConfig {
     String? deviceToken,
     String? username,
     String? userToken,
+    String? accessToken,
   }) {
     final cleanType = requestType.trim().toLowerCase();
     if (cleanType == 'guest') {
@@ -93,12 +117,22 @@ class ApiConfig {
         'X-Device-Token': deviceToken ?? '',
       };
     } else {
-      return {
+      final token = accessToken ?? AuthService.instance.accessToken;
+      final user = username ?? AuthService.instance.currentUsername;
+      final headers = <String, String>{
         'Content-Type': 'application/json',
         'X-Request-Type': 'user',
-        'X-User-Name': username ?? '',
-        'X-User-Token': userToken ?? '',
       };
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      if (user != null && user.isNotEmpty) {
+        headers['X-User-Name'] = user;
+      }
+      if (userToken != null && userToken.isNotEmpty) {
+        headers['X-User-Token'] = userToken;
+      }
+      return headers;
     }
   }
 

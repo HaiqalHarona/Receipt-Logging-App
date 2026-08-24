@@ -279,8 +279,7 @@ class ReceiptRepository extends ChangeNotifier {
   void _createInCloudIfLoggedIn(Receipt receipt) async {
     if (AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
-      final userToken = AuthService.instance.currentUserToken;
-      if (username != null && userToken != null) {
+      if (username != null) {
         AppLogger.info('CloudSync',
             '[ReceiptRepository] Triggering backend POST /receipts/create on Supabase for ${receipt.id} (${receipt.merchant})...');
 
@@ -310,7 +309,6 @@ class ReceiptRepository extends ChangeNotifier {
             .saveReceipt(
           receipt: ReceiptDto.fromDomain(receipt),
           username: username,
-          userToken: userToken,
           imageBytes: imageBytes,
           filename: filename,
         )
@@ -384,8 +382,7 @@ class ReceiptRepository extends ChangeNotifier {
   void _updateCloudIfSynced(Receipt receipt) async {
     if (_isUuid(receipt.id) && AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
-      final userToken = AuthService.instance.currentUserToken;
-      if (username != null && userToken != null) {
+      if (username != null) {
         AppLogger.info('CloudSync',
             '[ReceiptRepository] Triggering backend PATCH /receipts/${receipt.id} on Supabase...');
 
@@ -417,7 +414,6 @@ class ReceiptRepository extends ChangeNotifier {
           receiptId: receipt.id,
           receipt: ReceiptDto.fromDomain(receipt),
           username: username,
-          userToken: userToken,
           imageBytes: imageBytes,
           filename: filename,
         )
@@ -521,15 +517,13 @@ class ReceiptRepository extends ChangeNotifier {
   void _deleteFromCloudIfSynced(String id) {
     if (_isUuid(id) && AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
-      final userToken = AuthService.instance.currentUserToken;
-      if (username != null && userToken != null) {
+      if (username != null) {
         AppLogger.info('CloudSync',
             '[ReceiptRepository] Triggering backend DELETE /receipts/$id on Supabase...');
         BackendApiClient.instance
             .deleteReceipt(
           receiptId: id,
           username: username,
-          userToken: userToken,
         )
             .then((success) {
           if (success) {

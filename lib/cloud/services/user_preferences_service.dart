@@ -40,11 +40,8 @@ class UserPreferencesService {
   /// Immediately pushes the current local preferences to the cloud.
   Future<void> syncNow() async {
     final username = AuthService.instance.currentUsername;
-    final userToken = AuthService.instance.currentUserToken;
 
-    if (!AuthService.instance.isLoggedIn ||
-        username == null ||
-        userToken == null) {
+    if (!AuthService.instance.isLoggedIn || username == null) {
       return;
     }
 
@@ -54,7 +51,6 @@ class UserPreferencesService {
           'UserPreferencesService', 'Syncing preferences to cloud: $payload');
       await BackendApiClient.instance.updateUserPreferences(
         username: username,
-        userToken: userToken,
         preferences: payload,
       );
       AppLogger.info('UserPreferencesService',
