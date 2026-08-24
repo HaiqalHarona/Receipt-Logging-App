@@ -59,6 +59,7 @@ dependencies:
   collection: ^1.18.0
   flutter_dotenv: ^6.0.1
   shared_preferences: ^2.3.5
+  cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:

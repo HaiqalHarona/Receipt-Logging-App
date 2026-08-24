@@ -399,9 +399,7 @@ class ScanBatchController extends ChangeNotifier {
     final isGuest = !AuthService.instance.isLoggedIn;
     final id = isGuest
         ? 'res-guest-${job.jobId.isNotEmpty ? job.jobId : DateTime.now().millisecondsSinceEpoch}'
-        : (job.jobId.isNotEmpty
-            ? job.jobId
-            : 'res-${DateTime.now().millisecondsSinceEpoch}');
+        : 'res-scan-${job.jobId.isNotEmpty ? job.jobId : DateTime.now().millisecondsSinceEpoch}';
     final lineItems = dto.lineItems.map((li) => li.toDomain()).toList();
     final items = dto.lineItems.map((li) {
       final parts = <String>[li.description];

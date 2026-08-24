@@ -148,6 +148,19 @@ void main() {
       await repo.saveAllReceipts([batchReceipt]);
       expect(repo.receipts.any((r) => r.id == 'test_guest_r2'), isTrue);
 
+      const cloudReceipt = Receipt(
+        id: 'test_cloud_r3',
+        merchant: 'Target Store',
+        date: '2026-08-22',
+        amount: 32.10,
+        currency: 'USD',
+        category: 'Shopping',
+        items: ['Household Goods - \$32.10'],
+      );
+
+      await repo.saveBatchFromCloud([cloudReceipt]);
+      expect(repo.receipts.any((r) => r.id == 'test_cloud_r3'), isTrue);
+
       await repo.deleteReceipt('test_guest_r1');
       expect(repo.receipts.any((r) => r.id == 'test_guest_r1'), isFalse);
     });

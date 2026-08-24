@@ -30,6 +30,7 @@ class UserSettingsScreen extends StatefulWidget {
 
 class _UserSettingsScreenState extends State<UserSettingsScreen> {
   UserRecordDto? _profile;
+  Future<File?>? _avatarFuture;
   bool _isLoading = true;
   bool _isLoggingOut = false;
   bool _isManualSyncing = false;
@@ -43,6 +44,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     AppLogger.info('UI', 'UserSettingsScreen initialized');
     _profile = AuthService.instance.cachedProfile;
     _isLoading = _profile == null;
+    _avatarFuture =
+        LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium');
     _loadProfile();
   }
 
@@ -90,8 +93,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
       if (mounted) {
         if (success) {
-          await LocalImageCacheService.instance
-              .getOrFetchAvatar(size: 'medium', forceRefresh: true);
+          setState(() {
+            _avatarFuture = LocalImageCacheService.instance
+                .getOrFetchAvatar(size: 'medium', forceRefresh: true);
+          });
+          await _avatarFuture;
           PaintingBinding.instance.imageCache.clear();
           PaintingBinding.instance.imageCache.clearLiveImages();
           final updatedProfile =
@@ -1597,9 +1603,22 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       }
 
       return FutureBuilder<File?>(
-        future:
+        future: _avatarFuture ??=
             LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium'),
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: accent,
+                ),
+              ),
+            );
+          }
+
           if (snapshot.hasData &&
               snapshot.data != null &&
               snapshot.data!.existsSync()) {

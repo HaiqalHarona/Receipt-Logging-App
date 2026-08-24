@@ -129,7 +129,7 @@ class ReceiptRepository extends ChangeNotifier {
     _createInCloudIfLoggedIn(receiptToSave);
   }
 
-  /// Saves multiple receipts at once (e.g., from Bulk Review).
+  /// Saves multiple receipts at once (e.g., from Bulk Review / Verification Screen).
   Future<void> saveAllReceipts(List<Receipt> newReceipts) async {
     final List<Receipt> preparedReceipts = [];
     for (final r in newReceipts) {
@@ -191,10 +191,51 @@ class ReceiptRepository extends ChangeNotifier {
     }
     notifyListeners();
     for (final r in preparedReceipts) {
-      if (!_isUuid(r.id)) {
-        _createInCloudIfLoggedIn(r);
-      }
+      _createInCloudIfLoggedIn(r);
     }
+  }
+
+  /// Saves multiple cloud-synced receipts directly to Isar DB without triggering outbound cloud create calls.
+  Future<void> saveBatchFromCloud(List<Receipt> cloudReceipts) async {
+    if (cloudReceipts.isEmpty) return;
+
+    if (IsarService.isInitialized) {
+      final isar = IsarService.isar;
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: saving ${cloudReceipts.length} synced cloud receipts');
+      await isar.writeTxn(() async {
+        for (final receipt in cloudReceipts) {
+          final existing = await isar.receiptIsarModels
+              .where()
+              .receiptIdEqualTo(receipt.id)
+              .findFirst();
+          final model = ReceiptIsarModel.fromDomain(receipt);
+          if (existing != null) {
+            model.id = existing.id;
+            if (receipt.createdAt == null) {
+              model.createdAt = existing.createdAt;
+            }
+          }
+          await isar.receiptIsarModels.put(model);
+        }
+      });
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Saved ${cloudReceipts.length} cloud receipts to Isar DB.');
+      await _loadFromIsar();
+    } else {
+      for (final receipt in cloudReceipts) {
+        final index =
+            _receipts.indexWhere((existing) => existing.id == receipt.id);
+        if (index >= 0) {
+          _receipts[index] = receipt;
+        } else {
+          _receipts.insert(0, receipt);
+        }
+      }
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Saved ${cloudReceipts.length} cloud receipts to in-memory store.');
+    }
+    notifyListeners();
   }
 
   Future<String?> _persistGuestImageLocally(
@@ -236,7 +277,7 @@ class ReceiptRepository extends ChangeNotifier {
   }
 
   void _createInCloudIfLoggedIn(Receipt receipt) async {
-    if (!_isUuid(receipt.id) && AuthService.instance.isLoggedIn) {
+    if (AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
       final userToken = AuthService.instance.currentUserToken;
       if (username != null && userToken != null) {

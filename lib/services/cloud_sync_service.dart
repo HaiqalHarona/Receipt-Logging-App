@@ -226,7 +226,7 @@ class CloudSyncService {
       if (recordDtos.isNotEmpty) {
         final domainReceipts =
             recordDtos.map((record) => _recordDtoToDomain(record)).toList();
-        await ReceiptRepository.instance.saveAllReceipts(domainReceipts);
+        await ReceiptRepository.instance.saveBatchFromCloud(domainReceipts);
         AppLogger.info('CloudSync',
             'Delta sync updated ${domainReceipts.length} receipts in Isar DB.');
       } else {
@@ -270,7 +270,7 @@ class CloudSyncService {
 
       final domainReceipts =
           recordDtos.map((record) => _recordDtoToDomain(record)).toList();
-      await ReceiptRepository.instance.saveAllReceipts(domainReceipts);
+      await ReceiptRepository.instance.saveBatchFromCloud(domainReceipts);
       AppLogger.info('CloudSync',
           'Loaded ${domainReceipts.length} receipts into Isar DB (offset: $offset)');
       return domainReceipts.length;
