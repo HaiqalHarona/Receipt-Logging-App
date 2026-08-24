@@ -195,14 +195,13 @@ jobs:
 
       - name: Copy APK and Manifest to Staging Server over Tailscale
         if: env.HAS_TS_SECRET == 'true' && env.HAS_HOST_SECRET == 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "./staging_artifacts/*"
-          target: ${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}
-          strip_components: 1
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts || true
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ./staging_artifacts/app-release.apk ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}/app-release.apk
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ./staging_artifacts/staging_manifest.json ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}/staging_manifest.json
         env:
           HAS_TS_SECRET: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
           HAS_HOST_SECRET: ${{ secrets.SERVER_HOST != '' && secrets.SERVER_SSH_KEY != '' }}
