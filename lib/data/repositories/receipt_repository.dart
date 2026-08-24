@@ -127,7 +127,11 @@ class ReceiptRepository extends ChangeNotifier {
           '[ReceiptRepository] Saved receipt ${receiptToSave.id} to in-memory store.');
     }
     notifyListeners();
-    _createInCloudIfLoggedIn(receiptToSave);
+    if (!_isUuid(receiptToSave.id)) {
+      _createInCloudIfLoggedIn(receiptToSave);
+    } else {
+      _updateCloudIfSynced(receiptToSave);
+    }
   }
 
   /// Saves multiple receipts at once (e.g., from Bulk Review / Verification Screen).
@@ -192,7 +196,11 @@ class ReceiptRepository extends ChangeNotifier {
     }
     notifyListeners();
     for (final r in preparedReceipts) {
-      _createInCloudIfLoggedIn(r);
+      if (!_isUuid(r.id)) {
+        _createInCloudIfLoggedIn(r);
+      } else {
+        _updateCloudIfSynced(r);
+      }
     }
   }
 
@@ -278,6 +286,12 @@ class ReceiptRepository extends ChangeNotifier {
   }
 
   void _createInCloudIfLoggedIn(Receipt receipt) async {
+    // Only create in cloud if it is a new/unsynced receipt (i.e. NOT already a UUID)
+    if (_isUuid(receipt.id)) {
+      AppLogger.debug('CloudSync',
+          '[ReceiptRepository] Skipping _createInCloudIfLoggedIn for already-synced UUID ${receipt.id}');
+      return;
+    }
     if (AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
       if (username != null) {
@@ -484,8 +498,56 @@ class ReceiptRepository extends ChangeNotifier {
 
   /// Updates a receipt in local Isar and triggers an async PATCH to Supabase when logged in.
   Future<void> updateReceipt(Receipt receipt) async {
-    await saveReceipt(receipt);
-    _updateCloudIfSynced(receipt);
+    var receiptToSave = receipt.createdAt != null
+        ? receipt
+        : receipt.copyWith(createdAt: DateTime.now());
+
+    // In guest mode, ensure ID is prefixed with 'res-guest-' if bare UUID
+    if (!AuthService.instance.isLoggedIn) {
+      if (_isUuid(receiptToSave.id)) {
+        receiptToSave =
+            receiptToSave.copyWith(id: 'res-guest-${receiptToSave.id}');
+      }
+    }
+
+    if (IsarService.isInitialized) {
+      final isar = IsarService.isar;
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: updating receipt ${receiptToSave.id} (${receiptToSave.merchant})');
+      await isar.writeTxn(() async {
+        final existing = await isar.receiptIsarModels
+            .where()
+            .receiptIdEqualTo(receiptToSave.id)
+            .findFirst();
+        final model = ReceiptIsarModel.fromDomain(receiptToSave);
+        if (existing != null) {
+          model.id = existing.id;
+          if (receipt.createdAt == null) {
+            model.createdAt = existing.createdAt;
+          }
+        }
+        await isar.receiptIsarModels.put(model);
+      });
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Updated receipt ${receiptToSave.id} in Isar DB.');
+      await _loadFromIsar();
+    } else {
+      final index = _receipts.indexWhere((r) => r.id == receiptToSave.id);
+      if (index >= 0) {
+        _receipts[index] = receiptToSave;
+      } else {
+        _receipts.insert(0, receiptToSave);
+      }
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Updated receipt ${receiptToSave.id} in in-memory store.');
+    }
+    notifyListeners();
+
+    if (_isUuid(receiptToSave.id)) {
+      _updateCloudIfSynced(receiptToSave);
+    } else {
+      _createInCloudIfLoggedIn(receiptToSave);
+    }
   }
 
   /// Removes a category tag from all stored receipts.

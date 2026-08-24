@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/app_logger_service.dart';
 import '../../services/category_service.dart';
 import '../../services/cloud_sync_service.dart';
+import '../../services/sync_coordinator.dart';
 import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
 import '../models/user_models.dart';
@@ -427,6 +428,8 @@ class AuthService extends ChangeNotifier {
     _avatarImagePath = null;
     _cachedProfile = null;
 
+    UserPreferencesService.instance.cancelPendingSync();
+
     try {
       await _secureStorage.delete(key: _secureKeyAccessToken);
       await _secureStorage.delete(key: _secureKeyRefreshToken);
@@ -476,6 +479,12 @@ class AuthService extends ChangeNotifier {
     } catch (e, st) {
       AppLogger.error('AuthService',
           'Failed to purge ChatMessageRepository during logout', e, st);
+    }
+    try {
+      await SyncCoordinator.instance.clearOutbox();
+    } catch (e, st) {
+      AppLogger.error('AuthService',
+          'Failed to clear SyncCoordinator outbox during logout', e, st);
     }
 
     try {

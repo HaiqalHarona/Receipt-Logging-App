@@ -37,6 +37,12 @@ class UserPreferencesService {
     });
   }
 
+  /// Cancels any pending scheduled sync timer (e.g. on logout or teardown).
+  void cancelPendingSync() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+  }
+
   /// Immediately pushes the current local preferences to the cloud.
   Future<void> syncNow() async {
     final username = AuthService.instance.currentUsername;
@@ -70,6 +76,10 @@ class UserPreferencesService {
       'theme_mode': ThemeMode.values.indexOf(theme.themeMode),
       'dark_preset_idx': theme.selectedDarkPresetIndex,
       'light_preset_idx': theme.selectedLightPresetIndex,
+      if (theme.customDarkAccentColor != null)
+        'dark_accent_color': theme.customDarkAccentColor!.toARGB32(),
+      if (theme.customLightAccentColor != null)
+        'light_accent_color': theme.customLightAccentColor!.toARGB32(),
       'neuro_depth': theme.neuDepth,
       'font_scale': theme.fontScale,
     };
@@ -101,18 +111,28 @@ class UserPreferencesService {
         theme.setThemeMode(ThemeMode.values[modeIdx]);
       }
 
-      // 3. Presets
+      // 3. Presets & Custom Accents
       final darkIdx = preferences['dark_preset_idx'] as int?;
       if (darkIdx != null) {
-        if (theme.isDarkMode) {
-          theme.selectPreset(darkIdx);
-        }
+        theme.selectPreset(darkIdx);
       }
       final lightIdx = preferences['light_preset_idx'] as int?;
       if (lightIdx != null) {
-        if (!theme.isDarkMode) {
-          theme.selectPreset(lightIdx);
-        }
+        theme.selectPreset(lightIdx);
+      }
+
+      final darkAccent = preferences['dark_accent_color'] as int?;
+      if (darkAccent != null) {
+        theme.setCustomDarkAccentColor(Color(darkAccent));
+      } else {
+        theme.setCustomDarkAccentColor(null);
+      }
+
+      final lightAccent = preferences['light_accent_color'] as int?;
+      if (lightAccent != null) {
+        theme.setCustomLightAccentColor(Color(lightAccent));
+      } else {
+        theme.setCustomLightAccentColor(null);
       }
 
       // 4. Depth & Font Scale

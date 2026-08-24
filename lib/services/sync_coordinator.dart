@@ -13,7 +13,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cloud/api/backend_api_client.dart';
 import '../cloud/models/receipt_models.dart';
 import '../cloud/services/auth_service.dart';
-import '../domain/models/receipt.dart';
 import 'app_logger_service.dart';
 
 enum MutationAction { create, update, delete }
@@ -122,9 +121,11 @@ class SyncCoordinator extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
 
-    // If an update or delete arrives for an existing pending create, optimize the queue
+    // If an update or delete arrives for an existing pending mutation, optimize the queue
     if (action == MutationAction.delete) {
       _outbox.removeWhere((m) => m.entityId == entityId);
+    } else {
+      _outbox.removeWhere((m) => m.entityId == entityId && m.action == action);
     }
 
     _outbox.add(mutation);
@@ -186,6 +187,11 @@ class SyncCoordinator extends ChangeNotifier {
     switch (mutation.action) {
       case MutationAction.create:
         if (mutation.payload != null) {
+          if (_isUuid(mutation.entityId)) {
+            AppLogger.debug('SyncCoordinator',
+                'Skipping create mutation for already-synced UUID ${mutation.entityId}');
+            break;
+          }
           final receiptDto = ReceiptDto.fromJson(mutation.payload!);
           List<int>? imageBytes;
           String? filename;
@@ -274,6 +280,14 @@ class SyncCoordinator extends ChangeNotifier {
     } catch (e) {
       AppLogger.warning('SyncCoordinator', 'Failed to persist outbox: $e');
     }
+  }
+
+  bool _isUuid(String id) {
+    if (id.isEmpty) return false;
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    return uuidRegex.hasMatch(id);
   }
 
   @override

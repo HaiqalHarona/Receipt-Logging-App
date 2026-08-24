@@ -76,7 +76,7 @@ class CloudSyncService {
           'Starting login sync for user $username (session: $sessionId)...');
 
       // ── 1. Fetch User Profile ──────────────────────────────────────────────
-      await AuthService.instance.getOrFetchProfile();
+      await AuthService.instance.getOrFetchProfile(force: true);
 
       // ── 2. Conversations Load (Limit 20) ───────────────────────────────────
       final convDtos = await BackendApiClient.instance.fetchConversations(

@@ -78,6 +78,9 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
   double _neuDepth = 6.0;
   double _fontScale = 1.0;
 
+  Color? get customDarkAccentColor => _customDarkAccentColor;
+  Color? get customLightAccentColor => _customLightAccentColor;
+
   int get selectedDarkPresetIndex => _selectedDarkPresetIndex;
   int get selectedLightPresetIndex => _selectedLightPresetIndex;
   double get neuDepth => _neuDepth;
@@ -427,6 +430,18 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
     } else {
       _customLightAccentColor = color;
     }
+    _persist();
+    notifyListeners();
+  }
+
+  void setCustomDarkAccentColor(Color? color) {
+    _customDarkAccentColor = color;
+    _persist();
+    notifyListeners();
+  }
+
+  void setCustomLightAccentColor(Color? color) {
+    _customLightAccentColor = color;
     _persist();
     notifyListeners();
   }
