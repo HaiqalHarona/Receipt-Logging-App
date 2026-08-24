@@ -75,8 +75,7 @@ class OcrService {
     String? backendErrorDetails;
     try {
       final bool isUser = AuthService.instance.isLoggedIn &&
-          AuthService.instance.currentUsername != null &&
-          AuthService.instance.currentUserToken != null;
+          AuthService.instance.currentUsername != null;
 
       final dto = await _api.parseReceiptImage(
         imageBytes: bytes,
@@ -85,7 +84,6 @@ class OcrService {
         deviceName: isUser ? null : ApiConfig.deviceId,
         deviceToken: isUser ? null : ApiConfig.deviceToken,
         username: isUser ? AuthService.instance.currentUsername : null,
-        userToken: isUser ? AuthService.instance.currentUserToken : null,
       );
 
       if (dto != null) {

@@ -107,11 +107,19 @@ class UserLoginResponseDto {
     required this.success,
     required this.message,
     this.user,
+    this.accessToken,
+    this.refreshToken,
+    this.tokenType = 'bearer',
+    this.expiresIn,
   });
 
   final bool success;
   final String message;
   final UserRecordDto? user;
+  final String? accessToken;
+  final String? refreshToken;
+  final String tokenType;
+  final int? expiresIn;
 
   factory UserLoginResponseDto.fromJson(Map<String, dynamic> json) {
     return UserLoginResponseDto(
@@ -120,6 +128,10 @@ class UserLoginResponseDto {
       user: json['user'] != null
           ? UserRecordDto.fromJson(json['user'] as Map<String, dynamic>)
           : null,
+      accessToken: json['access_token'] as String?,
+      refreshToken: json['refresh_token'] as String?,
+      tokenType: (json['token_type'] as String?) ?? 'bearer',
+      expiresIn: json['expires_in'] as int?,
     );
   }
 }

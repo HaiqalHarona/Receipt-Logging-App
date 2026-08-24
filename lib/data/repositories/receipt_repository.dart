@@ -14,6 +14,7 @@ import '../models/receipt_isar.dart';
 import '../../cloud/api/backend_api_client.dart';
 import '../../cloud/models/receipt_models.dart';
 import '../../cloud/services/auth_service.dart';
+import '../../services/sync_coordinator.dart';
 import '../../ui/core/utils/category_utils.dart';
 
 /// Single source of truth for receipt data.
@@ -126,10 +127,14 @@ class ReceiptRepository extends ChangeNotifier {
           '[ReceiptRepository] Saved receipt ${receiptToSave.id} to in-memory store.');
     }
     notifyListeners();
-    _createInCloudIfLoggedIn(receiptToSave);
+    if (!_isUuid(receiptToSave.id)) {
+      _createInCloudIfLoggedIn(receiptToSave);
+    } else {
+      _updateCloudIfSynced(receiptToSave);
+    }
   }
 
-  /// Saves multiple receipts at once (e.g., from Bulk Review).
+  /// Saves multiple receipts at once (e.g., from Bulk Review / Verification Screen).
   Future<void> saveAllReceipts(List<Receipt> newReceipts) async {
     final List<Receipt> preparedReceipts = [];
     for (final r in newReceipts) {
@@ -193,8 +198,53 @@ class ReceiptRepository extends ChangeNotifier {
     for (final r in preparedReceipts) {
       if (!_isUuid(r.id)) {
         _createInCloudIfLoggedIn(r);
+      } else {
+        _updateCloudIfSynced(r);
       }
     }
+  }
+
+  /// Saves multiple cloud-synced receipts directly to Isar DB without triggering outbound cloud create calls.
+  Future<void> saveBatchFromCloud(List<Receipt> cloudReceipts) async {
+    if (cloudReceipts.isEmpty) return;
+
+    if (IsarService.isInitialized) {
+      final isar = IsarService.isar;
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: saving ${cloudReceipts.length} synced cloud receipts');
+      await isar.writeTxn(() async {
+        for (final receipt in cloudReceipts) {
+          final existing = await isar.receiptIsarModels
+              .where()
+              .receiptIdEqualTo(receipt.id)
+              .findFirst();
+          final model = ReceiptIsarModel.fromDomain(receipt);
+          if (existing != null) {
+            model.id = existing.id;
+            if (receipt.createdAt == null) {
+              model.createdAt = existing.createdAt;
+            }
+          }
+          await isar.receiptIsarModels.put(model);
+        }
+      });
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Saved ${cloudReceipts.length} cloud receipts to Isar DB.');
+      await _loadFromIsar();
+    } else {
+      for (final receipt in cloudReceipts) {
+        final index =
+            _receipts.indexWhere((existing) => existing.id == receipt.id);
+        if (index >= 0) {
+          _receipts[index] = receipt;
+        } else {
+          _receipts.insert(0, receipt);
+        }
+      }
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Saved ${cloudReceipts.length} cloud receipts to in-memory store.');
+    }
+    notifyListeners();
   }
 
   Future<String?> _persistGuestImageLocally(
@@ -236,10 +286,15 @@ class ReceiptRepository extends ChangeNotifier {
   }
 
   void _createInCloudIfLoggedIn(Receipt receipt) async {
-    if (!_isUuid(receipt.id) && AuthService.instance.isLoggedIn) {
+    // Only create in cloud if it is a new/unsynced receipt (i.e. NOT already a UUID)
+    if (_isUuid(receipt.id)) {
+      AppLogger.debug('CloudSync',
+          '[ReceiptRepository] Skipping _createInCloudIfLoggedIn for already-synced UUID ${receipt.id}');
+      return;
+    }
+    if (AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
-      final userToken = AuthService.instance.currentUserToken;
-      if (username != null && userToken != null) {
+      if (username != null) {
         AppLogger.info('CloudSync',
             '[ReceiptRepository] Triggering backend POST /receipts/create on Supabase for ${receipt.id} (${receipt.merchant})...');
 
@@ -269,7 +324,6 @@ class ReceiptRepository extends ChangeNotifier {
             .saveReceipt(
           receipt: ReceiptDto.fromDomain(receipt),
           username: username,
-          userToken: userToken,
           imageBytes: imageBytes,
           filename: filename,
         )
@@ -332,9 +386,15 @@ class ReceiptRepository extends ChangeNotifier {
         }).catchError((e, st) {
           AppLogger.error(
               'CloudSync',
-              '[ReceiptRepository] Error executing POST /receipts/ for ${receipt.id}',
+              '[ReceiptRepository] Error executing POST /receipts/ for ${receipt.id}. Enqueuing to SyncCoordinator outbox.',
               e,
               st);
+          SyncCoordinator.instance.enqueueMutation(
+            entityId: receipt.id,
+            action: MutationAction.create,
+            payload: ReceiptDto.fromDomain(receipt).toJson(),
+            localImagePath: receipt.imagePath,
+          );
         });
       }
     }
@@ -343,8 +403,7 @@ class ReceiptRepository extends ChangeNotifier {
   void _updateCloudIfSynced(Receipt receipt) async {
     if (_isUuid(receipt.id) && AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
-      final userToken = AuthService.instance.currentUserToken;
-      if (username != null && userToken != null) {
+      if (username != null) {
         AppLogger.info('CloudSync',
             '[ReceiptRepository] Triggering backend PATCH /receipts/${receipt.id} on Supabase...');
 
@@ -376,7 +435,6 @@ class ReceiptRepository extends ChangeNotifier {
           receiptId: receipt.id,
           receipt: ReceiptDto.fromDomain(receipt),
           username: username,
-          userToken: userToken,
           imageBytes: imageBytes,
           filename: filename,
         )
@@ -409,9 +467,15 @@ class ReceiptRepository extends ChangeNotifier {
         }).catchError((e, st) {
           AppLogger.error(
               'CloudSync',
-              '[ReceiptRepository] Error executing PATCH /receipts/${receipt.id}',
+              '[ReceiptRepository] Error executing PATCH /receipts/${receipt.id}. Enqueuing to SyncCoordinator outbox.',
               e,
               st);
+          SyncCoordinator.instance.enqueueMutation(
+            entityId: receipt.id,
+            action: MutationAction.update,
+            payload: ReceiptDto.fromDomain(receipt).toJson(),
+            localImagePath: originalLocalPath,
+          );
         });
       }
     }
@@ -434,8 +498,56 @@ class ReceiptRepository extends ChangeNotifier {
 
   /// Updates a receipt in local Isar and triggers an async PATCH to Supabase when logged in.
   Future<void> updateReceipt(Receipt receipt) async {
-    await saveReceipt(receipt);
-    _updateCloudIfSynced(receipt);
+    var receiptToSave = receipt.createdAt != null
+        ? receipt
+        : receipt.copyWith(createdAt: DateTime.now());
+
+    // In guest mode, ensure ID is prefixed with 'res-guest-' if bare UUID
+    if (!AuthService.instance.isLoggedIn) {
+      if (_isUuid(receiptToSave.id)) {
+        receiptToSave =
+            receiptToSave.copyWith(id: 'res-guest-${receiptToSave.id}');
+      }
+    }
+
+    if (IsarService.isInitialized) {
+      final isar = IsarService.isar;
+      AppLogger.info('Isar',
+          '[ReceiptRepository] Transaction write: updating receipt ${receiptToSave.id} (${receiptToSave.merchant})');
+      await isar.writeTxn(() async {
+        final existing = await isar.receiptIsarModels
+            .where()
+            .receiptIdEqualTo(receiptToSave.id)
+            .findFirst();
+        final model = ReceiptIsarModel.fromDomain(receiptToSave);
+        if (existing != null) {
+          model.id = existing.id;
+          if (receipt.createdAt == null) {
+            model.createdAt = existing.createdAt;
+          }
+        }
+        await isar.receiptIsarModels.put(model);
+      });
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Updated receipt ${receiptToSave.id} in Isar DB.');
+      await _loadFromIsar();
+    } else {
+      final index = _receipts.indexWhere((r) => r.id == receiptToSave.id);
+      if (index >= 0) {
+        _receipts[index] = receiptToSave;
+      } else {
+        _receipts.insert(0, receiptToSave);
+      }
+      AppLogger.debug('Isar',
+          '[ReceiptRepository] Updated receipt ${receiptToSave.id} in in-memory store.');
+    }
+    notifyListeners();
+
+    if (_isUuid(receiptToSave.id)) {
+      _updateCloudIfSynced(receiptToSave);
+    } else {
+      _createInCloudIfLoggedIn(receiptToSave);
+    }
   }
 
   /// Removes a category tag from all stored receipts.
@@ -480,15 +592,13 @@ class ReceiptRepository extends ChangeNotifier {
   void _deleteFromCloudIfSynced(String id) {
     if (_isUuid(id) && AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
-      final userToken = AuthService.instance.currentUserToken;
-      if (username != null && userToken != null) {
+      if (username != null) {
         AppLogger.info('CloudSync',
             '[ReceiptRepository] Triggering backend DELETE /receipts/$id on Supabase...');
         BackendApiClient.instance
             .deleteReceipt(
           receiptId: id,
           username: username,
-          userToken: userToken,
         )
             .then((success) {
           if (success) {
@@ -501,9 +611,13 @@ class ReceiptRepository extends ChangeNotifier {
         }).catchError((e, st) {
           AppLogger.error(
               'CloudSync',
-              '[ReceiptRepository] Error executing DELETE /receipts/$id',
+              '[ReceiptRepository] Error executing DELETE /receipts/$id. Enqueuing to SyncCoordinator outbox.',
               e,
               st);
+          SyncCoordinator.instance.enqueueMutation(
+            entityId: id,
+            action: MutationAction.delete,
+          );
         });
       }
     }

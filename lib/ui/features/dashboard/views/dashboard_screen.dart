@@ -57,40 +57,64 @@ class _DashboardScreenState extends State<DashboardScreen>
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _viewModel.isLoggedIn &&
-                                        _viewModel.username != null &&
-                                        _viewModel.username!.isNotEmpty
-                                    ? "Welcome back, ${_viewModel.username}."
-                                    : "Welcome back",
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
+                          child: _viewModel.isLoggedIn &&
+                                  _viewModel.username != null &&
+                                  _viewModel.username!.isNotEmpty
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Welcome back,",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _viewModel.username!,
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Welcome back",
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Here is your spending breakdown",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: textSecondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Here is your spending breakdown",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         if (_viewModel.isLoggedIn)
                           GestureDetector(
                             onTap: () => context.push('/user-settings'),
                             child: _buildAvatarWidget(
                                 _viewModel.avatarImagePath,
+                                _viewModel.username ?? 'User',
                                 accent,
                                 textSecondary,
                                 controller),
@@ -183,11 +207,11 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Widget _buildAvatarWidget(
     String? path,
+    String username,
     Color accent,
     Color fallbackColor,
     AppThemeController controller,
   ) {
-    final isDark = controller.isDarkMode;
     final base = controller.currentBaseColor;
 
     return Neumorphic(
@@ -197,63 +221,85 @@ class _DashboardScreenState extends State<DashboardScreen>
         boxShape: const NeumorphicBoxShape.circle(),
         color: base,
         border: NeumorphicBorder(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.white.withValues(alpha: 0.6),
-          width: 0.8,
+          color: accent.withValues(alpha: 0.8),
+          width: 1.5,
         ),
       ),
       child: SizedBox(
-        width: 38,
-        height: 38,
+        width: 50,
+        height: 50,
         child: ClipOval(
-          child: _buildAvatarImage(path, accent, fallbackColor),
+          child: _buildAvatarImage(path, username, accent, fallbackColor),
         ),
       ),
     );
   }
 
-  Widget _buildAvatarImage(String? path, Color accent, Color fallbackColor) {
+  Widget _buildAvatarImage(
+    String? path,
+    String username,
+    Color accent,
+    Color fallbackColor,
+  ) {
     if (path != null && path.isNotEmpty) {
       if (path.startsWith('http://') || path.startsWith('https://')) {
         return Image.network(
           path,
           fit: BoxFit.cover,
-          width: 38,
-          height: 38,
-          errorBuilder: (_, __, ___) =>
-              Icon(Icons.person_rounded, color: accent, size: 22),
+          width: 50,
+          height: 50,
+          errorBuilder: (_, __, ___) => _buildAvatarFallback(username, accent),
         );
       } else if (File(path).existsSync()) {
         return Image.file(
           File(path),
           fit: BoxFit.cover,
-          width: 38,
-          height: 38,
-          errorBuilder: (_, __, ___) =>
-              Icon(Icons.person_rounded, color: accent, size: 22),
+          width: 50,
+          height: 50,
+          errorBuilder: (_, __, ___) => _buildAvatarFallback(username, accent),
         );
       } else {
         // Fetch securely from local session image cache or authenticated backend streaming
         return FutureBuilder<File?>(
           future:
-              LocalImageCacheService.instance.getOrFetchAvatar(size: 'small'),
+              LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium'),
           builder: (context, snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
+            if (snapshot.hasData &&
+                snapshot.data != null &&
+                snapshot.data!.existsSync()) {
               return Image.file(
                 snapshot.data!,
                 fit: BoxFit.cover,
-                width: 38,
-                height: 38,
+                width: 50,
+                height: 50,
                 errorBuilder: (_, __, ___) =>
-                    Icon(Icons.person_rounded, color: accent, size: 22),
+                    _buildAvatarFallback(username, accent),
               );
             }
-            return Icon(Icons.person_rounded, color: accent, size: 22);
+            return _buildAvatarFallback(username, accent);
           },
         );
       }
     }
-    return Icon(Icons.person_rounded, color: accent, size: 22);
+    return _buildAvatarFallback(username, accent);
+  }
+
+  Widget _buildAvatarFallback(String username, Color accent) {
+    final initial = username.trim().isNotEmpty
+        ? username.trim()[0].toUpperCase()
+        : '';
+    if (initial.isNotEmpty) {
+      return Center(
+        child: Text(
+          initial,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: accent,
+          ),
+        ),
+      );
+    }
+    return Icon(Icons.person_rounded, color: accent, size: 26);
   }
 }

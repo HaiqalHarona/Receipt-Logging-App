@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
-import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../core/utils/category_utils.dart';
 
@@ -214,33 +213,6 @@ class HistoryViewModel extends ChangeNotifier {
 
   String formatReceiptPrice(Receipt receipt) {
     return '-${_currencyService.format(receipt.amount, fromCurrencyCode: receipt.currency)}';
-  }
-
-  bool _isLoadingMore = false;
-  bool get isLoadingMore => _isLoadingMore;
-
-  /// Lazy loads the next page of receipts from the backend when scrolling near bottom.
-  Future<void> loadNextPage() async {
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
-    AppLogger.debug('VM',
-        'HistoryViewModel loadNextPage started (offset: ${_repository.receipts.length})');
-    notifyListeners();
-    try {
-      final count = await CloudSyncService.instance.fetchMoreReceipts(
-        offset: _repository.receipts.length,
-      );
-      AppLogger.info(
-          'VM', 'HistoryViewModel loadNextPage fetched $count new receipts');
-      if (count > 0) {
-        notifyListeners();
-      }
-    } catch (e) {
-      AppLogger.error('VM', 'HistoryViewModel loadNextPage error: $e', e);
-    } finally {
-      _isLoadingMore = false;
-      notifyListeners();
-    }
   }
 
   Future<void> deleteReceipt(String id) async {

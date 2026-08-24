@@ -4,6 +4,8 @@ import 'package:reciept_logging/domain/models/chat_message.dart';
 import 'package:reciept_logging/domain/models/receipt.dart';
 import 'package:reciept_logging/data/mappers/conversation_mapper.dart';
 import 'package:reciept_logging/data/mappers/chat_message_mapper.dart';
+import 'package:reciept_logging/cloud/models/user_models.dart';
+import 'package:reciept_logging/cloud/services/auth_service.dart';
 import 'package:reciept_logging/data/repositories/conversation_repository.dart';
 import 'package:reciept_logging/data/repositories/chat_message_repository.dart';
 import 'package:reciept_logging/data/repositories/receipt_repository.dart';
@@ -148,8 +150,62 @@ void main() {
       await repo.saveAllReceipts([batchReceipt]);
       expect(repo.receipts.any((r) => r.id == 'test_guest_r2'), isTrue);
 
+      const cloudReceipt = Receipt(
+        id: 'test_cloud_r3',
+        merchant: 'Target Store',
+        date: '2026-08-22',
+        amount: 32.10,
+        currency: 'USD',
+        category: 'Shopping',
+        items: ['Household Goods - \$32.10'],
+      );
+
+      await repo.saveBatchFromCloud([cloudReceipt]);
+      expect(repo.receipts.any((r) => r.id == 'test_cloud_r3'), isTrue);
+
       await repo.deleteReceipt('test_guest_r1');
       expect(repo.receipts.any((r) => r.id == 'test_guest_r1'), isFalse);
+    });
+
+    test('ReceiptRepository updateReceipt and saveReceipt de-duplication for UUIDs', () async {
+      final repo = ReceiptRepository.instance;
+      await AuthService.instance.saveSession(const UserRecordDto(
+        id: 'usr_repo_101',
+        username: 'RepoTester',
+        email: 'tester@example.com',
+        createdAt: '2026-08-25T00:00:00Z',
+      ));
+      await repo.clearAll();
+
+      const uuidReceipt = Receipt(
+        id: '67a4c8d2-0e07-4a96-ba4b-3185dc63c827',
+        merchant: 'Whole Foods Market',
+        date: 'Aug 24, 2026',
+        amount: 45.90,
+        currency: 'USD',
+        category: 'Groceries',
+        imagePath: 'user123/receipt_images/67a4c8d2-0e07-4a96-ba4b-3185dc63c827.jpg',
+      );
+
+      // Save initial cloud-synced receipt
+      await repo.saveBatchFromCloud([uuidReceipt]);
+      expect(repo.receipts.length, equals(1));
+      expect(repo.receipts.first.merchant, equals('Whole Foods Market'));
+
+      // Update the receipt details
+      final updatedReceipt = uuidReceipt.copyWith(
+        merchant: 'Whole Foods Market (Updated)',
+        amount: 49.99,
+      );
+      await repo.updateReceipt(updatedReceipt);
+
+      // Verify no duplicate was created
+      expect(repo.receipts.length, equals(1));
+      expect(repo.receipts.first.merchant, equals('Whole Foods Market (Updated)'));
+      expect(repo.receipts.first.amount, equals(49.99));
+      expect(repo.receipts.first.imagePath, equals(uuidReceipt.imagePath));
+
+      await AuthService.instance.clearSession();
     });
 
     test('ConversationRepository memory operations', () async {

@@ -28,21 +28,10 @@ class _HistoryScreenState extends State<HistoryScreen>
   void initState() {
     super.initState();
     AppLogger.info('UI', 'HistoryScreen initialized');
-    _scrollController.addListener(_onScroll);
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      AppLogger.debug('UI',
-          'HistoryScreen reached bottom scroll threshold, requesting next page');
-      _viewModel.loadNextPage();
-    }
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _searchController.dispose();
     _viewModel.dispose();
