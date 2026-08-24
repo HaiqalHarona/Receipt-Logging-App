@@ -14,6 +14,7 @@ import '../models/receipt_isar.dart';
 import '../../cloud/api/backend_api_client.dart';
 import '../../cloud/models/receipt_models.dart';
 import '../../cloud/services/auth_service.dart';
+import '../../services/sync_coordinator.dart';
 import '../../ui/core/utils/category_utils.dart';
 
 /// Single source of truth for receipt data.
@@ -371,9 +372,15 @@ class ReceiptRepository extends ChangeNotifier {
         }).catchError((e, st) {
           AppLogger.error(
               'CloudSync',
-              '[ReceiptRepository] Error executing POST /receipts/ for ${receipt.id}',
+              '[ReceiptRepository] Error executing POST /receipts/ for ${receipt.id}. Enqueuing to SyncCoordinator outbox.',
               e,
               st);
+          SyncCoordinator.instance.enqueueMutation(
+            entityId: receipt.id,
+            action: MutationAction.create,
+            payload: ReceiptDto.fromDomain(receipt).toJson(),
+            localImagePath: receipt.imagePath,
+          );
         });
       }
     }
@@ -446,9 +453,15 @@ class ReceiptRepository extends ChangeNotifier {
         }).catchError((e, st) {
           AppLogger.error(
               'CloudSync',
-              '[ReceiptRepository] Error executing PATCH /receipts/${receipt.id}',
+              '[ReceiptRepository] Error executing PATCH /receipts/${receipt.id}. Enqueuing to SyncCoordinator outbox.',
               e,
               st);
+          SyncCoordinator.instance.enqueueMutation(
+            entityId: receipt.id,
+            action: MutationAction.update,
+            payload: ReceiptDto.fromDomain(receipt).toJson(),
+            localImagePath: originalLocalPath,
+          );
         });
       }
     }
@@ -536,9 +549,13 @@ class ReceiptRepository extends ChangeNotifier {
         }).catchError((e, st) {
           AppLogger.error(
               'CloudSync',
-              '[ReceiptRepository] Error executing DELETE /receipts/$id',
+              '[ReceiptRepository] Error executing DELETE /receipts/$id. Enqueuing to SyncCoordinator outbox.',
               e,
               st);
+          SyncCoordinator.instance.enqueueMutation(
+            entityId: id,
+            action: MutationAction.delete,
+          );
         });
       }
     }

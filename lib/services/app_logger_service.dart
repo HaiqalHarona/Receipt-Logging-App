@@ -15,7 +15,7 @@ class AppLogger {
   AppLogger._();
   static final AppLogger instance = AppLogger._();
 
-  static bool enableFileLogging = true;
+  static bool enableFileLogging = !kReleaseMode;
   static bool enableConsoleLogging = true;
   static String? _resolvedLogPath;
   static const int _maxLogSizeBytes = 5 * 1024 * 1024; // 5 MB rotation ceiling
@@ -24,9 +24,32 @@ class AppLogger {
   static IOSink? _sink;
   static bool _initialized = false;
 
+  static String _sanitize(String text) {
+    var sanitized = text;
+    sanitized = sanitized.replaceAll(
+      RegExp(r'(Bearer\s+)[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.?[A-Za-z0-9\-_=]*', caseSensitive: false),
+      r'$1[REDACTED_JWT]',
+    );
+    sanitized = sanitized.replaceAll(
+      RegExp(r'("?password"?\s*[:=]\s*"?)([^"\s,}{]+)', caseSensitive: false),
+      r'$1[REDACTED]',
+    );
+    sanitized = sanitized.replaceAll(
+      RegExp(r'("?device_token"?\s*[:=]\s*"?)([^"\s,}{]+)', caseSensitive: false),
+      r'$1[REDACTED]',
+    );
+    return sanitized;
+  }
+
   /// Initializes AppLogger and resolves a writable app.log file path with asynchronous queue sink.
   static Future<void> init() async {
     if (_initialized) return;
+
+    // In release mode, file logging is disabled by default for privacy
+    if (kReleaseMode && !enableFileLogging) {
+      _initialized = true;
+      return;
+    }
 
     // 1. Try local workspace relative path first (desktop / local dev)
     try {
@@ -85,7 +108,8 @@ class AppLogger {
         "${_threeDigits(now.millisecond)}";
 
     final levelStr = level.name.toUpperCase().padRight(5);
-    final logLine = "$timeStr [$levelStr] [$tag] $message";
+    final cleanMessage = _sanitize(message);
+    final logLine = "$timeStr [$levelStr] [$tag] $cleanMessage";
 
     if (enableConsoleLogging) {
       debugPrint(logLine);

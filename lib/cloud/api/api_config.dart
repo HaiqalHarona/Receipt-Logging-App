@@ -11,22 +11,36 @@ class ApiConfig {
     return dotenv.maybeGet(key) ?? fallback;
   }
 
-  /// Application display name read dynamically from .env
-  static String get appName => _env('APP_NAME', 'Receipt Logger');
+  /// Application display name read dynamically from environment or .env
+  static String get appName =>
+      const String.fromEnvironment('APP_NAME').isNotEmpty
+          ? const String.fromEnvironment('APP_NAME')
+          : _env('APP_NAME', 'Receipt Logger');
 
-  /// Base URL for backend read dynamically from .env.
+  /// Base URL for backend read dynamically from environment or .env.
   /// Defaults to localhost:8085 for Desktop/Web/iOS, with 10.0.2.2 for Android emulator.
   static String get baseUrl =>
-      _env('API_BASE_URL', 'http://localhost:8085/api/v1');
+      const String.fromEnvironment('API_BASE_URL').isNotEmpty
+          ? const String.fromEnvironment('API_BASE_URL')
+          : _env('API_BASE_URL', 'http://localhost:8085/api/v1');
 
-  /// Supabase Project URL read dynamically from .env
-  static String get supabaseUrl => _env('SUPABASE_URL', '');
+  /// Supabase Project URL read dynamically from environment or .env
+  static String get supabaseUrl =>
+      const String.fromEnvironment('SUPABASE_URL').isNotEmpty
+          ? const String.fromEnvironment('SUPABASE_URL')
+          : _env('SUPABASE_URL', '');
 
-  /// Supabase Key read dynamically from .env
-  static String get supabaseKey => _env('SUPABASE_KEY', '');
+  /// Supabase Key read dynamically from environment or .env
+  static String get supabaseKey =>
+      const String.fromEnvironment('SUPABASE_KEY').isNotEmpty
+          ? const String.fromEnvironment('SUPABASE_KEY')
+          : _env('SUPABASE_KEY', '');
 
-  /// AI API Key read dynamically from .env (optional fallback)
-  static String get geminiApiKey => dotenv.get('GEMINI_API_KEY', fallback: '');
+  /// AI API Key read dynamically from environment or .env (optional fallback)
+  static String get geminiApiKey =>
+      const String.fromEnvironment('GEMINI_API_KEY').isNotEmpty
+          ? const String.fromEnvironment('GEMINI_API_KEY')
+          : _env('GEMINI_API_KEY', '');
 
   /// Persistent hardware device ID powered by DeviceIdentityService.
   static String get deviceId => DeviceIdentityService.instance.deviceId;

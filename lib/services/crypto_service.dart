@@ -231,6 +231,54 @@ class CryptoService {
     return Map<String, dynamic>.from(decoded as Map);
   }
 
+  /// Encrypts raw binary bytes using AES-256-GCM with authenticated header envelope.
+  Future<List<int>> encryptBytes(List<int> plainBytes) async {
+    await _ensureInitialized();
+
+    final secretBox = await _algorithm.encrypt(
+      plainBytes,
+      secretKey: _masterSecretKey!,
+    );
+
+    // Prefix with magic header: 4 bytes (ENC\x01), 12 bytes nonce, 16 bytes MAC tag, then ciphertext
+    return <int>[
+      0x45, 0x4E, 0x43, 0x01,
+      ...secretBox.nonce,
+      ...secretBox.mac.bytes,
+      ...secretBox.cipherText,
+    ];
+  }
+
+  /// Decrypts raw binary bytes encrypted with [encryptBytes].
+  /// Provides backward-compatible transparent fallback for legacy plaintext data.
+  Future<List<int>> decryptBytes(List<int> data) async {
+    await _ensureInitialized();
+
+    if (data.length < 32 ||
+        data[0] != 0x45 ||
+        data[1] != 0x4E ||
+        data[2] != 0x43 ||
+        data[3] != 0x01) {
+      // Legacy plaintext data
+      return data;
+    }
+
+    final nonce = data.sublist(4, 16);
+    final macBytes = data.sublist(16, 32);
+    final cipherText = data.sublist(32);
+
+    final secretBox = SecretBox(
+      cipherText,
+      nonce: nonce,
+      mac: Mac(macBytes),
+    );
+
+    return await _algorithm.decrypt(
+      secretBox,
+      secretKey: _masterSecretKey!,
+    );
+  }
+
   Future<void> _ensureInitialized() async {
     if (!_isInitialized || _masterSecretKey == null) {
       await init();
