@@ -6,6 +6,7 @@ on:
       - master
       - main
       - develop
+      - alpha
     tags:
       - 'v*.*.*'
   pull_request:
@@ -13,6 +14,7 @@ on:
       - master
       - main
       - develop
+      - alpha
   workflow_dispatch:
 
 jobs:
@@ -106,6 +108,27 @@ jobs:
           name: android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
+      - name: Generate Staging Manifest
+        run: |
+          mkdir -p build/staging
+          cat <<EOF > build/staging/staging_manifest.json
+          {
+            "stage": "Alpha",
+            "channel": "staging",
+            "version": "1.0.1",
+            "buildNumber": ${{ github.run_number }},
+            "versionDisplay": "1.0.1.0.${{ github.run_number }}",
+            "releaseNotes": "Automated Alpha build from commit ${{ github.sha }} on ${{ github.ref_name }}",
+            "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          }
+          EOF
+
+      - name: Upload Staging Manifest Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-manifest
+          path: build/staging/staging_manifest.json
+
   build-ios:
     name: Build iOS App
     needs: analyze-and-test
@@ -140,35 +163,3 @@ jobs:
           name: ios-release-app
           path: build/ios/iphoneos/Runner.app
 
-  build-web:
-    name: Build Web App
-    needs: analyze-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-
-      - name: Create Dummy .env for CI
-        run: |
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://dummy.supabase.co' }}" > .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci' }}" >> .env
-          echo "FASTAPI_BASE_URL=${{ secrets.FASTAPI_BASE_URL || 'https://dummy-receipt-api.com' }}" >> .env
-          echo "OCR_SPACE_API_KEY=${{ secrets.OCR_SPACE_API_KEY || 'dummy_ocr_key' }}" >> .env
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Web Release
-        run: flutter build web --release
-
-      - name: Upload Web Bundle Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-release-bundle
-          path: build/web

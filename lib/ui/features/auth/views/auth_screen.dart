@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/api/api_config.dart';
+import '../../../core/widgets/alpha_breadcrumb_badge.dart';
 
 class AuthScreen extends StatelessWidget {
   const AuthScreen({super.key});
@@ -280,6 +281,8 @@ class AuthScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 18),
+                            const AlphaBreadcrumbBadge(compact: true),
                           ],
                         ),
                       ),

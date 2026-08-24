@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
+import '../../../core/widgets/alpha_breadcrumb_badge.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../services/app_logger_service.dart';
@@ -647,6 +648,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ],
                     ),
+                    const SizedBox(height: 28),
+                    const Center(
+                      child: AlphaBreadcrumbBadge(),
+                    ),
                   ],
                 ),
               ),
@@ -1126,8 +1131,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   isSubmitting)
                               ? null
                               : () async {
-                                  final sender =
-                                      senderController.text.trim();
+                                  final sender = senderController.text.trim();
                                   final desc =
                                       descriptionController.text.trim();
 
@@ -1212,8 +1216,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                                       );
                                     }
                                   } catch (e) {
-                                    AppLogger.error('UI',
-                                        'Failed to submit feedback', e);
+                                    AppLogger.error(
+                                        'UI', 'Failed to submit feedback', e);
                                     if (context.mounted) {
                                       AppSnackBar.show(
                                         context,
@@ -1224,8 +1228,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                     }
                                   } finally {
                                     if (ctx.mounted) {
-                                      setModalState(
-                                          () => isSubmitting = false);
+                                      setModalState(() => isSubmitting = false);
                                     }
                                   }
                                 },
@@ -1240,8 +1243,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                     ),
                                   )
                                 : const Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(
                                         Icons.send_rounded,

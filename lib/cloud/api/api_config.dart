@@ -13,6 +13,32 @@ class ApiConfig {
   /// Application display name read dynamically from .env
   static String get appName => _env('APP_NAME', 'Receipt Logger');
 
+  /// Current environment stage (alpha, staging, beta, production). Defaults to alpha.
+  static String get appEnv => _env('APP_ENV', 'alpha');
+
+  /// Semantic version string (MAJOR.MINOR.PATCH), defaults to 1.0.1.
+  static String get appVersion => _env('APP_VERSION', '1.0.1');
+
+  /// Build / revision number, defaults to 1.
+  static int get appBuildNumber =>
+      int.tryParse(_env('APP_BUILD_NUMBER', '1')) ?? 1;
+
+  /// Formatted display version string (e.g. 1.0.1.0.1).
+  static String get appVersionDisplay =>
+      _env('APP_VERSION_DISPLAY', '$appVersion.0.$appBuildNumber');
+
+  /// Staging manifest URL for Tailscale private network updates.
+  static String get stagingManifestUrl => _env(
+        'STAGING_MANIFEST_URL',
+        'http://100.64.0.1:8085/api/v1/staging/version',
+      );
+
+  /// Helper boolean checks for environment mode
+  static bool get isAlpha => appEnv.toLowerCase() == 'alpha';
+  static bool get isStaging => appEnv.toLowerCase() == 'staging' || isAlpha;
+  static bool get isProduction =>
+      appEnv.toLowerCase() == 'production' || appEnv.toLowerCase() == 'prod';
+
   /// Base URL for backend read dynamically from .env.
   /// Defaults to localhost:8085 for Desktop/Web/iOS, with 10.0.2.2 for Android emulator.
   static String get baseUrl =>

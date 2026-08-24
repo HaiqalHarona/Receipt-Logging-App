@@ -7,6 +7,7 @@ import '../../features/dashboard/views/dashboard_screen.dart';
 import '../../features/history/views/history_screen.dart';
 import '../../features/ai_assistant/views/ai_assistant_screen.dart';
 import '../../features/settings/views/settings_screen.dart';
+import '../../../services/staging_update_service.dart';
 
 /// Persistent shell container hosting primary tabs inside a high-FPS [IndexedStack]
 /// with subtle lightweight micro-fade transitions and stationary [AppBottomNavBar].
@@ -43,6 +44,9 @@ class _MainTabShellState extends State<MainTabShell> {
   void initState() {
     super.initState();
     _currentIndex = _indexForPath(widget.currentPath);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StagingUpdateService.instance.checkForUpdates(context);
+    });
   }
 
   @override
