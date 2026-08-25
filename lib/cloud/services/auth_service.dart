@@ -320,6 +320,59 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Changes user account password via authenticated POST /user/change-password.
+  /// Updates local session token and password_changed_at cooldown timestamp on success without logging the user out.
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    if (!isLoggedIn) {
+      AppLogger.warning('AuthService', 'Cannot change password: user is not logged in');
+      throw const ApiException('User session is not active.', statusCode: 401);
+    }
+
+    try {
+      final res = await BackendApiClient.instance.changePassword(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
+
+      if (res.success) {
+        _userToken = newPassword;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_keyUserToken, newPassword);
+
+        if (res.passwordChangedAt != null && _cachedProfile != null) {
+          final updatedPrefs =
+              Map<String, dynamic>.from(_cachedProfile!.preferences);
+          updatedPrefs['password_changed_at'] = res.passwordChangedAt;
+          _cachedProfile = UserRecordDto(
+            id: _cachedProfile!.id,
+            username: _cachedProfile!.username,
+            email: _cachedProfile!.email,
+            countryCode: _cachedProfile!.countryCode,
+            mobileNumber: _cachedProfile!.mobileNumber,
+            avatarImagePath: _cachedProfile!.avatarImagePath,
+            customCategories: _cachedProfile!.customCategories,
+            preferences: updatedPrefs,
+            createdAt: _cachedProfile!.createdAt,
+            deletedAt: _cachedProfile!.deletedAt,
+          );
+          await _persistProfile(_cachedProfile!);
+        }
+
+        AppLogger.info(
+            'AuthService', 'Password changed successfully for user: $_username');
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e, st) {
+      AppLogger.error('AuthService', 'Password change failed: $e', e, st);
+      rethrow;
+    }
+  }
+
   // ── SESSION MANAGEMENT ──────────────────────────────────────────────────────
 
   /// Persists a new user session, JWT tokens, and cached profile locally.

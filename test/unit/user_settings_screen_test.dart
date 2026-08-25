@@ -54,7 +54,85 @@ void main() {
       expect(find.text('EMAIL ADDRESS'), findsOneWidget);
       expect(find.text('MOBILE NUMBER'), findsOneWidget);
       expect(find.text('+ Add'), findsOneWidget);
+      expect(find.text('ACCOUNT PASSWORD'), findsOneWidget);
+      expect(find.text('Reset'), findsOneWidget);
       expect(find.text('Log Out'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Tapping Reset Password opens the bottom sheet with all required inputs',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-mock-12345',
+          username: 'TestUserQA',
+          email: 'testuser@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+        ),
+        userToken: 'mock-token-xyz',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Tap Reset button
+      await tester.tap(find.text('Reset'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('Reset Account Password'), findsOneWidget);
+      expect(find.text('CURRENT PASSWORD'), findsOneWidget);
+      expect(find.text('NEW PASSWORD'), findsOneWidget);
+      expect(find.text('CONFIRM NEW PASSWORD'), findsOneWidget);
+      expect(find.text('8+ chars'), findsOneWidget);
+      expect(find.text('Update Password'), findsOneWidget);
+    });
+
+    testWidgets(
+        'When 7-day cooldown is active, Reset button is indented/disabled and shows tooltip',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Password changed 2 days ago -> 5 days remaining
+      final twoDaysAgo =
+          DateTime.now().toUtc().subtract(const Duration(days: 2)).toIso8601String();
+
+      await AuthService.instance.saveSession(
+        UserRecordDto(
+          id: 'usr-cooldown-123',
+          username: 'CooldownUser',
+          email: 'cooldown@example.com',
+          preferences: {'password_changed_at': twoDaysAgo},
+          createdAt: '2026-08-10T12:00:00Z',
+        ),
+        userToken: 'mock-token-xyz',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Tooltip should be present with "Change allowed in 5 days"
+      final tooltipFinder = find.byWidgetPredicate(
+        (widget) => widget is Tooltip && (widget.message?.contains('Change allowed in 5 days') ?? false),
+      );
+      expect(tooltipFinder, findsOneWidget);
+
+      // Tapping the row during cooldown should do nothing (no bottom sheet opened)
+      await tester.tap(find.text('ACCOUNT PASSWORD'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Reset Account Password'), findsNothing);
     });
 
     testWidgets(
@@ -81,3 +159,4 @@ void main() {
     });
   });
 }
+

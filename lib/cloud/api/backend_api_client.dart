@@ -454,6 +454,39 @@ class BackendApiClient {
     return true;
   }
 
+  /// Changes user account password via authenticated POST /user/change-password.
+  Future<({bool success, String? passwordChangedAt})> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    String? username,
+    String? userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/change-password');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
+    );
+    headers['Content-Type'] = 'application/json';
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'old_password': oldPassword,
+        'new_password': newPassword,
+      }),
+    );
+
+    _assertStatus(response, 200);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (
+      success: (data['success'] as bool?) ?? true,
+      passwordChangedAt: data['password_changed_at'] as String?,
+    );
+  }
+
   /// Retrieves current authenticated user profile.
   Future<UserRecordDto> fetchUserProfile({
     String? username,
