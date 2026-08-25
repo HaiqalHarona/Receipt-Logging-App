@@ -143,3 +143,40 @@ class _ReceiptScannerState extends State<ReceiptScanner> {
   }
 }
 ```
+
+### Android Release Build & Proguard / R8 Configuration
+
+When building release APKs (`flutter build apk --release`), Google ML Kit requires Proguard rules to prevent R8 minification build failures caused by unbundled language options.
+
+1. **Create `android/app/proguard-rules.pro`**:
+```proguard
+# ML Kit Text Recognition Proguard / R8 rules
+-dontwarn com.google.mlkit.**
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google_mlkit_text_recognition.**
+-keep class com.google_mlkit_text_recognition.** { *; }
+
+# Flutter & Plugin classes
+-keep class io.flutter.app.** { *; }
+-keep class io.flutter.plugin.** { *; }
+-keep class io.flutter.util.** { *; }
+-keep class io.flutter.view.** { *; }
+-keep class io.flutter.** { *; }
+-dontwarn io.flutter.**
+```
+
+2. **Link Proguard in `android/app/build.gradle.kts`**:
+```kotlin
+android {
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+}
+```
+
