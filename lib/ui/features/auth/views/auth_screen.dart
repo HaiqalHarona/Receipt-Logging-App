@@ -281,7 +281,44 @@ class AuthScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => context.push('/legal/privacy'),
+                                  child: Text(
+                                    "Privacy Policy",
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: textSecondary.withValues(alpha: 0.8),
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: textSecondary.withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  "  •  ",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: textSecondary.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => context.push('/legal/terms'),
+                                  child: Text(
+                                    "Terms of Service",
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: textSecondary.withValues(alpha: 0.8),
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: textSecondary.withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
                             const AlphaBreadcrumbBadge(compact: true),
                           ],
                         ),

@@ -19,6 +19,7 @@ import 'services/currency_service.dart';
 import 'services/app_logger_service.dart';
 import 'services/crypto_service.dart';
 import 'services/sync_coordinator.dart';
+import 'services/onboarding_service.dart';
 import 'cloud/api/api_config.dart';
 
 void main() async {
@@ -48,6 +49,7 @@ void main() async {
   await CloudSyncService.instance.syncOnLogin();
   await SyncCoordinator.instance.init();
   await CurrencyService.instance.init();
+  await OnboardingService.instance.init();
   await AppThemeController.instance.loadPersistedTheme();
 
   // Catch unhandled Flutter framework errors

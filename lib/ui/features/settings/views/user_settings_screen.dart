@@ -1418,7 +1418,193 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // ── 6. DANGER ZONE / LOGOUT ────────────────────────────
+                      // ── 6. LEGAL & COMPLIANCE ─────────────────────────────
+                      _buildSectionHeader("LEGAL & COMPLIANCE", textSecondary),
+                      const SizedBox(height: 8),
+                      NeumorphicCardWidget(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            // Privacy Policy
+                            InkWell(
+                              onTap: () => context.push('/legal/privacy'),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(18)),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.security_rounded,
+                                        color: accent, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Privacy Policy",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "GDPR, CCPA/CPRA & Zero AI Training",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: textSecondary, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            _buildDivider(textSecondary),
+
+                            // Terms of Service
+                            InkWell(
+                              onTap: () => context.push('/legal/terms'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.gavel_rounded,
+                                        color: accent, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Terms of Service",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "Acceptable use & governing law",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: textSecondary, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            _buildDivider(textSecondary),
+
+                            // Cookie Policy
+                            InkWell(
+                              onTap: () => context.push('/legal/cookies'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.cookie_outlined,
+                                        color: accent, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Cookie & Storage Policy",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "Secure tokens, cache & local database",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: textSecondary, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            _buildDivider(textSecondary),
+
+                            // Accessibility Statement
+                            InkWell(
+                              onTap: () => context.push('/legal/accessibility'),
+                              borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(18)),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.accessibility_new_rounded,
+                                        color: accent, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Accessibility Statement",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "ADA Title III & WCAG 2.1 AA",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: textSecondary, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── 7. DANGER ZONE / LOGOUT ────────────────────────────
                       _buildSectionHeader("SESSION ACTIONS", textSecondary),
                       const SizedBox(height: 8),
                       NeumorphicCardWidget(

@@ -664,7 +664,68 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // ── Legal Terms Disclaimer ──────────────────────────────────
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          "By creating an account, you agree to our ",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textSecondary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.push('/legal/terms'),
+                          child: Text(
+                            "Terms of Service",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: accent,
+                              decoration: TextDecoration.underline,
+                              decorationColor: accent,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          " and ",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textSecondary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.push('/legal/privacy'),
+                          child: Text(
+                            "Privacy Policy",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: accent,
+                              decoration: TextDecoration.underline,
+                              decorationColor: accent,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ".",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textSecondary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
 
                 // ── Centered Log In Link ──────────────────────────────────────
                 Center(

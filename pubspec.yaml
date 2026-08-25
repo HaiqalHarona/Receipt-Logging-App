@@ -76,4 +76,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - docs/legal_docs/
   # Note: .env is excluded from release assets for security. Configure via --dart-define or --dart-define-from-file.

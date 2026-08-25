@@ -7,6 +7,12 @@
       "skillPath": ".claude/skills/brand/SKILL.md",
       "computedHash": "bd65dbd8de679805d1ad740c74a41b4f831d08ff0240390a7ed2947c62a896b9"
     },
+    "cookie-policy-page-generator": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pages/legal/cookie-policy/SKILL.md",
+      "computedHash": "81d1124fcff1f750190f6372077510862d41a57d3c32406acfd39c3dc85d1034"
+    },
     "dart-add-unit-test": {
       "source": "dart-lang/skills",
       "sourceType": "github",
@@ -150,6 +156,36 @@
       "sourceType": "github",
       "skillPath": "skills/flutter-use-http-package/SKILL.md",
       "computedHash": "bd169b5cee731751f3b32f43c94cfe9495fc8e6c3eb621b785c69e38b77d0e19"
+    },
+    "legal-page-generator": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pages/legal/legal/SKILL.md",
+      "computedHash": "8992f0416468003ba98909da04e8badd8575e1658c838cbe1280c61cc1208953"
+    },
+    "privacy-page-generator": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pages/legal/privacy/SKILL.md",
+      "computedHash": "ee77c9d982f9d583bc1596e76f2ebb5faa6eff19004948d26186692881001dfd"
+    },
+    "refund-page-generator": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pages/legal/refund/SKILL.md",
+      "computedHash": "2c55682d5e851546ff28197476df296f5e5089f2a203476dd483a649b2924c9e"
+    },
+    "shipping-page-generator": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pages/legal/shipping/SKILL.md",
+      "computedHash": "c3883ecf349be1b8a31b7b62796b88ba1a0641578e17299591f92ebb964e4106"
+    },
+    "terms-page-generator": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pages/legal/terms/SKILL.md",
+      "computedHash": "8f26a906bf2725f3aad822e00a714b693820cb5cfda10926f8362af306fc8c45"
     },
     "ui-styling": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",

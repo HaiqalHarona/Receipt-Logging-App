@@ -598,9 +598,239 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ],
                     ),
+                    const SizedBox(height: 24),
+
+                    // ── SECTION 4: LEGAL & COMPLIANCE ─────────────────────
+                    _buildSectionHeader("LEGAL & COMPLIANCE", textSecondary),
+                    const SizedBox(height: 8),
+                    _buildSectionContainer(
+                      children: [
+                        // Privacy Policy Row
+                        InkWell(
+                          onTap: () => context.push('/legal/privacy'),
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Privacy Policy",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "GDPR, CCPA/CPRA, Zero AI Training & Encryption",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: textSecondary,
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildDivider(textSecondary),
+
+                        // Terms of Service Row
+                        InkWell(
+                          onTap: () => context.push('/legal/terms'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Terms of Service",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Acceptable use, AI disclaimers & governing law",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: textSecondary,
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildDivider(textSecondary),
+
+                        // Cookie & Storage Policy Row
+                        InkWell(
+                          onTap: () => context.push('/legal/cookies'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Cookie & Storage Policy",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Local database, secure tokens & cache details",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: textSecondary,
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildDivider(textSecondary),
+
+                        // Accessibility Statement Row
+                        InkWell(
+                          onTap: () => context.push('/legal/accessibility'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Accessibility Statement",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "ADA Title III, WCAG 2.1 AA & contrast support",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: textSecondary,
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildDivider(textSecondary),
+
+                        // Onboarding Walkthrough Row
+                        InkWell(
+                          onTap: () {
+                            AppLogger.info('UI',
+                                'User tapped App Walkthrough from SettingsScreen');
+                            context.push('/onboarding');
+                          },
+                          borderRadius: const BorderRadius.vertical(
+                              bottom: Radius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "App Walkthrough",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Revisit the welcome features & privacy tour",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: textSecondary,
+                                  size: 14,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     if (kDebugMode) ...[
                       const SizedBox(height: 24),
-                      // ── SECTION 4: DEVELOPER TOOLS ────────────────────────
+                      // ── SECTION 5: DEVELOPER TOOLS ────────────────────────
                       _buildSectionHeader("DEVELOPER TOOLS", textSecondary),
                       const SizedBox(height: 8),
                       _buildSectionContainer(

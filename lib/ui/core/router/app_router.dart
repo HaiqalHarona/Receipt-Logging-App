@@ -18,10 +18,14 @@ import '../../features/settings/views/db_viewer_screen.dart';
 import '../../features/settings/views/user_settings_screen.dart';
 import '../../features/scanner/views/scanner_screen.dart';
 import '../../features/ai_assistant/views/chat_detail_screen.dart';
+import '../../features/onboarding/views/onboarding_screen.dart';
+import '../../features/settings/views/legal_document_screen.dart';
 import '../../../../domain/models/conversation.dart';
 
 import '../../../cloud/services/auth_service.dart';
 import '../../../../services/scan_batch_controller.dart';
+import '../../../../services/onboarding_service.dart';
+import '../../../../services/legal_document_service.dart';
 
 Page<dynamic> _buildInstantPage(
     {required GoRouterState state, required Widget child}) {
@@ -40,12 +44,22 @@ final GoRouter appRouter = GoRouter(
   refreshListenable: Listenable.merge([
     AuthService.instance,
     ScanBatchController.instance,
+    OnboardingService.instance,
   ]),
   initialLocation: '/dashboard',
   redirect: (BuildContext context, GoRouterState state) {
+    final hasCompletedOnboarding =
+        OnboardingService.instance.hasCompletedOnboarding;
+    final path = state.matchedLocation;
+
+    if (!hasCompletedOnboarding &&
+        path != '/onboarding' &&
+        !path.startsWith('/legal')) {
+      return '/onboarding';
+    }
+
     final isLoggedIn = AuthService.instance.isLoggedIn;
     final isScanning = ScanBatchController.instance.isScanning;
-    final path = state.matchedLocation;
     final isAuthRoute =
         path == '/login' || path == '/signup' || path == '/auth';
 
@@ -187,6 +201,27 @@ final GoRouter appRouter = GoRouter(
       path: '/scanner',
       pageBuilder: (context, state) =>
           _buildInstantPage(state: state, child: const ScannerScreen()),
+    ),
+    GoRoute(
+      path: '/onboarding',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const OnboardingScreen()),
+    ),
+    GoRoute(
+      path: '/legal/:type',
+      pageBuilder: (context, state) {
+        final typeStr = state.pathParameters['type'];
+        final docType = LegalDocType.fromString(typeStr);
+        return _buildInstantPage(
+          state: state,
+          child: LegalDocumentScreen(initialDocType: docType),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/legal',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const LegalDocumentScreen()),
     ),
   ],
 );
