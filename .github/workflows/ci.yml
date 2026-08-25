@@ -130,39 +130,6 @@ jobs:
           name: staging-manifest
           path: build/staging/staging_manifest.json
 
-  build-ios:
-    name: Build iOS App
-    needs: analyze-and-test
-    runs-on: macos-latest
-    if: contains(fromJSON('["main", "master", "develop", "alpha"]'), github.ref_name) || contains(fromJSON('["main", "master", "develop", "alpha"]'), github.base_ref) || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-
-      - name: Create Dummy .env for CI
-        run: |
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://dummy.supabase.co' }}" > .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci' }}" >> .env
-          echo "FASTAPI_BASE_URL=${{ secrets.FASTAPI_BASE_URL || 'https://dummy-receipt-api.com' }}" >> .env
-          echo "OCR_SPACE_API_KEY=${{ secrets.OCR_SPACE_API_KEY || 'dummy_ocr_key' }}" >> .env
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build iOS Release (Unsigned)
-        run: flutter build ios --release --no-codesign --no-tree-shake-icons
-
-      - name: Upload iOS App Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-release-app
-          path: build/ios/iphoneos/Runner.app
 
   deploy-to-tailscale-server:
     name: Deploy APK & Manifest to Tailscale Staging Server
