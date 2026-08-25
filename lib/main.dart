@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ui/core/router/app_router.dart';
@@ -16,12 +17,24 @@ import 'cloud/services/auth_service.dart';
 import 'services/cloud_sync_service.dart';
 import 'services/currency_service.dart';
 import 'services/app_logger_service.dart';
+import 'services/crypto_service.dart';
+import 'services/sync_coordinator.dart';
+import 'services/onboarding_service.dart';
 import 'cloud/api/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppLogger.init();
-  await dotenv.load(fileName: ".env");
+
+  // Load .env if present in development assets or ignore gracefully when using --dart-define
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (_) {
+    AppLogger.debug('Config', 'No .env asset loaded; using environment definitions or defaults.');
+  }
+
+  // Initialize crypto service and secure storage keys
+  await CryptoService.instance.init();
 
   // Initialize database, repositories, and persistent device identity
   await IsarService.init(schemas: [
@@ -34,8 +47,21 @@ void main() async {
   await ReceiptRepository.instance.init();
   await ConversationRepository.instance.init();
   await CloudSyncService.instance.syncOnLogin();
+  await SyncCoordinator.instance.init();
   await CurrencyService.instance.init();
+  await OnboardingService.instance.init();
   await AppThemeController.instance.loadPersistedTheme();
+
+  // Catch unhandled Flutter framework errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    AppLogger.error('FlutterError', details.exceptionAsString(), details.exception, details.stack);
+  };
+
+  // Catch unhandled platform/isolate asynchronous errors
+  PlatformDispatcher.instance.onError = (error, stack) {
+    AppLogger.error('PlatformError', error.toString(), error, stack);
+    return true;
+  };
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     bool isDebug = false;

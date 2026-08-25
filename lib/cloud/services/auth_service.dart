@@ -10,11 +10,13 @@
 //   5. Provides clearSession() for logout.
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:isar/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/app_logger_service.dart';
 import '../../services/category_service.dart';
 import '../../services/cloud_sync_service.dart';
+import '../../services/sync_coordinator.dart';
 import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
 import '../models/user_models.dart';
@@ -41,9 +43,19 @@ class AuthService extends ChangeNotifier {
   static const String _keyMobileNumber = 'session_mobile_number';
   static const String _keyAvatarImagePath = 'session_avatar_image_path';
 
+  static const String _secureKeyAccessToken = 'secure_jwt_access_token';
+  static const String _secureKeyRefreshToken = 'secure_jwt_refresh_token';
+
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
   String? _userId;
   String? _username;
   String? _userToken;
+  String? _accessToken;
+  String? _refreshToken;
   String? _email;
   String? _countryCode;
   String? _mobileNumber;
@@ -60,8 +72,14 @@ class AuthService extends ChangeNotifier {
   /// Returns the persisted username, or null if not signed in.
   String? get currentUsername => _username;
 
-  /// Returns the persisted user authentication password token.
+  /// Returns the persisted user authentication password token (legacy fallback).
   String? get currentUserToken => _userToken;
+
+  /// Returns the cryptographically signed JWT access token.
+  String? get accessToken => _accessToken;
+
+  /// Returns the cryptographically signed JWT refresh token.
+  String? get refreshToken => _refreshToken;
 
   /// Returns the persisted email address, or null if not signed in.
   String? get currentEmail => _email;
@@ -71,7 +89,7 @@ class AuthService extends ChangeNotifier {
 
   // ── INITIALIZATION ──────────────────────────────────────────────────────────
 
-  /// Loads persisted session from SharedPreferences on app startup.
+  /// Loads persisted session from SharedPreferences & SecureStorage on app startup.
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -82,6 +100,14 @@ class AuthService extends ChangeNotifier {
       _countryCode = prefs.getString(_keyCountryCode);
       _mobileNumber = prefs.getString(_keyMobileNumber);
       _avatarImagePath = prefs.getString(_keyAvatarImagePath);
+
+      // Load secure JWT tokens from hardware-backed KeyStore / Keychain
+      try {
+        _accessToken = await _secureStorage.read(key: _secureKeyAccessToken);
+        _refreshToken = await _secureStorage.read(key: _secureKeyRefreshToken);
+      } catch (e) {
+        AppLogger.warning('AuthService', 'Secure storage read warning: $e');
+      }
 
       if (_userId != null &&
           _userId!.isNotEmpty &&
@@ -102,7 +128,7 @@ class AuthService extends ChangeNotifier {
       }
 
       AppLogger.info('AuthService',
-          'Session loaded: userId=$_userId, username=$_username');
+          'Session loaded: userId=$_userId, username=$_username, hasJwt=${_accessToken != null}');
       notifyListeners();
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to load session', e, st);
@@ -167,7 +193,7 @@ class AuthService extends ChangeNotifier {
   /// **Caching Rule**: Fetches from backend via `GET /user/me` ONLY ONCE if not cached (unless [force] is true).
   /// Subsequent reads immediately return the cached [UserRecordDto] without making extra HTTP calls.
   Future<UserRecordDto?> getOrFetchProfile({bool force = false}) async {
-    if (!isLoggedIn || _username == null || _userToken == null) return null;
+    if (!isLoggedIn || _username == null) return null;
 
     // Return cached profile if already present with complete details and not forced
     if (!force && _cachedProfile != null && _cachedProfile!.id.isNotEmpty) {
@@ -180,8 +206,7 @@ class AuthService extends ChangeNotifier {
       AppLogger.info('AuthService',
           'Fetching profile from backend for username: $_username');
       final fetched = await BackendApiClient.instance.fetchUserProfile(
-        username: _username!,
-        userToken: _userToken!,
+        username: _username,
       );
 
       _cachedProfile = fetched;
@@ -199,12 +224,11 @@ class AuthService extends ChangeNotifier {
     required String countryCode,
     required String mobileNumber,
   }) async {
-    if (!isLoggedIn || _username == null || _userToken == null) return false;
+    if (!isLoggedIn || _username == null) return false;
 
     try {
       final updated = await BackendApiClient.instance.updateUserProfile(
-        username: _username!,
-        userToken: _userToken!,
+        username: _username,
         countryCode: countryCode,
         mobileNumber: mobileNumber,
       );
@@ -228,7 +252,7 @@ class AuthService extends ChangeNotifier {
     required List<int> imageBytes,
     required String filename,
   }) async {
-    if (!isLoggedIn || _username == null || _userToken == null) return false;
+    if (!isLoggedIn || _username == null) return false;
 
     // Enforce 20MB client-side validation
     if (imageBytes.length > 20 * 1024 * 1024) {
@@ -239,8 +263,7 @@ class AuthService extends ChangeNotifier {
 
     try {
       final updated = await BackendApiClient.instance.updateUserProfile(
-        username: _username!,
-        userToken: _userToken!,
+        username: _username,
         avatarBytes: imageBytes,
         avatarFilename: filename,
       );
@@ -276,12 +299,11 @@ class AuthService extends ChangeNotifier {
   /// Updates custom user categories via `PATCH /user/me` and updates local cache.
   Future<bool> updateCustomCategories(
       List<CustomCategoryDto> customCategories) async {
-    if (!isLoggedIn || _username == null || _userToken == null) return false;
+    if (!isLoggedIn || _username == null) return false;
 
     try {
       final updated = await BackendApiClient.instance.updateUserProfile(
-        username: _username!,
-        userToken: _userToken!,
+        username: _username,
         customCategories: customCategories,
       );
 
@@ -298,14 +320,88 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Changes user account password via authenticated POST /user/change-password.
+  /// Updates local session token and password_changed_at cooldown timestamp on success without logging the user out.
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    if (!isLoggedIn) {
+      AppLogger.warning('AuthService', 'Cannot change password: user is not logged in');
+      throw const ApiException('User session is not active.', statusCode: 401);
+    }
+
+    try {
+      final res = await BackendApiClient.instance.changePassword(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
+
+      if (res.success) {
+        _userToken = newPassword;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_keyUserToken, newPassword);
+
+        if (res.passwordChangedAt != null && _cachedProfile != null) {
+          final updatedPrefs =
+              Map<String, dynamic>.from(_cachedProfile!.preferences);
+          updatedPrefs['password_changed_at'] = res.passwordChangedAt;
+          _cachedProfile = UserRecordDto(
+            id: _cachedProfile!.id,
+            username: _cachedProfile!.username,
+            email: _cachedProfile!.email,
+            countryCode: _cachedProfile!.countryCode,
+            mobileNumber: _cachedProfile!.mobileNumber,
+            avatarImagePath: _cachedProfile!.avatarImagePath,
+            customCategories: _cachedProfile!.customCategories,
+            preferences: updatedPrefs,
+            createdAt: _cachedProfile!.createdAt,
+            deletedAt: _cachedProfile!.deletedAt,
+          );
+          await _persistProfile(_cachedProfile!);
+        }
+
+        AppLogger.info(
+            'AuthService', 'Password changed successfully for user: $_username');
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e, st) {
+      AppLogger.error('AuthService', 'Password change failed: $e', e, st);
+      rethrow;
+    }
+  }
+
   // ── SESSION MANAGEMENT ──────────────────────────────────────────────────────
 
-  /// Persists a new user session and cached profile locally.
-  Future<void> saveSession(UserRecordDto user, {String? userToken}) async {
+  /// Persists a new user session, JWT tokens, and cached profile locally.
+  Future<void> saveSession(
+    UserRecordDto user, {
+    String? userToken,
+    String? accessToken,
+    String? refreshToken,
+  }) async {
     _userId = user.id;
     _username = user.username;
     if (userToken != null && userToken.isNotEmpty) {
       _userToken = userToken;
+    }
+    if (accessToken != null && accessToken.isNotEmpty) {
+      _accessToken = accessToken;
+      try {
+        await _secureStorage.write(key: _secureKeyAccessToken, value: accessToken);
+      } catch (e) {
+        AppLogger.warning('AuthService', 'Failed to write accessToken to secure storage: $e');
+      }
+    }
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      _refreshToken = refreshToken;
+      try {
+        await _secureStorage.write(key: _secureKeyRefreshToken, value: refreshToken);
+      } catch (e) {
+        AppLogger.warning('AuthService', 'Failed to write refreshToken to secure storage: $e');
+      }
     }
     _email = user.email;
     _countryCode = user.countryCode;
@@ -318,14 +414,26 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates JWT tokens in memory and secure storage after refresh.
+  Future<void> updateJwtTokens({required String accessToken, required String refreshToken}) async {
+    _accessToken = accessToken;
+    _refreshToken = refreshToken;
+    try {
+      await _secureStorage.write(key: _secureKeyAccessToken, value: accessToken);
+      await _secureStorage.write(key: _secureKeyRefreshToken, value: refreshToken);
+      AppLogger.info('AuthService', 'JWT tokens rotated successfully');
+    } catch (e) {
+      AppLogger.warning('AuthService', 'Failed to persist rotated tokens to secure storage: $e');
+    }
+  }
+
   Future<void> _persistProfile(UserRecordDto user) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyUserId, user.id);
       await prefs.setString(_keyUsername, user.username);
-      if (_userToken != null) {
-        await prefs.setString(_keyUserToken, _userToken!);
-      }
+      // Remove legacy plaintext password storage if present
+      await prefs.remove(_keyUserToken);
       await prefs.setString(_keyEmail, user.email);
       if (user.countryCode != null) {
         await prefs.setString(_keyCountryCode, user.countryCode!);
@@ -365,11 +473,36 @@ class AuthService extends ChangeNotifier {
     _userId = null;
     _username = null;
     _userToken = null;
+    _accessToken = null;
+    _refreshToken = null;
     _email = null;
     _countryCode = null;
     _mobileNumber = null;
     _avatarImagePath = null;
     _cachedProfile = null;
+
+    UserPreferencesService.instance.cancelPendingSync();
+
+    try {
+      await _secureStorage.delete(key: _secureKeyAccessToken);
+      await _secureStorage.delete(key: _secureKeyRefreshToken);
+    } catch (e) {
+      AppLogger.warning('AuthService', 'Failed to clear secure storage tokens: $e');
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyUserId);
+      await prefs.remove(_keyUsername);
+      await prefs.remove(_keyUserToken);
+      await prefs.remove(_keyEmail);
+      await prefs.remove(_keyCountryCode);
+      await prefs.remove(_keyMobileNumber);
+      await prefs.remove(_keyAvatarImagePath);
+    } catch (e) {
+      AppLogger.warning('AuthService', 'Failed to clear SharedPreferences: $e');
+    }
+
     CloudSyncService.instance.cancelBackgroundSync();
     if (oldUsername != null) {
       await CloudSyncService.instance.resetSyncState(oldUsername);
@@ -399,6 +532,12 @@ class AuthService extends ChangeNotifier {
     } catch (e, st) {
       AppLogger.error('AuthService',
           'Failed to purge ChatMessageRepository during logout', e, st);
+    }
+    try {
+      await SyncCoordinator.instance.clearOutbox();
+    } catch (e, st) {
+      AppLogger.error('AuthService',
+          'Failed to clear SyncCoordinator outbox during logout', e, st);
     }
 
     try {

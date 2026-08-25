@@ -50,6 +50,7 @@ import '../models/device_models.dart';
 import '../models/user_models.dart';
 import '../models/receipt_models.dart';
 import '../models/chat_models.dart';
+import '../services/auth_service.dart';
 
 /// Thin exception wrapper for backend-reported errors.
 class ApiException implements Exception {
@@ -84,36 +85,75 @@ class BackendApiClient {
 
   final http.Client _http;
 
+  /// Rotates JWT session tokens using POST /api/v1/user/refresh.
+  Future<({String accessToken, String refreshToken})?> refreshToken(
+      String currentRefreshToken) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/refresh');
+    try {
+      final response = await _http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'refresh_token': currentRefreshToken}),
+          )
+          .timeout(ApiConfig.timeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final access = data['access_token'] as String?;
+        final refresh = data['refresh_token'] as String?;
+        if (access != null && refresh != null) {
+          return (accessToken: access, refreshToken: refresh);
+        }
+      }
+    } catch (e) {
+      AppLogger.warning('HTTP', 'Token refresh attempt failed: $e');
+    }
+    return null;
+  }
+
   Future<http.Response> _sendRequest(
     String method,
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
+    bool isRetry = false,
   }) async {
     final methodUpper = method.toUpperCase();
     final path = uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
+    final requestHeaders = Map<String, String>.from(headers ?? {});
+
+    // Attach Bearer token if not present and available
+    if (!requestHeaders.containsKey('Authorization')) {
+      final token = AuthService.instance.accessToken;
+      if (token != null && token.isNotEmpty) {
+        requestHeaders['Authorization'] = 'Bearer $token';
+      }
+    }
+
     AppLogger.debug('HTTP', '--> $methodUpper $path');
     final stopwatch = Stopwatch()..start();
     try {
       final http.Response response;
       switch (methodUpper) {
         case 'GET':
-          response =
-              await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
+          response = await _http
+              .get(uri, headers: requestHeaders)
+              .timeout(ApiConfig.timeout);
           break;
         case 'POST':
           response = await _http
-              .post(uri, headers: headers, body: body)
+              .post(uri, headers: requestHeaders, body: body)
               .timeout(ApiConfig.timeout);
           break;
         case 'PATCH':
           response = await _http
-              .patch(uri, headers: headers, body: body)
+              .patch(uri, headers: requestHeaders, body: body)
               .timeout(ApiConfig.timeout);
           break;
         case 'DELETE':
           response = await _http
-              .delete(uri, headers: headers, body: body)
+              .delete(uri, headers: requestHeaders, body: body)
               .timeout(ApiConfig.timeout);
           break;
         default:
@@ -122,6 +162,30 @@ class BackendApiClient {
       stopwatch.stop();
       AppLogger.info('HTTP',
           '<-- ${response.statusCode} $methodUpper $path (${stopwatch.elapsedMilliseconds}ms)');
+
+      // Handle 401 Unauthorized token expiration transparently
+      if (response.statusCode == 401 &&
+          !isRetry &&
+          !uri.path.contains('/user/login') &&
+          !uri.path.contains('/user/refresh')) {
+        final currentRefreshToken = AuthService.instance.refreshToken;
+        if (currentRefreshToken != null && currentRefreshToken.isNotEmpty) {
+          AppLogger.info(
+              'HTTP', '401 encountered, attempting JWT token refresh...');
+          final newTokens = await refreshToken(currentRefreshToken);
+          if (newTokens != null) {
+            await AuthService.instance.updateJwtTokens(
+              accessToken: newTokens.accessToken,
+              refreshToken: newTokens.refreshToken,
+            );
+            requestHeaders['Authorization'] =
+                'Bearer ${newTokens.accessToken}';
+            return _sendRequest(method, uri,
+                headers: requestHeaders, body: body, isRetry: true);
+          }
+        }
+      }
+
       return response;
     } catch (e, st) {
       if (stopwatch.isRunning) stopwatch.stop();
@@ -390,15 +454,49 @@ class BackendApiClient {
     return true;
   }
 
+  /// Changes user account password via authenticated POST /user/change-password.
+  Future<({bool success, String? passwordChangedAt})> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    String? username,
+    String? userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/change-password');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
+    );
+    headers['Content-Type'] = 'application/json';
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({
+        'old_password': oldPassword,
+        'new_password': newPassword,
+      }),
+    );
+
+    _assertStatus(response, 200);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (
+      success: (data['success'] as bool?) ?? true,
+      passwordChangedAt: data['password_changed_at'] as String?,
+    );
+  }
+
   /// Retrieves current authenticated user profile.
   Future<UserRecordDto> fetchUserProfile({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest('GET', uri, headers: headers);
@@ -411,8 +509,8 @@ class BackendApiClient {
   /// Fetches authenticated user's avatar image binary from GET /user/me/avatar.
   /// Supports size: 'small' (128x128), 'medium' (256x256), 'large' (512x512).
   Future<Uint8List?> fetchUserAvatar({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     String size = 'medium',
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me/avatar?size=$size');
@@ -421,24 +519,14 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final path = uri.path;
-    AppLogger.debug('HTTP', '--> GET $path?size=$size (fetch avatar binary)');
-    final stopwatch = Stopwatch()..start();
     try {
-      final response =
-          await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
-      stopwatch.stop();
-      AppLogger.info('HTTP',
-          '<-- ${response.statusCode} GET $path (${stopwatch.elapsedMilliseconds}ms)');
-
+      final response = await _sendRequest('GET', uri, headers: headers);
       if (response.statusCode == 200) {
         return response.bodyBytes;
       }
       return null;
     } catch (e, st) {
-      if (stopwatch.isRunning) stopwatch.stop();
-      AppLogger.error('HTTP',
-          '<-- ERROR GET $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+      AppLogger.error('HTTP', 'fetchUserAvatar error', e, st);
       return null;
     }
   }
@@ -446,8 +534,8 @@ class BackendApiClient {
   /// Updates mutable profile fields for the authenticated user via PATCH /user/me.
   /// Supports optional avatar image file upload (multipart/form-data).
   Future<UserRecordDto> updateUserProfile({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     String? email,
     String? countryCode,
     String? mobileNumber,
@@ -459,8 +547,9 @@ class BackendApiClient {
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     if (avatarBytes != null && avatarBytes.isNotEmpty) {
@@ -549,8 +638,8 @@ class BackendApiClient {
 
   /// Updates user UI & spending preferences dictionary via PATCH /user/me.
   Future<UserRecordDto> updateUserPreferences({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     required Map<String, dynamic> preferences,
   }) async {
     return updateUserProfile(
@@ -562,13 +651,14 @@ class BackendApiClient {
 
   /// Soft-deletes user profile and unlinks active devices.
   Future<bool> deleteUserProfile({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest('DELETE', uri, headers: headers);
@@ -705,8 +795,10 @@ class BackendApiClient {
       if (deviceName != null) queryParams['device_name'] = deviceName;
       if (deviceToken != null) queryParams['device_token'] = deviceToken;
     } else {
-      if (username != null) queryParams['username'] = username;
-      if (userToken != null) queryParams['user_token'] = userToken;
+      final effUsername = username ?? AuthService.instance.currentUsername;
+      if (effUsername != null) queryParams['username'] = effUsername;
+      final effToken = AuthService.instance.accessToken ?? userToken;
+      if (effToken != null) queryParams['token'] = effToken;
     }
 
     final uri =
@@ -726,6 +818,10 @@ class BackendApiClient {
       final request = http.Request('GET', uri);
       request.headers['Accept'] = 'text/event-stream';
       request.headers['Cache-Control'] = 'no-cache';
+      if (AuthService.instance.accessToken != null) {
+        request.headers['Authorization'] =
+            'Bearer ${AuthService.instance.accessToken}';
+      }
 
       final response = await client.send(request);
       AppLogger.info(
@@ -871,15 +967,16 @@ class BackendApiClient {
   /// Supports optional receipt image file upload (multipart/form-data).
   Future<ReceiptRecordDto> saveReceipt({
     required ReceiptDto receipt,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     List<int>? imageBytes,
     String? filename,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/create');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     if (imageBytes != null && imageBytes.isNotEmpty) {
@@ -944,14 +1041,15 @@ class BackendApiClient {
   /// Batch-creates receipts in Supabase backend with optional receipt images.
   Future<List<ReceiptRecordDto>> saveReceiptsBatch({
     required List<ReceiptDto> receipts,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     List<({List<int> bytes, String filename})>? imageFiles,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/create/batch');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     if (imageFiles != null && imageFiles.isNotEmpty) {
@@ -1023,8 +1121,8 @@ class BackendApiClient {
   /// Fetches non-deleted receipts for the authenticated user, newest first.
   /// Supports pagination via [limit] and [offset], and delta sync via [updatedAfter].
   Future<List<ReceiptRecordDto>> fetchReceipts({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     int? limit,
     int? offset,
     String? updatedAfter,
@@ -1038,8 +1136,9 @@ class BackendApiClient {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/')
         .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest('GET', uri, headers: headers);
@@ -1054,13 +1153,14 @@ class BackendApiClient {
   /// Soft-deletes a receipt by ID. Returns `true` on success.
   Future<bool> deleteReceipt({
     required String receiptId,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/$receiptId');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest('DELETE', uri, headers: headers);
@@ -1071,8 +1171,8 @@ class BackendApiClient {
   /// Fetches authenticated receipt's image binary from GET /receipts/{receiptId}/image.
   Future<Uint8List?> fetchReceiptImage({
     required String receiptId,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/$receiptId/image');
     final headers = ApiConfig.buildUserHeaders(
@@ -1080,24 +1180,14 @@ class BackendApiClient {
       userToken: userToken,
     );
 
-    final path = uri.path;
-    AppLogger.debug('HTTP', '--> GET $path (fetch receipt image binary)');
-    final stopwatch = Stopwatch()..start();
     try {
-      final response =
-          await _http.get(uri, headers: headers).timeout(ApiConfig.timeout);
-      stopwatch.stop();
-      AppLogger.info('HTTP',
-          '<-- ${response.statusCode} GET $path (${stopwatch.elapsedMilliseconds}ms)');
-
+      final response = await _sendRequest('GET', uri, headers: headers);
       if (response.statusCode == 200) {
         return response.bodyBytes;
       }
       return null;
     } catch (e, st) {
-      if (stopwatch.isRunning) stopwatch.stop();
-      AppLogger.error('HTTP',
-          '<-- ERROR GET $path (${stopwatch.elapsedMilliseconds}ms)', e, st);
+      AppLogger.error('HTTP', 'fetchReceiptImage error', e, st);
       return null;
     }
   }
@@ -1107,15 +1197,16 @@ class BackendApiClient {
   Future<ReceiptRecordDto> updateReceipt({
     required String receiptId,
     required ReceiptDto receipt,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     List<int>? imageBytes,
     String? filename,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/$receiptId');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     if (imageBytes != null && imageBytes.isNotEmpty) {
@@ -1184,14 +1275,15 @@ class BackendApiClient {
 
   /// Creates a new AI conversation in Supabase cloud store.
   Future<ConversationDto> createConversation({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     String? title,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/chat/create');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest(
@@ -1208,8 +1300,8 @@ class BackendApiClient {
 
   /// Lists all conversations owned by the user identity, newest first.
   Future<List<ConversationDto>> fetchConversations({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -1217,8 +1309,9 @@ class BackendApiClient {
       '${ApiConfig.baseUrl}/chat/list?limit=$limit&offset=$offset',
     );
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest('GET', uri, headers: headers);
@@ -1267,11 +1360,10 @@ class BackendApiClient {
         throw ArgumentError('deviceToken is required for guest mode.');
       }
     } else {
-      if (username == null || username.trim().isEmpty) {
-        throw ArgumentError('username is required for user mode.');
-      }
-      if (userToken == null || userToken.trim().isEmpty) {
-        throw ArgumentError('userToken is required for user mode.');
+      final effectiveUsername =
+          username ?? AuthService.instance.currentUsername;
+      if (effectiveUsername == null || effectiveUsername.trim().isEmpty) {
+        throw ArgumentError('User must be logged in for user mode chat.');
       }
     }
 
@@ -1330,8 +1422,9 @@ class BackendApiClient {
       requestType: requestType,
       deviceName: deviceName,
       deviceToken: deviceToken,
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final Map<String, dynamic> bodyPayload = {
@@ -1357,8 +1450,8 @@ class BackendApiClient {
   /// Fetches paginated message history for a conversation.
   Future<List<ChatMessageDto>> fetchChatHistory({
     required String conversationId,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -1367,8 +1460,9 @@ class BackendApiClient {
       '?conversation_id=$conversationId&limit=$limit&offset=$offset',
     );
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest('GET', uri, headers: headers);
@@ -1385,13 +1479,14 @@ class BackendApiClient {
   Future<ConversationDto> updateConversationTitle({
     required String conversationId,
     required String title,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/chat/$conversationId');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest(
@@ -1409,13 +1504,14 @@ class BackendApiClient {
   /// Soft-deletes a conversation by UUID. Returns `true` on success.
   Future<bool> deleteConversation({
     required String conversationId,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/chat/$conversationId');
     final headers = ApiConfig.buildUserHeaders(
-      username: username,
-      userToken: userToken,
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
     );
 
     final response = await _sendRequest('DELETE', uri, headers: headers);

@@ -12,16 +12,16 @@ This document provides the complete API specification for the **Receipt Logger F
 
 ### Header Requirements & Auth Matrix
 
-The backend enforces session-scoped and device-fingerprinted access across all routes:
+The backend enforces session-scoped, JWT-authenticated, and device-fingerprinted access across all routes:
 
 | Category | Endpoints | Required Headers | Description |
 | :--- | :--- | :--- | :--- |
-| **Public** | `/health/`, `POST /user/create`, `POST /user/login`, `POST /user/reset-password-*`, `POST /devices/register` | *None* | Unauthenticated endpoints with rate limiting against brute-force attacks. |
+| **Public** | `/health/`, `POST /user/create`, `POST /user/login`, `POST /user/refresh`, `POST /user/reset-password-*`, `POST /devices/register` | *None* | Unauthenticated endpoints with rate limiting against brute-force attacks. |
 | **Device / Guest** | `GET /devices/me`, `DELETE /devices/me`, `POST /devices/rotate-token` | `X-Device-Name`, `X-Device-Token` | Cryptographic hardware fingerprint verification. `X-Device-Token` is verified against stored SHA-256 hash using constant-time comparison. |
-| **User Scoped** | `GET /user/me`, `PATCH /user/me`, `DELETE /user/me`, `/receipts/*`, `/chat/list`, `/chat/history`, `/chat/create`, `DELETE /chat/*` | `X-User-Name`, `X-User-Token` | Authenticated user credentials. `X-User-Token` is verified against server-side PBKDF2/SHA-256 password hash. |
-| **Link Bridge** | `POST /devices/link` | `X-Device-Name`, `X-Device-Token`, `X-User-Name`, `X-User-Token` | Linking requires all 4 headers to bind device to account; unlinking (guest mode) requires only device headers. |
-| **Dual-Scoped** | `POST /scan/parse`, `POST /scan/parse-many`, `POST /chat/query` | `X-Request-Type` + Mode Credentials | Set `X-Request-Type: guest` with device headers OR `X-Request-Type: user` with user headers. Conflicting headers are rejected with HTTP 400. |
-| **SSE Streaming** | `GET /scan/parse-many/{batch_id}/stream` | Header or Query Params | Supports headers (`X-Device-Name`, `X-Device-Token`) OR query parameters (`?device_name=...&device_token=...`) for browser EventSource compatibility. |
+| **User Scoped** | `GET /user/me`, `PATCH /user/me`, `DELETE /user/me`, `/receipts/*`, `/chat/list`, `/chat/history`, `/chat/create`, `DELETE /chat/*` | `Authorization: Bearer <access_token>` *(Recommended)*<br>**OR** `X-User-Name`, `X-User-Token` *(Legacy)* | Standard signed JWT access token (fast 0-query check) or legacy password token credentials. |
+| **Link Bridge** | `POST /devices/link` | `X-Device-Name`, `X-Device-Token`, plus `Authorization: Bearer <access_token>` (or `X-User-Name` + `X-User-Token`) | Linking binds device to account; unlinking (guest mode) requires only device headers. |
+| **Dual-Scoped** | `POST /scan/parse`, `POST /scan/parse-many`, `POST /chat/query` | `X-Request-Type` + Mode Credentials | Set `X-Request-Type: guest` with device headers OR `X-Request-Type: user` with `Authorization: Bearer <access_token>`. |
+| **SSE Streaming** | `GET /scan/parse-many/{batch_id}/stream` | Header or Query Params | **Guest**: `X-Device-Name` + `X-Device-Token` or `?device_name=...&device_token=...`<br>**User**: `Authorization: Bearer <token>` or `?token=<access_token>`. |
 
 ---
 
@@ -210,7 +210,7 @@ Open an SSE connection that streams progress and emits the full result payload u
 #### `GET /api/v1/receipts/`
 List receipts for authenticated user with delta sync and pagination.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Query Parameters**:
   - `updated_after` (optional ISO 8601 string): fetch only receipts modified after timestamp
   - `limit` (optional int): number of records
@@ -220,27 +220,27 @@ List receipts for authenticated user with delta sync and pagination.
 #### `GET /api/v1/receipts/{receipt_id}`
 Retrieve a specific receipt record by UUID.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Response `200 OK`**: `ReceiptRecord`
 
 #### `POST /api/v1/receipts/create`
-Create a new receipt record bound to user identity.
+Create a new receipt record bound to user identity. Supports optional receipt image upload via multipart/form-data.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Body**: `{"receipt": { ...ReceiptSchema... }}`
 - **Response `201 Created`**: `ReceiptRecord`
 
 #### `POST /api/v1/receipts/create/batch`
 Batch insert up to 100 receipt records in a single database transaction.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Body**: `{"receipts": [ { ...ReceiptSchema... }, ... ]}`
 - **Response `201 Created`**: `Array<ReceiptRecord>`
 
 #### `DELETE /api/v1/receipts/{receipt_id}`
 Soft-delete a receipt record (sets `deleted_at` timestamp).
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Response `200 OK`**: `{"success": true, "receipt_id": "..."}`
 
 ---
@@ -264,13 +264,15 @@ Register a new user account.
 - **Response `201 Created`**: `UserRecord`
 
 #### `POST /api/v1/user/login`
-Authenticate user credentials (username or email).
+Authenticate user credentials (username or email). Returns signed JWT tokens and profile.
 
 - **Body**: `{"username": "johndoe", "password": "plain_password_string"}`
 - **Response `200 OK`**:
   ```json
   {
-    "success": true,
+    "access_token": "eyJhbGciOiJIUzI1NiIsIn...",
+    "refresh_token": "eyJhbGciOiJIUzI1NiIsIn...",
+    "token_type": "bearer",
     "user": {
       "id": "uuid-...",
       "username": "johndoe",
@@ -278,28 +280,33 @@ Authenticate user credentials (username or email).
       "country_code": "+60",
       "mobile_number": "123456789",
       "created_at": "2026-08-19T10:00:00Z"
-    },
-    "message": "Login successful."
+    }
   }
   ```
+
+#### `POST /api/v1/user/refresh`
+Refresh expired JWT access token.
+
+- **Body**: `{"refresh_token": "eyJhbGciOiJIUzI1NiIsIn..."}`
+- **Response `200 OK`**: `{"access_token": "...", "token_type": "bearer"}`
 
 #### `GET /api/v1/user/me`
 Retrieve profile of authenticated user.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Response `200 OK`**: `UserRecord`
 
 #### `PATCH /api/v1/user/me`
-Update mutable profile fields (email, country code, mobile number, avatar, custom categories).
+Update mutable profile fields (email, country code, mobile number, avatar, custom categories, preferences).
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Body**: `UserUpdateRequest` (partial fields)
 - **Response `200 OK`**: `UserRecord`
 
 #### `DELETE /api/v1/user/me`
 Soft-delete user profile and invalidate active device sessions.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Response `200 OK`**: `{"success": true, "message": "User profile soft-deleted successfully."}`
 
 #### `POST /api/v1/user/reset-password-initiate`
@@ -381,28 +388,28 @@ Soft-delete device record.
 #### `POST /api/v1/chat/create`
 Create new cloud-persisted chat conversation (max 10 active per user).
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Body**: `{"title": "August Spending Review"}` (optional)
 - **Response `201 Created`**: `ConversationRecord`
 
 #### `GET /api/v1/chat/list`
 List conversations owned by authenticated user.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Query Parameters**: `limit` (default: 20), `offset` (default: 0)
 - **Response `200 OK`**: `Array<ConversationRecord>`
 
 #### `GET /api/v1/chat/history`
 Fetch paginated message history for a conversation.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Query Parameters**: `conversation_id` (required UUID), `limit`, `offset`
 - **Response `200 OK`**: `ChatHistoryResponse`
 
 #### `POST /api/v1/chat/query`
 Send query to Gemini 3.6 Flash with Multi-Store Support.
 
-- **Headers**: `X-Request-Type` + mode credentials
+- **Headers**: `X-Request-Type` + mode credentials (`Authorization: Bearer <access_token>` for user mode, or `X-Device-Name` + `X-Device-Token` for guest mode)
 - **Body**:
   ```json
   {
@@ -430,7 +437,7 @@ Send query to Gemini 3.6 Flash with Multi-Store Support.
 #### `DELETE /api/v1/chat/{conversation_id}`
 Soft-delete a conversation.
 
-- **Headers**: `X-User-Name`, `X-User-Token`
+- **Headers**: `Authorization: Bearer <access_token>` *(Recommended)* or `X-User-Name`, `X-User-Token` *(Legacy)*
 - **Response `200 OK`**: `{"success": true, "conversation_id": "..."}`
 
 ---

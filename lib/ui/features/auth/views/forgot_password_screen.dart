@@ -1,5 +1,6 @@
 // File: lib/ui/features/auth/views/forgot_password_screen.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -45,14 +46,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      final devOtp = res['dev_otp'] as String?;
+      final message = res['message'] as String? ?? 'If an account exists, a reset code has been sent.';
+      final devOtp = kDebugMode ? res['dev_otp'] as String? : null;
 
       AppSnackBar.show(
         context,
         message: devOtp != null
-            ? 'Reset code: $devOtp (Logged to otp_dev.log)'
-            : 'Reset code requested! Check otp_dev.log for code.',
-        duration: const Duration(seconds: 5),
+            ? 'Dev OTP: $devOtp'
+            : message,
+        duration: const Duration(seconds: 4),
       );
 
       // Navigate to OTP verification screen

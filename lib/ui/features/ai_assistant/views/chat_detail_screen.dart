@@ -538,7 +538,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         deviceName: isUser ? null : ApiConfig.deviceId,
         deviceToken: isUser ? null : ApiConfig.deviceToken,
         username: isUser ? AuthService.instance.currentUsername : null,
-        userToken: isUser ? AuthService.instance.currentUserToken : null,
       );
 
       // 5. On successful 200 OK response:

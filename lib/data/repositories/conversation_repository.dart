@@ -123,8 +123,7 @@ class ConversationRepository extends ChangeNotifier {
   void _updateCloudTitleIfSynced(String conversationId, String newTitle) {
     if (_isUuid(conversationId) && AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
-      final userToken = AuthService.instance.currentUserToken;
-      if (username != null && userToken != null) {
+      if (username != null) {
         AppLogger.info('CloudSync',
             '[ConversationRepository] Triggering backend PATCH /chat/$conversationId on Supabase (title: "$newTitle")...');
         BackendApiClient.instance
@@ -132,7 +131,6 @@ class ConversationRepository extends ChangeNotifier {
           conversationId: conversationId,
           title: newTitle,
           username: username,
-          userToken: userToken,
         )
             .then((record) {
           AppLogger.info('CloudSync',
@@ -151,15 +149,13 @@ class ConversationRepository extends ChangeNotifier {
   void _deleteFromCloudIfSynced(String conversationId) {
     if (_isUuid(conversationId) && AuthService.instance.isLoggedIn) {
       final username = AuthService.instance.currentUsername;
-      final userToken = AuthService.instance.currentUserToken;
-      if (username != null && userToken != null) {
+      if (username != null) {
         AppLogger.info('CloudSync',
             '[ConversationRepository] Triggering backend DELETE /chat/$conversationId on Supabase...');
         BackendApiClient.instance
             .deleteConversation(
           conversationId: conversationId,
           username: username,
-          userToken: userToken,
         )
             .then((success) {
           if (success) {

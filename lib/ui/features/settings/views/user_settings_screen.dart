@@ -30,6 +30,7 @@ class UserSettingsScreen extends StatefulWidget {
 
 class _UserSettingsScreenState extends State<UserSettingsScreen> {
   UserRecordDto? _profile;
+  Future<File?>? _avatarFuture;
   bool _isLoading = true;
   bool _isLoggingOut = false;
   bool _isManualSyncing = false;
@@ -43,6 +44,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     AppLogger.info('UI', 'UserSettingsScreen initialized');
     _profile = AuthService.instance.cachedProfile;
     _isLoading = _profile == null;
+    _avatarFuture =
+        LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium');
     _loadProfile();
   }
 
@@ -90,8 +93,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
       if (mounted) {
         if (success) {
-          await LocalImageCacheService.instance
-              .getOrFetchAvatar(size: 'medium', forceRefresh: true);
+          setState(() {
+            _avatarFuture = LocalImageCacheService.instance
+                .getOrFetchAvatar(size: 'medium', forceRefresh: true);
+          });
+          await _avatarFuture;
           PaintingBinding.instance.imageCache.clear();
           PaintingBinding.instance.imageCache.clearLiveImages();
           final updatedProfile =
@@ -506,6 +512,434 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     );
   }
 
+  void _showChangePasswordBottomSheet(
+    BuildContext context,
+    Color accent,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    bool obscureOld = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool isSubmitting = false;
+    String? errorMsg;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            final newPass = newPasswordController.text;
+            final confirmPass = confirmPasswordController.text;
+
+            final hasMinLen = newPass.length >= 8;
+            final hasUpper = RegExp(r'[A-Z]').hasMatch(newPass);
+            final hasLower = RegExp(r'[a-z]').hasMatch(newPass);
+            final hasDigit = RegExp(r'[0-9]').hasMatch(newPass);
+            final hasSpecial = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(newPass);
+            final isStrong = hasMinLen && hasUpper && hasLower && hasDigit && hasSpecial;
+
+            return Container(
+              decoration: BoxDecoration(
+                color: NeumorphicTheme.baseColor(modalCtx),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 12,
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: textSecondary.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.lock_reset_rounded,
+                              color: accent, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Reset Account Password",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Enter your current password and choose a new secure password.",
+                      style: TextStyle(fontSize: 12.5, color: textSecondary),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Current Password Field
+                    Text(
+                      "CURRENT PASSWORD",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: textSecondary,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    NeumorphicInputFieldWidget(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.lock_outline_rounded,
+                              color: textSecondary, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: oldPasswordController,
+                              obscureText: obscureOld,
+                              style: TextStyle(
+                                  color: textPrimary, fontSize: 14),
+                              onChanged: (_) {
+                                if (errorMsg != null) {
+                                  setModalState(() => errorMsg = null);
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Enter current password",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.5),
+                                    fontSize: 13),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () =>
+                                setModalState(() => obscureOld = !obscureOld),
+                            child: Icon(
+                              obscureOld
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                              color: textSecondary,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // New Password Field
+                    Text(
+                      "NEW PASSWORD",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: textSecondary,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    NeumorphicInputFieldWidget(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.key_rounded,
+                              color: textSecondary, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: newPasswordController,
+                              obscureText: obscureNew,
+                              style: TextStyle(
+                                  color: textPrimary, fontSize: 14),
+                              onChanged: (_) => setModalState(() {
+                                if (errorMsg != null) errorMsg = null;
+                              }),
+                              decoration: InputDecoration(
+                                hintText: "Min 8 chars with symbols",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.5),
+                                    fontSize: 13),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () =>
+                                setModalState(() => obscureNew = !obscureNew),
+                            child: Icon(
+                              obscureNew
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                              color: textSecondary,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Requirements Checklist
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _buildRequirementChip("8+ chars", hasMinLen, accent, textSecondary),
+                        _buildRequirementChip("Uppercase", hasUpper, accent, textSecondary),
+                        _buildRequirementChip("Lowercase", hasLower, accent, textSecondary),
+                        _buildRequirementChip("Number", hasDigit, accent, textSecondary),
+                        _buildRequirementChip(r"Special (!@#$)", hasSpecial, accent, textSecondary),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Confirm New Password Field
+                    Text(
+                      "CONFIRM NEW PASSWORD",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: textSecondary,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    NeumorphicInputFieldWidget(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded,
+                              color: (confirmPass.isNotEmpty && confirmPass == newPass)
+                                  ? Colors.green
+                                  : textSecondary,
+                              size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: confirmPasswordController,
+                              obscureText: obscureConfirm,
+                              style: TextStyle(
+                                  color: textPrimary, fontSize: 14),
+                              onChanged: (_) => setModalState(() {
+                                if (errorMsg != null) errorMsg = null;
+                              }),
+                              decoration: InputDecoration(
+                                hintText: "Re-enter new password",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.5),
+                                    fontSize: 13),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => setModalState(
+                                () => obscureConfirm = !obscureConfirm),
+                            child: Icon(
+                              obscureConfirm
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                              color: textSecondary,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (errorMsg != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded,
+                              color: Colors.redAccent, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              errorMsg!,
+                              style: const TextStyle(
+                                  color: Colors.redAccent, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 22),
+
+                    // Submit Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: NeumorphicButtonWidget(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                final oldP = oldPasswordController.text;
+                                final newP = newPasswordController.text;
+                                final confP = confirmPasswordController.text;
+
+                                if (oldP.isEmpty) {
+                                  setModalState(() =>
+                                      errorMsg = "Please enter your current password.");
+                                  return;
+                                }
+                                if (!isStrong) {
+                                  setModalState(() =>
+                                      errorMsg = "New password does not meet security requirements.");
+                                  return;
+                                }
+                                if (newP == oldP) {
+                                  setModalState(() =>
+                                      errorMsg = "New password cannot be the same as your old password.");
+                                  return;
+                                }
+                                if (newP != confP) {
+                                  setModalState(() =>
+                                      errorMsg = "New passwords do not match.");
+                                  return;
+                                }
+
+                                setModalState(() {
+                                  isSubmitting = true;
+                                  errorMsg = null;
+                                });
+
+                                try {
+                                  await AuthService.instance.changePassword(
+                                    oldPassword: oldP,
+                                    newPassword: newP,
+                                  );
+
+                                  if (context.mounted) {
+                                    Navigator.of(ctx).pop();
+                                    AppSnackBar.show(
+                                      context,
+                                      message: "Password updated successfully!",
+                                    );
+                                  }
+                                } catch (e) {
+                                  String cleanError = "Failed to update password. Please check your current password.";
+                                  if (e is ApiException) {
+                                    cleanError = e.message;
+                                  } else if (e.toString().contains("Current password is incorrect")) {
+                                    cleanError = "Current password is incorrect.";
+                                  } else if (e.toString().contains("cannot be the same")) {
+                                    cleanError = "New password cannot be the same as your old password.";
+                                  }
+                                  setModalState(() {
+                                    isSubmitting = false;
+                                    errorMsg = cleanError;
+                                  });
+                                }
+                              },
+                        child: Center(
+                          child: isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Text(
+                                  "Update Password",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildRequirementChip(
+    String label,
+    bool isMet,
+    Color accent,
+    Color textSecondary,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isMet
+            ? Colors.green.withValues(alpha: 0.15)
+            : textSecondary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isMet
+              ? Colors.green.withValues(alpha: 0.6)
+              : textSecondary.withValues(alpha: 0.2),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isMet ? Icons.check_rounded : Icons.circle_outlined,
+            size: 11,
+            color: isMet ? Colors.green : textSecondary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: isMet ? FontWeight.bold : FontWeight.normal,
+              color: isMet ? Colors.green : textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _onLogout() async {
     AppLogger.info('UI', 'User tapped Log Out');
     if (_isLoggingOut) return;
@@ -614,7 +1048,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
     try {
       final user = _profile ?? AuthService.instance.cachedProfile;
-      final token = AuthService.instance.currentUserToken;
 
       final exportData = await DataExportService.instance.exportGuestData();
       final hasLocalData = (exportData['receipts'] as List).isNotEmpty ||
@@ -622,11 +1055,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           (exportData['chat_messages'] as List).isNotEmpty;
 
       // Best-effort pre-logout cloud sync
-      if (hasLocalData && user != null && token != null) {
+      if (hasLocalData && user != null) {
         try {
           await AuthService.instance.linkCurrentDevice(
             user,
-            userToken: token,
             migrateData: exportData,
           );
         } catch (e) {
@@ -708,6 +1140,31 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     final totalConversations =
         ConversationRepository.instance.conversations.length;
     final totalCategories = 6 + CategoryService.instance.customCategoryCount;
+
+    // ── 7-DAY PASSWORD COOLDOWN CALCULATION ──────────────────────────────
+    final activeProfile = _profile ?? AuthService.instance.cachedProfile;
+    final lastChangedStr =
+        activeProfile?.preferences['password_changed_at'] as String?;
+    DateTime? lastChanged;
+    if (lastChangedStr != null) {
+      lastChanged = DateTime.tryParse(lastChangedStr);
+    }
+    int cooldownDaysRemaining = 0;
+    bool isPasswordCooldownActive = false;
+    if (lastChanged != null) {
+      final difference =
+          DateTime.now().toUtc().difference(lastChanged.toUtc());
+      const cooldownDuration = Duration(days: 7);
+      if (difference < cooldownDuration) {
+        final remainingSeconds =
+            cooldownDuration.inSeconds - difference.inSeconds;
+        cooldownDaysRemaining = (remainingSeconds / 86400).ceil();
+        if (cooldownDaysRemaining < 1) cooldownDaysRemaining = 1;
+        isPasswordCooldownActive = true;
+      }
+    }
+    final cooldownMessage =
+        "Change allowed in $cooldownDaysRemaining day${cooldownDaysRemaining > 1 ? 's' : ''}";
 
     return NeumorphicBackground(
       child: Scaffold(
@@ -1196,6 +1653,134 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             ),
                             _buildDivider(textSecondary),
 
+                            // Reset Password Row
+                            InkWell(
+                              onTap: isPasswordCooldownActive
+                                  ? null
+                                  : () => _showChangePasswordBottomSheet(
+                                        context,
+                                        accent,
+                                        textPrimary,
+                                        textSecondary,
+                                      ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: isPasswordCooldownActive
+                                            ? textSecondary.withValues(alpha: 0.08)
+                                            : accent.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.lock_reset_rounded,
+                                        size: 18,
+                                        color: isPasswordCooldownActive
+                                            ? textSecondary.withValues(alpha: 0.5)
+                                            : accent,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "ACCOUNT PASSWORD",
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: textSecondary,
+                                              letterSpacing: 0.6,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "••••••••••••",
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 2,
+                                              color: isPasswordCooldownActive
+                                                  ? textSecondary.withValues(alpha: 0.5)
+                                                  : textPrimary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isPasswordCooldownActive)
+                                      Tooltip(
+                                        message: cooldownMessage,
+                                        triggerMode: TooltipTriggerMode.tap,
+                                        child: Neumorphic(
+                                          style: NeumorphicStyle(
+                                            depth: -2.5,
+                                            intensity: 0.8,
+                                            color: NeumorphicTheme.baseColor(context),
+                                            boxShape: NeumorphicBoxShape.roundRect(
+                                                BorderRadius.circular(8)),
+                                            border: NeumorphicBorder(
+                                              color: textSecondary.withValues(alpha: 0.25),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.schedule_rounded,
+                                                  size: 12,
+                                                  color: textSecondary.withValues(alpha: 0.6),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  "Reset",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: textSecondary.withValues(alpha: 0.6),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color:
+                                                  accent.withValues(alpha: 0.5),
+                                              width: 1),
+                                        ),
+                                        child: Text(
+                                          "Reset",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: accent,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            _buildDivider(textSecondary),
+
                             // Security Encryption Row
                             Padding(
                               padding: const EdgeInsets.symmetric(
@@ -1414,7 +1999,193 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // ── 6. DANGER ZONE / LOGOUT ────────────────────────────
+                      // ── 6. LEGAL & COMPLIANCE ─────────────────────────────
+                      _buildSectionHeader("LEGAL & COMPLIANCE", textSecondary),
+                      const SizedBox(height: 8),
+                      NeumorphicCardWidget(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            // Privacy Policy
+                            InkWell(
+                              onTap: () => context.push('/legal/privacy'),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(18)),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.security_rounded,
+                                        color: accent, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Privacy Policy",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "GDPR, CCPA/CPRA & Zero AI Training",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: textSecondary, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            _buildDivider(textSecondary),
+
+                            // Terms of Service
+                            InkWell(
+                              onTap: () => context.push('/legal/terms'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.gavel_rounded,
+                                        color: accent, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Terms of Service",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "Acceptable use & governing law",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: textSecondary, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            _buildDivider(textSecondary),
+
+                            // Cookie Policy
+                            InkWell(
+                              onTap: () => context.push('/legal/cookies'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.cookie_outlined,
+                                        color: accent, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Cookie & Storage Policy",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "Secure tokens, cache & local database",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: textSecondary, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            _buildDivider(textSecondary),
+
+                            // Accessibility Statement
+                            InkWell(
+                              onTap: () => context.push('/legal/accessibility'),
+                              borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(18)),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.accessibility_new_rounded,
+                                        color: accent, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Accessibility Statement",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "ADA Title III & WCAG 2.1 AA",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: textSecondary, size: 14),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── 7. DANGER ZONE / LOGOUT ────────────────────────────
                       _buildSectionHeader("SESSION ACTIONS", textSecondary),
                       const SizedBox(height: 8),
                       NeumorphicCardWidget(
@@ -1597,9 +2368,22 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       }
 
       return FutureBuilder<File?>(
-        future:
+        future: _avatarFuture ??=
             LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium'),
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: accent,
+                ),
+              ),
+            );
+          }
+
           if (snapshot.hasData &&
               snapshot.data != null &&
               snapshot.data!.existsSync()) {

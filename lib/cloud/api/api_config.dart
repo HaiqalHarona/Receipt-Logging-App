@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../services/auth_service.dart';
 import '../services/device_identity_service.dart';
 
 class ApiConfig {
@@ -10,8 +11,11 @@ class ApiConfig {
     return dotenv.maybeGet(key) ?? fallback;
   }
 
-  /// Application display name read dynamically from .env
-  static String get appName => _env('APP_NAME', 'Receipt Logger');
+  /// Application display name read dynamically from environment or .env
+  static String get appName =>
+      const String.fromEnvironment('APP_NAME').isNotEmpty
+          ? const String.fromEnvironment('APP_NAME')
+          : _env('APP_NAME', 'Receipt Logger');
 
   /// Current environment stage (alpha, staging, beta, production). Defaults to alpha.
   static String get appEnv => _env('APP_ENV', 'alpha');
@@ -39,19 +43,30 @@ class ApiConfig {
   static bool get isProduction =>
       appEnv.toLowerCase() == 'production' || appEnv.toLowerCase() == 'prod';
 
-  /// Base URL for backend read dynamically from .env.
+  /// Base URL for backend read dynamically from environment or .env.
   /// Defaults to localhost:8085 for Desktop/Web/iOS, with 10.0.2.2 for Android emulator.
   static String get baseUrl =>
-      _env('API_BASE_URL', 'http://localhost:8085/api/v1');
+      const String.fromEnvironment('API_BASE_URL').isNotEmpty
+          ? const String.fromEnvironment('API_BASE_URL')
+          : _env('API_BASE_URL', 'http://localhost:8085/api/v1');
 
-  /// Supabase Project URL read dynamically from .env
-  static String get supabaseUrl => _env('SUPABASE_URL', '');
+  /// Supabase Project URL read dynamically from environment or .env
+  static String get supabaseUrl =>
+      const String.fromEnvironment('SUPABASE_URL').isNotEmpty
+          ? const String.fromEnvironment('SUPABASE_URL')
+          : _env('SUPABASE_URL', '');
 
-  /// Supabase Key read dynamically from .env
-  static String get supabaseKey => _env('SUPABASE_KEY', '');
+  /// Supabase Key read dynamically from environment or .env
+  static String get supabaseKey =>
+      const String.fromEnvironment('SUPABASE_KEY').isNotEmpty
+          ? const String.fromEnvironment('SUPABASE_KEY')
+          : _env('SUPABASE_KEY', '');
 
-  /// AI API Key read dynamically from .env (optional fallback)
-  static String get geminiApiKey => dotenv.get('GEMINI_API_KEY', fallback: '');
+  /// AI API Key read dynamically from environment or .env (optional fallback)
+  static String get geminiApiKey =>
+      const String.fromEnvironment('GEMINI_API_KEY').isNotEmpty
+          ? const String.fromEnvironment('GEMINI_API_KEY')
+          : _env('GEMINI_API_KEY', '');
 
   /// Persistent hardware device ID powered by DeviceIdentityService.
   static String get deviceId => DeviceIdentityService.instance.deviceId;
@@ -76,30 +91,52 @@ class ApiConfig {
 
   /// Builds user-scoped headers (GET/PATCH/DELETE /user/me, /receipts/*, /chat/*).
   static Map<String, String> buildUserHeaders({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
+    String? accessToken,
   }) {
-    return {
+    final token = accessToken ?? AuthService.instance.accessToken;
+    final user = username ?? AuthService.instance.currentUsername;
+    final headers = <String, String>{
       'Content-Type': 'application/json',
-      'X-User-Name': username,
-      'X-User-Token': userToken,
     };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (user != null && user.isNotEmpty) {
+      headers['X-User-Name'] = user;
+    }
+    if (userToken != null && userToken.isNotEmpty) {
+      headers['X-User-Token'] = userToken;
+    }
+    return headers;
   }
 
   /// Builds 4-header link bridge headers required by POST /devices/link.
   static Map<String, String> buildLinkBridgeHeaders({
     required String deviceName,
     required String deviceToken,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
+    String? accessToken,
   }) {
-    return {
+    final token = accessToken ?? AuthService.instance.accessToken;
+    final user = username ?? AuthService.instance.currentUsername;
+    final headers = <String, String>{
       'Content-Type': 'application/json',
       'X-Device-Name': deviceName,
       'X-Device-Token': deviceToken,
-      'X-User-Name': username,
-      'X-User-Token': userToken,
     };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (user != null && user.isNotEmpty) {
+      headers['X-User-Name'] = user;
+    }
+    if (userToken != null && userToken.isNotEmpty) {
+      headers['X-User-Token'] = userToken;
+    }
+    return headers;
   }
 
   /// Builds scoped headers required by /scan/* and POST /chat/query.
@@ -109,6 +146,7 @@ class ApiConfig {
     String? deviceToken,
     String? username,
     String? userToken,
+    String? accessToken,
   }) {
     final cleanType = requestType.trim().toLowerCase();
     if (cleanType == 'guest') {
@@ -119,12 +157,22 @@ class ApiConfig {
         'X-Device-Token': deviceToken ?? '',
       };
     } else {
-      return {
+      final token = accessToken ?? AuthService.instance.accessToken;
+      final user = username ?? AuthService.instance.currentUsername;
+      final headers = <String, String>{
         'Content-Type': 'application/json',
         'X-Request-Type': 'user',
-        'X-User-Name': username ?? '',
-        'X-User-Token': userToken ?? '',
       };
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      if (user != null && user.isNotEmpty) {
+        headers['X-User-Name'] = user;
+      }
+      if (userToken != null && userToken.isNotEmpty) {
+        headers['X-User-Token'] = userToken;
+      }
+      return headers;
     }
   }
 

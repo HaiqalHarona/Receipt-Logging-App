@@ -1,5 +1,6 @@
 // File: lib/ui/features/auth/views/login_screen.dart
 
+import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -316,12 +317,21 @@ class _LoginScreenState extends State<LoginScreen> {
         await _purgeLocalGuestData();
       }
 
-      // Persist session and link hardware device AFTER modal confirmation / guest purge
-      await AuthService.instance.saveSession(user, userToken: password);
-      await AuthService.instance.linkCurrentDevice(user, userToken: password);
+      // Persist session locally with JWT tokens
+      await AuthService.instance.saveSession(
+        user,
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
 
-      // Perform initial cloud sync
-      await CloudSyncService.instance.syncOnLogin();
+      // Perform hardware device linking and cloud data sync asynchronously in the background
+      unawaited(AuthService.instance
+          .linkCurrentDevice(user)
+          .then((_) => CloudSyncService.instance.syncOnLogin())
+          .catchError((e, st) {
+        AppLogger.error(
+            'CloudSync', 'Background link/sync error post-login', e, st);
+      }));
 
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -333,7 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
         message: 'Welcome back, ${user.username}!',
       );
 
-      // Navigate to dashboard, clearing the auth stack
+      // Navigate to dashboard immediately, clearing the auth stack
       context.go('/dashboard');
     } on ApiException catch (e) {
       final msg = 'Invalid username, email, or password. Please try again.';

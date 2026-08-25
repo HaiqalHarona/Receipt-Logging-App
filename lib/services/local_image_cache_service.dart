@@ -15,6 +15,8 @@ class LocalImageCacheService extends ChangeNotifier {
   static final LocalImageCacheService instance = LocalImageCacheService._();
 
   Directory? _cacheBaseDir;
+  final Map<String, Future<File?>> _inFlightAvatarFetches = {};
+  final Map<String, Future<File?>> _inFlightReceiptFetches = {};
 
   Future<Directory> _getBaseDir() async {
     if (_cacheBaseDir != null) return _cacheBaseDir!;
@@ -29,18 +31,46 @@ class LocalImageCacheService extends ChangeNotifier {
 
   /// Returns the cached avatar [File] for the given [size], or fetches it from
   /// the authenticated backend if missing or [forceRefresh] is true.
+  /// Deduplicates concurrent in-flight requests for the same user and size.
   Future<File?> getOrFetchAvatar({
     String size = 'medium',
     bool forceRefresh = false,
   }) async {
     final username = AuthService.instance.currentUsername;
-    final userToken = AuthService.instance.currentUserToken;
     final userId = AuthService.instance.currentUserId ?? username;
 
-    if (username == null || userToken == null || userId == null) {
+    if (!AuthService.instance.isLoggedIn || username == null || userId == null) {
       return null;
     }
 
+    final cacheKey = '$userId:$size';
+    if (!forceRefresh && _inFlightAvatarFetches.containsKey(cacheKey)) {
+      AppLogger.debug('LocalCache',
+          'Joining existing in-flight avatar fetch ($size) for user $username');
+      return _inFlightAvatarFetches[cacheKey]!;
+    }
+
+    final future = _fetchAvatarInternal(
+      username: username,
+      userId: userId,
+      size: size,
+      forceRefresh: forceRefresh,
+    );
+
+    _inFlightAvatarFetches[cacheKey] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlightAvatarFetches.remove(cacheKey);
+    }
+  }
+
+  Future<File?> _fetchAvatarInternal({
+    required String username,
+    required String userId,
+    required String size,
+    required bool forceRefresh,
+  }) async {
     final baseDir = await _getBaseDir();
     final avatarDir = Directory('${baseDir.path}/$userId/avatars');
     if (!await avatarDir.exists()) {
@@ -56,7 +86,6 @@ class LocalImageCacheService extends ChangeNotifier {
         'Fetching avatar ($size) from backend for user $username...');
     final bytes = await BackendApiClient.instance.fetchUserAvatar(
       username: username,
-      userToken: userToken,
       size: size,
     );
 
@@ -73,6 +102,7 @@ class LocalImageCacheService extends ChangeNotifier {
 
   /// Returns the cached receipt image [File] for [receiptId], or fetches it
   /// from the authenticated backend if missing or [forceRefresh] is true.
+  /// Deduplicates concurrent in-flight requests for the same receipt ID.
   Future<File?> getOrFetchReceiptImage({
     required String receiptId,
     String? localOrCloudPath,
@@ -87,13 +117,40 @@ class LocalImageCacheService extends ChangeNotifier {
     }
 
     final username = AuthService.instance.currentUsername;
-    final userToken = AuthService.instance.currentUserToken;
     final userId = AuthService.instance.currentUserId ?? username;
 
-    if (username == null || userToken == null || userId == null) {
+    if (!AuthService.instance.isLoggedIn || username == null || userId == null) {
       return null;
     }
 
+    final cacheKey = '$userId:$receiptId';
+    if (!forceRefresh && _inFlightReceiptFetches.containsKey(cacheKey)) {
+      AppLogger.debug('LocalCache',
+          'Joining existing in-flight receipt image fetch for $receiptId');
+      return _inFlightReceiptFetches[cacheKey]!;
+    }
+
+    final future = _fetchReceiptImageInternal(
+      receiptId: receiptId,
+      username: username,
+      userId: userId,
+      forceRefresh: forceRefresh,
+    );
+
+    _inFlightReceiptFetches[cacheKey] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlightReceiptFetches.remove(cacheKey);
+    }
+  }
+
+  Future<File?> _fetchReceiptImageInternal({
+    required String receiptId,
+    required String username,
+    required String userId,
+    required bool forceRefresh,
+  }) async {
     final baseDir = await _getBaseDir();
     final receiptsDir = Directory('${baseDir.path}/$userId/receipts');
     if (!await receiptsDir.exists()) {
@@ -110,7 +167,6 @@ class LocalImageCacheService extends ChangeNotifier {
     final bytes = await BackendApiClient.instance.fetchReceiptImage(
       receiptId: receiptId,
       username: username,
-      userToken: userToken,
     );
 
     if (bytes != null && bytes.isNotEmpty) {
