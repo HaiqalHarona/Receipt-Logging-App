@@ -291,9 +291,11 @@ class AuthScreen extends StatelessWidget {
                                     "Privacy Policy",
                                     style: TextStyle(
                                       fontSize: 11.5,
-                                      color: textSecondary.withValues(alpha: 0.8),
+                                      color:
+                                          textSecondary.withValues(alpha: 0.8),
                                       decoration: TextDecoration.underline,
-                                      decorationColor: textSecondary.withValues(alpha: 0.6),
+                                      decorationColor:
+                                          textSecondary.withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ),
@@ -310,9 +312,11 @@ class AuthScreen extends StatelessWidget {
                                     "Terms of Service",
                                     style: TextStyle(
                                       fontSize: 11.5,
-                                      color: textSecondary.withValues(alpha: 0.8),
+                                      color:
+                                          textSecondary.withValues(alpha: 0.8),
                                       decoration: TextDecoration.underline,
-                                      decorationColor: textSecondary.withValues(alpha: 0.6),
+                                      decorationColor:
+                                          textSecondary.withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ),

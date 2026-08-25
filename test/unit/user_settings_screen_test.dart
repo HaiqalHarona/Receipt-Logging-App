@@ -103,8 +103,10 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       // Password changed 2 days ago -> 5 days remaining
-      final twoDaysAgo =
-          DateTime.now().toUtc().subtract(const Duration(days: 2)).toIso8601String();
+      final twoDaysAgo = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(days: 2))
+          .toIso8601String();
 
       await AuthService.instance.saveSession(
         UserRecordDto(
@@ -123,7 +125,9 @@ void main() {
 
       // Tooltip should be present with "Change allowed in 5 days"
       final tooltipFinder = find.byWidgetPredicate(
-        (widget) => widget is Tooltip && (widget.message?.contains('Change allowed in 5 days') ?? false),
+        (widget) =>
+            widget is Tooltip &&
+            (widget.message?.contains('Change allowed in 5 days') ?? false),
       );
       expect(tooltipFinder, findsOneWidget);
 
@@ -159,4 +163,3 @@ void main() {
     });
   });
 }
-

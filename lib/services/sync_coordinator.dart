@@ -90,8 +90,7 @@ class SyncCoordinator extends ChangeNotifier {
 
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen((results) {
-      final hasConnection =
-          results.any((r) => r != ConnectivityResult.none);
+      final hasConnection = results.any((r) => r != ConnectivityResult.none);
       AppLogger.info('SyncCoordinator',
           'Connectivity changed: isOnline=$hasConnection (pending=${_outbox.length})');
       _isOnline = hasConnection;
@@ -169,8 +168,10 @@ class SyncCoordinator extends ChangeNotifier {
         AppLogger.warning('SyncCoordinator',
             'Mutation ${mutation.id} failed (attempt ${mutation.retryCount}): $e');
         if (mutation.retryCount >= 10) {
-          AppLogger.error('SyncCoordinator',
-              'Dropping poisonous mutation ${mutation.id} after 10 failed attempts.', e);
+          AppLogger.error(
+              'SyncCoordinator',
+              'Dropping poisonous mutation ${mutation.id} after 10 failed attempts.',
+              e);
           _outbox.removeWhere((m) => m.id == mutation.id);
           await _persistOutbox();
         }
@@ -182,8 +183,7 @@ class SyncCoordinator extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _executeMutation(
-      SyncMutation mutation, String username) async {
+  Future<void> _executeMutation(SyncMutation mutation, String username) async {
     switch (mutation.action) {
       case MutationAction.create:
         if (mutation.payload != null) {
@@ -199,9 +199,8 @@ class SyncCoordinator extends ChangeNotifier {
             final file = File(mutation.localImagePath!);
             if (await file.exists()) {
               imageBytes = await file.readAsBytes();
-              filename = mutation.localImagePath!
-                  .split(Platform.pathSeparator)
-                  .last;
+              filename =
+                  mutation.localImagePath!.split(Platform.pathSeparator).last;
             }
           }
           await BackendApiClient.instance.saveReceipt(
@@ -222,9 +221,8 @@ class SyncCoordinator extends ChangeNotifier {
             final file = File(mutation.localImagePath!);
             if (await file.exists()) {
               imageBytes = await file.readAsBytes();
-              filename = mutation.localImagePath!
-                  .split(Platform.pathSeparator)
-                  .last;
+              filename =
+                  mutation.localImagePath!.split(Platform.pathSeparator).last;
             }
           }
           await BackendApiClient.instance.updateReceipt(

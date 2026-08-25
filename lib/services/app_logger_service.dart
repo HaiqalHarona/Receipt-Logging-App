@@ -27,7 +27,9 @@ class AppLogger {
   static String _sanitize(String text) {
     var sanitized = text;
     sanitized = sanitized.replaceAll(
-      RegExp(r'(Bearer\s+)[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.?[A-Za-z0-9\-_=]*', caseSensitive: false),
+      RegExp(
+          r'(Bearer\s+)[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.?[A-Za-z0-9\-_=]*',
+          caseSensitive: false),
       r'$1[REDACTED_JWT]',
     );
     sanitized = sanitized.replaceAll(
@@ -35,7 +37,8 @@ class AppLogger {
       r'$1[REDACTED]',
     );
     sanitized = sanitized.replaceAll(
-      RegExp(r'("?device_token"?\s*[:=]\s*"?)([^"\s,}{]+)', caseSensitive: false),
+      RegExp(r'("?device_token"?\s*[:=]\s*"?)([^"\s,}{]+)',
+          caseSensitive: false),
       r'$1[REDACTED]',
     );
     return sanitized;
@@ -78,7 +81,8 @@ class AppLogger {
           _sink?.writeln(logEntry);
         });
         _initialized = true;
-        debugPrint('📝 [AppLogger] Async file logging initialized at: $_resolvedLogPath');
+        debugPrint(
+            '📝 [AppLogger] Async file logging initialized at: $_resolvedLogPath');
       } catch (e) {
         debugPrint('⚠️ [AppLogger] Failed to open log sink: $e');
       }

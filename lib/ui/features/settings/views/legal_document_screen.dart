@@ -44,7 +44,8 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
       AppLogger.error('LegalScreen', 'Failed to load legal document', e, st);
       if (mounted) {
         setState(() {
-          _markdownContent = '# ${_selectedDocType.title}\n\nFailed to load document content.';
+          _markdownContent =
+              '# ${_selectedDocType.title}\n\nFailed to load document content.';
           _isLoading = false;
         });
       }
@@ -121,7 +122,8 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
                     scrollDirection: Axis.horizontal,
                     clipBehavior: Clip.none,
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     child: Row(
                       children: LegalDocType.values.map((type) {
                         final isSelected = _selectedDocType == type;

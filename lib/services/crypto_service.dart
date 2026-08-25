@@ -96,7 +96,8 @@ class CryptoService {
       } catch (writeError) {
         // Storage write failed (e.g. mocked/headless environment without native channels)
         if (kDebugMode) {
-          debugPrint('CryptoService: secure storage write skipped/failed: $writeError');
+          debugPrint(
+              'CryptoService: secure storage write skipped/failed: $writeError');
         }
       }
 
@@ -105,7 +106,8 @@ class CryptoService {
     } catch (e) {
       // Secure storage read failed or not supported in test environment
       if (kDebugMode) {
-        debugPrint('CryptoService: secure storage read failed, falling back to in-memory key: $e');
+        debugPrint(
+            'CryptoService: secure storage read failed, falling back to in-memory key: $e');
       }
       if (_masterSecretKey == null) {
         final fallbackKey = _generateSecureRandomBytes(32);
@@ -242,7 +244,10 @@ class CryptoService {
 
     // Prefix with magic header: 4 bytes (ENC\x01), 12 bytes nonce, 16 bytes MAC tag, then ciphertext
     return <int>[
-      0x45, 0x4E, 0x43, 0x01,
+      0x45,
+      0x4E,
+      0x43,
+      0x01,
       ...secretBox.nonce,
       ...secretBox.mac.bytes,
       ...secretBox.cipherText,

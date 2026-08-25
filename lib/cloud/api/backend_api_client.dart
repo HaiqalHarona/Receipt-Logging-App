@@ -178,9 +178,8 @@ class BackendApiClient {
               accessToken: newTokens.accessToken,
               refreshToken: newTokens.refreshToken,
             );
-            requestHeaders['Authorization'] =
-                'Bearer ${newTokens.accessToken}';
-            return _sendRequest(method, uri,
+            requestHeaders['Authorization'] = 'Bearer ${newTokens.accessToken}';
+            return await _sendRequest(method, uri,
                 headers: requestHeaders, body: body, isRetry: true);
           }
         }

@@ -80,9 +80,11 @@ class LegalDocumentService {
     // 1. Try loading from Flutter asset bundle (docs/legal_docs/*.md)
     try {
       content = await rootBundle.loadString(type.assetPath);
-      AppLogger.info('LegalDocumentService', 'Loaded ${type.name} from asset bundle: ${type.assetPath}');
+      AppLogger.info('LegalDocumentService',
+          'Loaded ${type.name} from asset bundle: ${type.assetPath}');
     } catch (assetErr) {
-      AppLogger.warning('LegalDocumentService', 'Could not load asset ${type.assetPath}: $assetErr');
+      AppLogger.warning('LegalDocumentService',
+          'Could not load asset ${type.assetPath}: $assetErr');
     }
 
     // 2. Try loading directly from local filesystem (useful in development & testing)
@@ -91,10 +93,12 @@ class LegalDocumentService {
         final localFile = File(type.assetPath);
         if (await localFile.exists()) {
           content = await localFile.readAsString();
-          AppLogger.info('LegalDocumentService', 'Loaded ${type.name} from local file: ${localFile.path}');
+          AppLogger.info('LegalDocumentService',
+              'Loaded ${type.name} from local file: ${localFile.path}');
         }
       } catch (fileErr) {
-        AppLogger.warning('LegalDocumentService', 'Could not load file ${type.assetPath}: $fileErr');
+        AppLogger.warning('LegalDocumentService',
+            'Could not load file ${type.assetPath}: $fileErr');
       }
     }
 

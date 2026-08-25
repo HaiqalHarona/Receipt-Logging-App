@@ -115,12 +115,13 @@ void main() {
       controller.setDepth(7.5);
       controller.setFontScale(1.10);
 
-      final payload =
-          UserPreferencesService.instance.buildPreferencesPayload();
+      final payload = UserPreferencesService.instance.buildPreferencesPayload();
 
-      expect(payload['theme_mode'], equals(ThemeMode.values.indexOf(ThemeMode.dark)));
+      expect(payload['theme_mode'],
+          equals(ThemeMode.values.indexOf(ThemeMode.dark)));
       expect(payload['dark_preset_idx'], equals(3));
-      expect(payload['dark_accent_color'], equals(const Color(0xFFE91E63).toARGB32()));
+      expect(payload['dark_accent_color'],
+          equals(const Color(0xFFE91E63).toARGB32()));
       expect(payload['neuro_depth'], equals(7.5));
       expect(payload['font_scale'], equals(1.10));
 
@@ -134,12 +135,12 @@ void main() {
         'font_scale': 1.25,
       };
 
-      await UserPreferencesService.instance
-          .applyCloudPreferences(cloudPayload);
+      await UserPreferencesService.instance.applyCloudPreferences(cloudPayload);
 
       expect(controller.themeMode, equals(ThemeMode.light));
       expect(controller.selectedLightPresetIndex, equals(4));
-      expect(controller.customLightAccentColor, equals(const Color(0xFF00BCD4)));
+      expect(
+          controller.customLightAccentColor, equals(const Color(0xFF00BCD4)));
       expect(controller.neuDepth, equals(4.5));
       expect(controller.fontScale, equals(1.25));
     });

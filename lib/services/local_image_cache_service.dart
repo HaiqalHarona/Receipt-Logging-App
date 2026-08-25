@@ -39,7 +39,9 @@ class LocalImageCacheService extends ChangeNotifier {
     final username = AuthService.instance.currentUsername;
     final userId = AuthService.instance.currentUserId ?? username;
 
-    if (!AuthService.instance.isLoggedIn || username == null || userId == null) {
+    if (!AuthService.instance.isLoggedIn ||
+        username == null ||
+        userId == null) {
       return null;
     }
 
@@ -119,7 +121,9 @@ class LocalImageCacheService extends ChangeNotifier {
     final username = AuthService.instance.currentUsername;
     final userId = AuthService.instance.currentUserId ?? username;
 
-    if (!AuthService.instance.isLoggedIn || username == null || userId == null) {
+    if (!AuthService.instance.isLoggedIn ||
+        username == null ||
+        userId == null) {
       return null;
     }
 
