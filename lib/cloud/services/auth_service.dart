@@ -327,7 +327,8 @@ class AuthService extends ChangeNotifier {
     required String newPassword,
   }) async {
     if (!isLoggedIn) {
-      AppLogger.warning('AuthService', 'Cannot change password: user is not logged in');
+      AppLogger.warning(
+          'AuthService', 'Cannot change password: user is not logged in');
       throw const ApiException('User session is not active.', statusCode: 401);
     }
 
@@ -361,8 +362,8 @@ class AuthService extends ChangeNotifier {
           await _persistProfile(_cachedProfile!);
         }
 
-        AppLogger.info(
-            'AuthService', 'Password changed successfully for user: $_username');
+        AppLogger.info('AuthService',
+            'Password changed successfully for user: $_username');
         notifyListeners();
         return true;
       }
@@ -390,17 +391,21 @@ class AuthService extends ChangeNotifier {
     if (accessToken != null && accessToken.isNotEmpty) {
       _accessToken = accessToken;
       try {
-        await _secureStorage.write(key: _secureKeyAccessToken, value: accessToken);
+        await _secureStorage.write(
+            key: _secureKeyAccessToken, value: accessToken);
       } catch (e) {
-        AppLogger.warning('AuthService', 'Failed to write accessToken to secure storage: $e');
+        AppLogger.warning(
+            'AuthService', 'Failed to write accessToken to secure storage: $e');
       }
     }
     if (refreshToken != null && refreshToken.isNotEmpty) {
       _refreshToken = refreshToken;
       try {
-        await _secureStorage.write(key: _secureKeyRefreshToken, value: refreshToken);
+        await _secureStorage.write(
+            key: _secureKeyRefreshToken, value: refreshToken);
       } catch (e) {
-        AppLogger.warning('AuthService', 'Failed to write refreshToken to secure storage: $e');
+        AppLogger.warning('AuthService',
+            'Failed to write refreshToken to secure storage: $e');
       }
     }
     _email = user.email;
@@ -415,15 +420,19 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Updates JWT tokens in memory and secure storage after refresh.
-  Future<void> updateJwtTokens({required String accessToken, required String refreshToken}) async {
+  Future<void> updateJwtTokens(
+      {required String accessToken, required String refreshToken}) async {
     _accessToken = accessToken;
     _refreshToken = refreshToken;
     try {
-      await _secureStorage.write(key: _secureKeyAccessToken, value: accessToken);
-      await _secureStorage.write(key: _secureKeyRefreshToken, value: refreshToken);
+      await _secureStorage.write(
+          key: _secureKeyAccessToken, value: accessToken);
+      await _secureStorage.write(
+          key: _secureKeyRefreshToken, value: refreshToken);
       AppLogger.info('AuthService', 'JWT tokens rotated successfully');
     } catch (e) {
-      AppLogger.warning('AuthService', 'Failed to persist rotated tokens to secure storage: $e');
+      AppLogger.warning('AuthService',
+          'Failed to persist rotated tokens to secure storage: $e');
     }
   }
 
@@ -487,7 +496,8 @@ class AuthService extends ChangeNotifier {
       await _secureStorage.delete(key: _secureKeyAccessToken);
       await _secureStorage.delete(key: _secureKeyRefreshToken);
     } catch (e) {
-      AppLogger.warning('AuthService', 'Failed to clear secure storage tokens: $e');
+      AppLogger.warning(
+          'AuthService', 'Failed to clear secure storage tokens: $e');
     }
 
     try {

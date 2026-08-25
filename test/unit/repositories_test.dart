@@ -167,7 +167,9 @@ void main() {
       expect(repo.receipts.any((r) => r.id == 'test_guest_r1'), isFalse);
     });
 
-    test('ReceiptRepository updateReceipt and saveReceipt de-duplication for UUIDs', () async {
+    test(
+        'ReceiptRepository updateReceipt and saveReceipt de-duplication for UUIDs',
+        () async {
       final repo = ReceiptRepository.instance;
       await AuthService.instance.saveSession(const UserRecordDto(
         id: 'usr_repo_101',
@@ -184,7 +186,8 @@ void main() {
         amount: 45.90,
         currency: 'USD',
         category: 'Groceries',
-        imagePath: 'user123/receipt_images/67a4c8d2-0e07-4a96-ba4b-3185dc63c827.jpg',
+        imagePath:
+            'user123/receipt_images/67a4c8d2-0e07-4a96-ba4b-3185dc63c827.jpg',
       );
 
       // Save initial cloud-synced receipt
@@ -201,7 +204,8 @@ void main() {
 
       // Verify no duplicate was created
       expect(repo.receipts.length, equals(1));
-      expect(repo.receipts.first.merchant, equals('Whole Foods Market (Updated)'));
+      expect(
+          repo.receipts.first.merchant, equals('Whole Foods Market (Updated)'));
       expect(repo.receipts.first.amount, equals(49.99));
       expect(repo.receipts.first.imagePath, equals(uuidReceipt.imagePath));
 

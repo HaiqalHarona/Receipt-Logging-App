@@ -65,7 +65,8 @@ void main() {
   });
 
   group('CryptoService Initialization & Key Management', () {
-    test('init() generates a 256-bit key and stores it in secure storage', () async {
+    test('init() generates a 256-bit key and stores it in secure storage',
+        () async {
       expect(cryptoService.isInitialized, isFalse);
 
       await cryptoService.init();
@@ -102,7 +103,8 @@ void main() {
       expect(keyBytes, equals(testKeyBytes));
     });
 
-    test('init() handles in-memory fallback gracefully when storage throws', () async {
+    test('init() handles in-memory fallback gracefully when storage throws',
+        () async {
       // Create a broken storage that throws
       final brokenStorage = _ThrowingSecureStorage();
       cryptoService.resetForTesting(customStorage: brokenStorage);
@@ -117,7 +119,8 @@ void main() {
   });
 
   group('Text Encryption & Decryption (AES-256-GCM)', () {
-    test('encryptText produces standard envelope enc:v1:<iv>:<tag>:<ct>', () async {
+    test('encryptText produces standard envelope enc:v1:<iv>:<tag>:<ct>',
+        () async {
       await cryptoService.init();
 
       const plainText = 'Receipt: \$128.50 at SuperMart on 2026-08-24';
@@ -158,7 +161,8 @@ void main() {
       }
     });
 
-    test('encryptText produces unique nonces and ciphertexts for same input', () async {
+    test('encryptText produces unique nonces and ciphertexts for same input',
+        () async {
       await cryptoService.init();
 
       const message = 'Confidential receipt metadata';
@@ -181,7 +185,8 @@ void main() {
       // 1. Tamper ciphertext
       final ctBytes = base64Decode(parts[4]);
       ctBytes[0] ^= 0xFF; // Flip bits in ciphertext
-      final tamperedCtEnvelope = 'enc:v1:${parts[2]}:${parts[3]}:${base64Encode(ctBytes)}';
+      final tamperedCtEnvelope =
+          'enc:v1:${parts[2]}:${parts[3]}:${base64Encode(ctBytes)}';
 
       expect(
         () async => await cryptoService.decryptText(tamperedCtEnvelope),
@@ -191,7 +196,8 @@ void main() {
       // 2. Tamper MAC tag
       final tagBytes = base64Decode(parts[3]);
       tagBytes[0] ^= 0x01; // Flip bit in auth tag
-      final tamperedTagEnvelope = 'enc:v1:${parts[2]}:${base64Encode(tagBytes)}:${parts[4]}';
+      final tamperedTagEnvelope =
+          'enc:v1:${parts[2]}:${base64Encode(tagBytes)}:${parts[4]}';
 
       expect(
         () async => await cryptoService.decryptText(tamperedTagEnvelope),
@@ -201,7 +207,8 @@ void main() {
       // 3. Tamper IV
       final ivBytes = base64Decode(parts[2]);
       ivBytes[0] ^= 0x01;
-      final tamperedIvEnvelope = 'enc:v1:${base64Encode(ivBytes)}:${parts[3]}:${parts[4]}';
+      final tamperedIvEnvelope =
+          'enc:v1:${base64Encode(ivBytes)}:${parts[3]}:${parts[4]}';
 
       expect(
         () async => await cryptoService.decryptText(tamperedIvEnvelope),
@@ -209,7 +216,8 @@ void main() {
       );
     });
 
-    test('decryptText throws FormatException on malformed envelope structure', () async {
+    test('decryptText throws FormatException on malformed envelope structure',
+        () async {
       await cryptoService.init();
 
       expect(
@@ -222,21 +230,28 @@ void main() {
       );
     });
 
-    test('decryptText transparently falls back for legacy unencrypted text', () async {
+    test('decryptText transparently falls back for legacy unencrypted text',
+        () async {
       await cryptoService.init();
 
-      const legacyPlainText1 = 'Standard plaintext note from legacy app version';
+      const legacyPlainText1 =
+          'Standard plaintext note from legacy app version';
       const legacyPlainText2 = '{"legacy": "json_string_unencrypted"}';
-      const legacyPlainText3 = 'Some words containing enc:v2: or similar non-v1 tags';
+      const legacyPlainText3 =
+          'Some words containing enc:v2: or similar non-v1 tags';
 
-      expect(await cryptoService.decryptText(legacyPlainText1), equals(legacyPlainText1));
-      expect(await cryptoService.decryptText(legacyPlainText2), equals(legacyPlainText2));
-      expect(await cryptoService.decryptText(legacyPlainText3), equals(legacyPlainText3));
+      expect(await cryptoService.decryptText(legacyPlainText1),
+          equals(legacyPlainText1));
+      expect(await cryptoService.decryptText(legacyPlainText2),
+          equals(legacyPlainText2));
+      expect(await cryptoService.decryptText(legacyPlainText3),
+          equals(legacyPlainText3));
     });
   });
 
   group('JSON Map Encryption & Decryption (AES-256-GCM)', () {
-    test('encryptJson produces envelope map with _enc: v1, iv, tag, and data', () async {
+    test('encryptJson produces envelope map with _enc: v1, iv, tag, and data',
+        () async {
       await cryptoService.init();
 
       final data = {
@@ -325,7 +340,9 @@ void main() {
       );
     });
 
-    test('decryptJson transparently falls back for legacy unencrypted JSON maps', () async {
+    test(
+        'decryptJson transparently falls back for legacy unencrypted JSON maps',
+        () async {
       await cryptoService.init();
 
       final legacyMap1 = {

@@ -46,14 +46,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      final message = res['message'] as String? ?? 'If an account exists, a reset code has been sent.';
+      final message = res['message'] as String? ??
+          'If an account exists, a reset code has been sent.';
       final devOtp = kDebugMode ? res['dev_otp'] as String? : null;
 
       AppSnackBar.show(
         context,
-        message: devOtp != null
-            ? 'Dev OTP: $devOtp'
-            : message,
+        message: devOtp != null ? 'Dev OTP: $devOtp' : message,
         duration: const Duration(seconds: 4),
       );
 

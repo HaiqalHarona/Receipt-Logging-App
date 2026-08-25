@@ -181,6 +181,12 @@
       "skillPath": "skills/pages/legal/shipping/SKILL.md",
       "computedHash": "c3883ecf349be1b8a31b7b62796b88ba1a0641578e17299591f92ebb964e4106"
     },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/systematic-debugging/SKILL.md",
+      "computedHash": "a2750dfbaed1690da73b120254892c4f926b4576cb82eb16fc877783941fe39b"
+    },
     "terms-page-generator": {
       "source": "kostja94/marketing-skills",
       "sourceType": "github",

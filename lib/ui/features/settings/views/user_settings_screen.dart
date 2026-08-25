@@ -542,8 +542,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             final hasUpper = RegExp(r'[A-Z]').hasMatch(newPass);
             final hasLower = RegExp(r'[a-z]').hasMatch(newPass);
             final hasDigit = RegExp(r'[0-9]').hasMatch(newPass);
-            final hasSpecial = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(newPass);
-            final isStrong = hasMinLen && hasUpper && hasLower && hasDigit && hasSpecial;
+            final hasSpecial =
+                RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(newPass);
+            final isStrong =
+                hasMinLen && hasUpper && hasLower && hasDigit && hasSpecial;
 
             return Container(
               decoration: BoxDecoration(
@@ -630,8 +632,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             child: TextField(
                               controller: oldPasswordController,
                               obscureText: obscureOld,
-                              style: TextStyle(
-                                  color: textPrimary, fontSize: 14),
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
                               onChanged: (_) {
                                 if (errorMsg != null) {
                                   setModalState(() => errorMsg = null);
@@ -685,8 +687,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             child: TextField(
                               controller: newPasswordController,
                               obscureText: obscureNew,
-                              style: TextStyle(
-                                  color: textPrimary, fontSize: 14),
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
                               onChanged: (_) => setModalState(() {
                                 if (errorMsg != null) errorMsg = null;
                               }),
@@ -720,11 +722,16 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        _buildRequirementChip("8+ chars", hasMinLen, accent, textSecondary),
-                        _buildRequirementChip("Uppercase", hasUpper, accent, textSecondary),
-                        _buildRequirementChip("Lowercase", hasLower, accent, textSecondary),
-                        _buildRequirementChip("Number", hasDigit, accent, textSecondary),
-                        _buildRequirementChip(r"Special (!@#$)", hasSpecial, accent, textSecondary),
+                        _buildRequirementChip(
+                            "8+ chars", hasMinLen, accent, textSecondary),
+                        _buildRequirementChip(
+                            "Uppercase", hasUpper, accent, textSecondary),
+                        _buildRequirementChip(
+                            "Lowercase", hasLower, accent, textSecondary),
+                        _buildRequirementChip(
+                            "Number", hasDigit, accent, textSecondary),
+                        _buildRequirementChip(r"Special (!@#$)", hasSpecial,
+                            accent, textSecondary),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -746,7 +753,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       child: Row(
                         children: [
                           Icon(Icons.check_circle_outline_rounded,
-                              color: (confirmPass.isNotEmpty && confirmPass == newPass)
+                              color: (confirmPass.isNotEmpty &&
+                                      confirmPass == newPass)
                                   ? Colors.green
                                   : textSecondary,
                               size: 18),
@@ -755,8 +763,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             child: TextField(
                               controller: confirmPasswordController,
                               obscureText: obscureConfirm,
-                              style: TextStyle(
-                                  color: textPrimary, fontSize: 14),
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
                               onChanged: (_) => setModalState(() {
                                 if (errorMsg != null) errorMsg = null;
                               }),
@@ -816,18 +824,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                 final confP = confirmPasswordController.text;
 
                                 if (oldP.isEmpty) {
-                                  setModalState(() =>
-                                      errorMsg = "Please enter your current password.");
+                                  setModalState(() => errorMsg =
+                                      "Please enter your current password.");
                                   return;
                                 }
                                 if (!isStrong) {
-                                  setModalState(() =>
-                                      errorMsg = "New password does not meet security requirements.");
+                                  setModalState(() => errorMsg =
+                                      "New password does not meet security requirements.");
                                   return;
                                 }
                                 if (newP == oldP) {
-                                  setModalState(() =>
-                                      errorMsg = "New password cannot be the same as your old password.");
+                                  setModalState(() => errorMsg =
+                                      "New password cannot be the same as your old password.");
                                   return;
                                 }
                                 if (newP != confP) {
@@ -855,13 +863,19 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                     );
                                   }
                                 } catch (e) {
-                                  String cleanError = "Failed to update password. Please check your current password.";
+                                  String cleanError =
+                                      "Failed to update password. Please check your current password.";
                                   if (e is ApiException) {
                                     cleanError = e.message;
-                                  } else if (e.toString().contains("Current password is incorrect")) {
-                                    cleanError = "Current password is incorrect.";
-                                  } else if (e.toString().contains("cannot be the same")) {
-                                    cleanError = "New password cannot be the same as your old password.";
+                                  } else if (e.toString().contains(
+                                      "Current password is incorrect")) {
+                                    cleanError =
+                                        "Current password is incorrect.";
+                                  } else if (e
+                                      .toString()
+                                      .contains("cannot be the same")) {
+                                    cleanError =
+                                        "New password cannot be the same as your old password.";
                                   }
                                   setModalState(() {
                                     isSubmitting = false;
@@ -1152,8 +1166,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     int cooldownDaysRemaining = 0;
     bool isPasswordCooldownActive = false;
     if (lastChanged != null) {
-      final difference =
-          DateTime.now().toUtc().difference(lastChanged.toUtc());
+      final difference = DateTime.now().toUtc().difference(lastChanged.toUtc());
       const cooldownDuration = Duration(days: 7);
       if (difference < cooldownDuration) {
         final remainingSeconds =
@@ -1672,7 +1685,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         color: isPasswordCooldownActive
-                                            ? textSecondary.withValues(alpha: 0.08)
+                                            ? textSecondary.withValues(
+                                                alpha: 0.08)
                                             : accent.withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -1680,7 +1694,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                         Icons.lock_reset_rounded,
                                         size: 18,
                                         color: isPasswordCooldownActive
-                                            ? textSecondary.withValues(alpha: 0.5)
+                                            ? textSecondary.withValues(
+                                                alpha: 0.5)
                                             : accent,
                                       ),
                                     ),
@@ -1707,7 +1722,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                               fontWeight: FontWeight.bold,
                                               letterSpacing: 2,
                                               color: isPasswordCooldownActive
-                                                  ? textSecondary.withValues(alpha: 0.5)
+                                                  ? textSecondary.withValues(
+                                                      alpha: 0.5)
                                                   : textPrimary,
                                             ),
                                           ),
@@ -1722,11 +1738,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                           style: NeumorphicStyle(
                                             depth: -2.5,
                                             intensity: 0.8,
-                                            color: NeumorphicTheme.baseColor(context),
-                                            boxShape: NeumorphicBoxShape.roundRect(
-                                                BorderRadius.circular(8)),
+                                            color: NeumorphicTheme.baseColor(
+                                                context),
+                                            boxShape:
+                                                NeumorphicBoxShape.roundRect(
+                                                    BorderRadius.circular(8)),
                                             border: NeumorphicBorder(
-                                              color: textSecondary.withValues(alpha: 0.25),
+                                              color: textSecondary.withValues(
+                                                  alpha: 0.25),
                                               width: 1,
                                             ),
                                           ),
@@ -1739,7 +1758,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                 Icon(
                                                   Icons.schedule_rounded,
                                                   size: 12,
-                                                  color: textSecondary.withValues(alpha: 0.6),
+                                                  color: textSecondary
+                                                      .withValues(alpha: 0.6),
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
@@ -1747,7 +1767,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.bold,
-                                                    color: textSecondary.withValues(alpha: 0.6),
+                                                    color: textSecondary
+                                                        .withValues(alpha: 0.6),
                                                   ),
                                                 ),
                                               ],
@@ -1760,7 +1781,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 10, vertical: 5),
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                           border: Border.all(
                                               color:
                                                   accent.withValues(alpha: 0.5),

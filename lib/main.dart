@@ -30,7 +30,8 @@ void main() async {
   try {
     await dotenv.load(fileName: ".env");
   } catch (_) {
-    AppLogger.debug('Config', 'No .env asset loaded; using environment definitions or defaults.');
+    AppLogger.debug('Config',
+        'No .env asset loaded; using environment definitions or defaults.');
   }
 
   // Initialize crypto service and secure storage keys
@@ -54,7 +55,8 @@ void main() async {
 
   // Catch unhandled Flutter framework errors
   FlutterError.onError = (FlutterErrorDetails details) {
-    AppLogger.error('FlutterError', details.exceptionAsString(), details.exception, details.stack);
+    AppLogger.error('FlutterError', details.exceptionAsString(),
+        details.exception, details.stack);
   };
 
   // Catch unhandled platform/isolate asynchronous errors

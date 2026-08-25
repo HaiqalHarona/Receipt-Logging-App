@@ -9,7 +9,8 @@ class OnboardingService extends ChangeNotifier {
 
   static const String _keyHasCompletedOnboarding = 'has_completed_onboarding';
   static const String _keyHasAcceptedLegalTerms = 'has_accepted_legal_terms';
-  static const String _keyLegalTermsAcceptedVersion = 'legal_terms_accepted_version';
+  static const String _keyLegalTermsAcceptedVersion =
+      'legal_terms_accepted_version';
   static const String _keyLegalTermsAcceptedAt = 'legal_terms_accepted_at';
 
   static const String currentLegalVersion = '1.0.0 (2026-08-25)';
@@ -31,9 +32,12 @@ class OnboardingService extends ChangeNotifier {
     if (_isInitialized) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      _hasCompletedOnboarding = prefs.getBool(_keyHasCompletedOnboarding) ?? false;
-      _hasAcceptedLegalTerms = prefs.getBool(_keyHasAcceptedLegalTerms) ?? false;
-      _legalTermsAcceptedVersion = prefs.getString(_keyLegalTermsAcceptedVersion);
+      _hasCompletedOnboarding =
+          prefs.getBool(_keyHasCompletedOnboarding) ?? false;
+      _hasAcceptedLegalTerms =
+          prefs.getBool(_keyHasAcceptedLegalTerms) ?? false;
+      _legalTermsAcceptedVersion =
+          prefs.getString(_keyLegalTermsAcceptedVersion);
       _legalTermsAcceptedAt = prefs.getString(_keyLegalTermsAcceptedAt);
 
       _isInitialized = true;
@@ -41,7 +45,8 @@ class OnboardingService extends ChangeNotifier {
           'Initialized: completed=$_hasCompletedOnboarding, legalAccepted=$_hasAcceptedLegalTerms (version: $_legalTermsAcceptedVersion)');
       notifyListeners();
     } catch (e, st) {
-      AppLogger.error('OnboardingService', 'Error initializing OnboardingService', e, st);
+      AppLogger.error(
+          'OnboardingService', 'Error initializing OnboardingService', e, st);
       _isInitialized = true;
     }
   }
@@ -59,7 +64,8 @@ class OnboardingService extends ChangeNotifier {
         _legalTermsAcceptedAt = DateTime.now().toUtc().toIso8601String();
 
         await prefs.setBool(_keyHasAcceptedLegalTerms, true);
-        await prefs.setString(_keyLegalTermsAcceptedVersion, currentLegalVersion);
+        await prefs.setString(
+            _keyLegalTermsAcceptedVersion, currentLegalVersion);
         await prefs.setString(_keyLegalTermsAcceptedAt, _legalTermsAcceptedAt!);
       }
 
@@ -67,7 +73,8 @@ class OnboardingService extends ChangeNotifier {
           'Onboarding completed successfully. Legal consent recorded: $_hasAcceptedLegalTerms at $_legalTermsAcceptedAt');
       notifyListeners();
     } catch (e, st) {
-      AppLogger.error('OnboardingService', 'Failed to complete onboarding', e, st);
+      AppLogger.error(
+          'OnboardingService', 'Failed to complete onboarding', e, st);
     }
   }
 

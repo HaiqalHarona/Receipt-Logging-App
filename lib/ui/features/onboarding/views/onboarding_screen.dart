@@ -25,7 +25,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     _agreedToTerms = OnboardingService.instance.hasAcceptedLegalTerms;
-    AppLogger.info('UI', 'OnboardingScreen initialized (termsAccepted=$_agreedToTerms)');
+    AppLogger.info(
+        'UI', 'OnboardingScreen initialized (termsAccepted=$_agreedToTerms)');
   }
 
   @override
@@ -58,12 +59,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await OnboardingService.instance.completeOnboarding(acceptLegal: true);
     if (!mounted) return;
 
-    AppLogger.info('UI', 'User completed onboarding flow. Navigating to dashboard.');
+    AppLogger.info(
+        'UI', 'User completed onboarding flow. Navigating to dashboard.');
     context.go('/dashboard');
   }
 
   void _openLegalDocument(LegalDocType type) {
-    AppLogger.info('UI', 'User opened legal document from onboarding: ${type.name}');
+    AppLogger.info(
+        'UI', 'User opened legal document from onboarding: ${type.name}');
     context.push('/legal/${type.name}');
   }
 
@@ -89,7 +92,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   // Top Header / Skip Button / Back Button
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -117,7 +121,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               ),
                               const SizedBox(width: 10),
                             ],
-                            Icon(Icons.receipt_long_rounded, color: accent, size: 24),
+                            Icon(Icons.receipt_long_rounded,
+                                color: accent, size: 24),
                             const SizedBox(width: 8),
                             Text(
                               'Receipt Logger',
@@ -157,7 +162,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Expanded(
                     child: PageView(
                       controller: _pageController,
-                      onPageChanged: (idx) => setState(() => _currentPage = idx),
+                      onPageChanged: (idx) =>
+                          setState(() => _currentPage = idx),
                       children: [
                         _buildSlide(
                           icon: Icons.lock_outline_rounded,
@@ -208,7 +214,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                   // Bottom Navigation Controls
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 16),
                     child: Column(
                       children: [
                         // Dot Indicators
@@ -222,7 +229,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               height: 8,
                               width: isSelected ? 24 : 8,
                               decoration: BoxDecoration(
-                                color: isSelected ? accent : textSecondary.withValues(alpha: 0.3),
+                                color: isSelected
+                                    ? accent
+                                    : textSecondary.withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             );
@@ -278,9 +287,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 intensity: 0.85,
                                 boxShape: NeumorphicBoxShape.roundRect(
                                     BorderRadius.circular(16)),
-                                color: _agreedToTerms
-                                    ? accent
-                                    : baseColor,
+                                color: _agreedToTerms ? accent : baseColor,
                                 border: NeumorphicBorder(
                                   color: accent.withValues(alpha: 0.8),
                                   width: 1.5,
@@ -356,7 +363,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: Icon(icon, size: 54, color: accent),
           ),
           const SizedBox(height: 24),
-
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
@@ -375,7 +381,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: 18),
-
           Text(
             title,
             textAlign: TextAlign.center,
@@ -387,7 +392,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: 14),
-
           Text(
             description,
             textAlign: TextAlign.center,
@@ -428,7 +432,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               padding: const EdgeInsets.all(18),
-              child: Icon(Icons.verified_user_outlined, size: 36, color: accent),
+              child:
+                  Icon(Icons.verified_user_outlined, size: 36, color: accent),
             ),
           ),
           const SizedBox(height: 14),
@@ -454,7 +459,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: 18),
-
           _buildLegalDocTile(
             title: 'Privacy Policy',
             subtitle: 'GDPR, CCPA/CPRA, Zero AI Training & Encryption',
@@ -503,7 +507,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             fontScale: fontScale,
           ),
           const SizedBox(height: 16),
-
           GestureDetector(
             onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
             behavior: HitTestBehavior.opaque,

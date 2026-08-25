@@ -285,9 +285,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildAvatarFallback(String username, Color accent) {
-    final initial = username.trim().isNotEmpty
-        ? username.trim()[0].toUpperCase()
-        : '';
+    final initial =
+        username.trim().isNotEmpty ? username.trim()[0].toUpperCase() : '';
     if (initial.isNotEmpty) {
       return Center(
         child: Text(

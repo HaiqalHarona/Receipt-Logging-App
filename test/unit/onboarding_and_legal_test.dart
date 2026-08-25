@@ -19,27 +19,34 @@ void main() {
   group('LegalDocumentService Unit Tests', () {
     test('LegalDocType enum mappings and titles', () {
       expect(LegalDocType.fromString('privacy'), equals(LegalDocType.privacy));
-      expect(LegalDocType.fromString('privacy_policy'), equals(LegalDocType.privacy));
+      expect(LegalDocType.fromString('privacy_policy'),
+          equals(LegalDocType.privacy));
       expect(LegalDocType.fromString('terms'), equals(LegalDocType.terms));
       expect(LegalDocType.fromString('tos'), equals(LegalDocType.terms));
       expect(LegalDocType.fromString('cookies'), equals(LegalDocType.cookies));
-      expect(LegalDocType.fromString('cookie_policy'), equals(LegalDocType.cookies));
-      expect(LegalDocType.fromString('accessibility'), equals(LegalDocType.accessibility));
-      expect(LegalDocType.fromString('a11y'), equals(LegalDocType.accessibility));
+      expect(LegalDocType.fromString('cookie_policy'),
+          equals(LegalDocType.cookies));
+      expect(LegalDocType.fromString('accessibility'),
+          equals(LegalDocType.accessibility));
+      expect(
+          LegalDocType.fromString('a11y'), equals(LegalDocType.accessibility));
       expect(LegalDocType.fromString('unknown'), equals(LegalDocType.privacy));
 
       expect(LegalDocType.privacy.title, equals('Privacy Policy'));
       expect(LegalDocType.terms.title, equals('Terms of Service'));
       expect(LegalDocType.cookies.title, equals('Cookie & Storage Policy'));
-      expect(LegalDocType.accessibility.title, equals('Accessibility Statement'));
+      expect(
+          LegalDocType.accessibility.title, equals('Accessibility Statement'));
 
       expect(LegalDocType.privacy.fileName, equals('PRIVACY_POLICY.md'));
       expect(LegalDocType.terms.fileName, equals('TERMS_OF_SERVICE.md'));
       expect(LegalDocType.cookies.fileName, equals('COOKIE_POLICY.md'));
-      expect(LegalDocType.accessibility.fileName, equals('ACCESSIBILITY_STATEMENT.md'));
+      expect(LegalDocType.accessibility.fileName,
+          equals('ACCESSIBILITY_STATEMENT.md'));
     });
 
-    test('LegalDocumentService loadDocument returns non-empty markdown content', () async {
+    test('LegalDocumentService loadDocument returns non-empty markdown content',
+        () async {
       final service = LegalDocumentService.instance;
       service.clearCache();
 
@@ -65,7 +72,8 @@ void main() {
 
       expect(service.hasCompletedOnboarding, isTrue);
       expect(service.hasAcceptedLegalTerms, isTrue);
-      expect(service.legalTermsAcceptedVersion, equals(OnboardingService.currentLegalVersion));
+      expect(service.legalTermsAcceptedVersion,
+          equals(OnboardingService.currentLegalVersion));
       expect(service.legalTermsAcceptedAt, isNotNull);
 
       // Verify persistence across new init
@@ -81,7 +89,8 @@ void main() {
   });
 
   group('LegalDocumentScreen Widget Tests', () {
-    testWidgets('LegalDocumentScreen renders document tabs and loaded markdown', (tester) async {
+    testWidgets('LegalDocumentScreen renders document tabs and loaded markdown',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: const LegalDocumentScreen(initialDocType: LegalDocType.privacy),
@@ -103,7 +112,8 @@ void main() {
   });
 
   group('OnboardingScreen Widget Tests', () {
-    testWidgets('OnboardingScreen displays first slide and skip button', (tester) async {
+    testWidgets('OnboardingScreen displays first slide and skip button',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: const OnboardingScreen(),
@@ -123,7 +133,9 @@ void main() {
       expect(find.text('Fast AI Vision OCR'), findsOneWidget);
     });
 
-    testWidgets('OnboardingScreen Slide 4 circular checkmark indents and toggles check icon', (tester) async {
+    testWidgets(
+        'OnboardingScreen Slide 4 circular checkmark indents and toggles check icon',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: const OnboardingScreen(),
@@ -142,7 +154,8 @@ void main() {
       expect(find.byIcon(Icons.check_rounded), findsNothing);
 
       // Ensure the agreement row is scrolled into view and tap
-      final agreementFinder = find.textContaining('I confirm that I am at least 13 years old');
+      final agreementFinder =
+          find.textContaining('I confirm that I am at least 13 years old');
       await tester.ensureVisible(agreementFinder);
       await tester.pumpAndSettle();
       await tester.tap(agreementFinder);
