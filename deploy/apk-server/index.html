@@ -1,0 +1,232 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SancFund - Android APK Download</title>
+  <style>
+    :root {
+      --bg: #1e2028;
+      --card: #262934;
+      --card-border: rgba(255, 255, 255, 0.06);
+      --accent: #00e5a0;
+      --accent-glow: rgba(0, 229, 160, 0.25);
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --shadow-dark: rgba(0, 0, 0, 0.45);
+      --shadow-light: rgba(255, 255, 255, 0.03);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px 16px;
+    }
+    .container {
+      width: 100%;
+      max-width: 440px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 36px 28px;
+      text-align: center;
+      box-shadow: 16px 16px 36px var(--shadow-dark), -8px -8px 24px var(--shadow-light);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 120px;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .app-icon-wrap {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: #191b22;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 4px 4px 8px #101116, inset -4px -4px 8px #222530;
+      border: 1px solid rgba(0, 229, 160, 0.2);
+    }
+    .app-icon {
+      width: 44px;
+      height: 44px;
+      fill: var(--accent);
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+    }
+    .badge-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(0, 229, 160, 0.1);
+      border: 1px solid rgba(0, 229, 160, 0.25);
+      margin-bottom: 28px;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent);
+    }
+    .badge-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.2px;
+    }
+    .download-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 16px 20px;
+      background: var(--accent);
+      color: #0b1f17;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px var(--accent-glow);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .download-btn:hover {
+      box-shadow: 0 10px 28px rgba(0, 229, 160, 0.4);
+      transform: translateY(-1px);
+    }
+    .download-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+    .download-icon {
+      width: 20px;
+      height: 20px;
+    }
+    .notes-box {
+      margin-top: 24px;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      text-align: left;
+    }
+    .notes-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .notes-content {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      word-break: break-word;
+    }
+    .footer-info {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .footer-info a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="app-icon-wrap">
+        <svg class="app-icon" viewBox="0 0 24 24">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+        </svg>
+      </div>
+
+      <h1>SancFund</h1>
+      <p class="subtitle">Receipt Scanner &amp; Expense Tracker</p>
+
+      <div class="badge-wrap">
+        <div class="pulse-dot"></div>
+        <span id="version-label" class="badge-text">Checking for latest build...</span>
+      </div>
+
+      <a id="download-link" href="/SancFund.apk" class="download-btn" download="SancFund.apk">
+        <svg class="download-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M5 20h14v-2H5v2zM12 2L6.5 8.5l1.42 1.42L11 6.84V16h2V6.84l3.08 3.08 1.42-1.42L12 2z" transform="rotate(180 12 12)"/>
+        </svg>
+        <span>Download APK</span>
+      </a>
+
+      <div id="notes-container" class="notes-box" style="display: none;">
+        <div class="notes-title">Release Notes</div>
+        <div id="notes-text" class="notes-content"></div>
+      </div>
+
+      <div class="footer-info">
+        <p>Private staging build hosted on Homelab &amp; Tailscale.</p>
+        <p style="margin-top: 4px;">Direct manifest: <a href="/staging_manifest.json">staging_manifest.json</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function checkManifest() {
+      fetch('/staging_manifest.json', { cache: 'no-store' })
+        .then(function(res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function(data) {
+          var label = 'v' + (data.version || '1.0.0') + ' (Build ' + (data.build_number || '1') + ')';
+          document.getElementById('version-label').innerText = label;
+
+          if (data.release_notes && data.release_notes.trim().length > 0) {
+            document.getElementById('notes-text').innerText = data.release_notes;
+            document.getElementById('notes-container').style.display = 'block';
+          }
+        })
+        .catch(function() {
+          document.getElementById('version-label').innerText = 'Staging Alpha Release';
+        });
+    })();
+  </script>
+</body>
+</html>

@@ -175,6 +175,7 @@ jobs:
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts || true
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ./staging_artifacts/SancFund.apk ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}/SancFund.apk
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ./staging_artifacts/staging_manifest.json ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}/staging_manifest.json
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ./deploy/apk-server/index.html ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}/index.html
         env:
           HAS_TS_SECRET: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
           HAS_HOST_SECRET: ${{ secrets.SERVER_HOST != '' && secrets.SERVER_SSH_KEY != '' }}
