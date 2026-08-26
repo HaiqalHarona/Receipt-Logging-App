@@ -52,8 +52,8 @@ class StagingUpdateService extends ChangeNotifier {
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           _isTailscaleConnected = true;
-          AppLogger.info(
-              'StagingUpdateService', 'Tailscale staging server reachable via manifest.');
+          AppLogger.info('StagingUpdateService',
+              'Tailscale staging server reachable via manifest.');
           notifyListeners();
           return true;
         }
@@ -66,13 +66,14 @@ class StagingUpdateService extends ChangeNotifier {
     if (ApiConfig.baseUrl.isNotEmpty) {
       try {
         final healthUri = Uri.parse('${ApiConfig.baseUrl}/health');
-        final response =
-            await http.get(healthUri).timeout(const Duration(milliseconds: 2000));
+        final response = await http
+            .get(healthUri)
+            .timeout(const Duration(milliseconds: 2000));
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           _isTailscaleConnected = true;
-          AppLogger.info(
-              'StagingUpdateService', 'Tailscale network reachable via backend API.');
+          AppLogger.info('StagingUpdateService',
+              'Tailscale network reachable via backend API.');
           notifyListeners();
           return true;
         }

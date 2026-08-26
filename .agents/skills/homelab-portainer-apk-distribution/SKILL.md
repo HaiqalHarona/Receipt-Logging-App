@@ -25,7 +25,7 @@ services:
       - /bin/sh
       - -c
       - |
-        printf 'server {\n    listen 80;\n    server_name _;\n    root /usr/share/nginx/html/apks;\n    autoindex on;\n    autoindex_exact_size off;\n    autoindex_localtime on;\n    location / {\n        types { }\n        default_type application/vnd.android.package-archive;\n    }\n    location /ping {\n        return 200 "ok";\n        add_header Content-Type text/plain;\n    }\n}\n' > /etc/nginx/conf.d/default.conf
+        printf 'server {\n    listen 80;\n    server_name _;\n    root /usr/share/nginx/html/apks;\n    autoindex on;\n    autoindex_exact_size off;\n    autoindex_localtime on;\n    location / {\n        types {\n            application/vnd.android.package-archive apk;\n            application/json json;\n            text/plain txt;\n            text/html html;\n            text/css css;\n            image/svg+xml svg;\n        }\n        default_type application/octet-stream;\n    }\n    location /ping {\n        return 200 "ok";\n        add_header Content-Type text/plain;\n    }\n}\n' > /etc/nginx/conf.d/default.conf
         exec nginx -g 'daemon off;'
 ```
 
@@ -65,7 +65,7 @@ sudo chown -R $USER:$USER /opt/apk-server/apks
 fvm flutter build apk --release --no-tree-shake-icons
 
 # 2. Upload to server via SCP (zero container downtime)
-scp build/app/outputs/flutter-apk/app-release.apk user@<server-ip>:/opt/apk-server/apks/receipt-logger.apk
+scp build/app/outputs/flutter-apk/app-release.apk user@<server-ip>:/opt/apk-server/apks/SancFund.apk
 ```
 
 ---
