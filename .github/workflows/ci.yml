@@ -101,13 +101,15 @@ jobs:
         run: flutter pub get
 
       - name: Build Android APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: |
+          flutter build apk --release --no-tree-shake-icons
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/SancFund.apk
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/SancFund.apk
 
       - name: Generate Staging Manifest
         run: |
@@ -119,6 +121,7 @@ jobs:
             "version": "1.0.1",
             "buildNumber": ${{ github.run_number }},
             "versionDisplay": "1.0.1.0.${{ github.run_number }}",
+            "downloadUrl": "http://${{ secrets.SERVER_HOST || '192.168.18.118' }}:9090/SancFund.apk",
             "releaseNotes": "Automated Alpha build from commit ${{ github.sha }} on ${{ github.ref_name }}",
             "publishedAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           }
@@ -167,10 +170,22 @@ jobs:
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts || true
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ./staging_artifacts/app-release.apk ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}/app-release.apk
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ./staging_artifacts/SancFund.apk ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}/SancFund.apk
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ./staging_artifacts/staging_manifest.json ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_DEST_PATH || '/opt/apk-server/apks' }}/staging_manifest.json
         env:
           HAS_TS_SECRET: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
           HAS_HOST_SECRET: ${{ secrets.SERVER_HOST != '' && secrets.SERVER_SSH_KEY != '' }}
+
+      - name: Trigger Portainer Stack Redeploy Webhook
+        if: env.HAS_TS_SECRET == 'true' && env.HAS_WEBHOOK_SECRET == 'true'
+        run: |
+          echo "Triggering Portainer stack redeploy..."
+          curl -k -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
+        env:
+          HAS_TS_SECRET: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
+          HAS_WEBHOOK_SECRET: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
+
+
+
 
 

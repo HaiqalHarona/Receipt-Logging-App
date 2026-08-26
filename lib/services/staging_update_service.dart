@@ -41,8 +41,15 @@ class StagingUpdateService extends ChangeNotifier {
       return false;
     }
 
+    final url = ApiConfig.stagingManifestUrl;
+    if (url.isEmpty) {
+      _isTailscaleConnected = false;
+      notifyListeners();
+      return false;
+    }
+
     try {
-      final uri = Uri.parse(ApiConfig.stagingManifestUrl);
+      final uri = Uri.parse(url);
       final response = await http.get(uri).timeout(const Duration(seconds: 2));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -64,11 +71,20 @@ class StagingUpdateService extends ChangeNotifier {
   /// Checks if a newer staging manifest is available from the Tailscale host.
   Future<StagingManifest?> checkStagingManifest() async {
     if (_isChecking) return _availableUpdate;
+
+    final url = ApiConfig.stagingManifestUrl;
+    if (url.isEmpty) {
+      _isTailscaleConnected = false;
+      _availableUpdate = null;
+      notifyListeners();
+      return null;
+    }
+
     _isChecking = true;
     notifyListeners();
 
     try {
-      final uri = Uri.parse(ApiConfig.stagingManifestUrl);
+      final uri = Uri.parse(url);
       final response = await http.get(uri).timeout(const Duration(seconds: 3));
 
       if (response.statusCode == 200) {
