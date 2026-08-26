@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -10,7 +10,6 @@
       --card: #262934;
       --card-border: rgba(255, 255, 255, 0.06);
       --accent: #00e5a0;
-      --accent-glow: rgba(0, 229, 160, 0.25);
       --text-main: #e2e8f0;
       --text-muted: #94a3b8;
       --shadow-dark: rgba(0, 0, 0, 0.45);
@@ -29,7 +28,8 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
       padding: 20px 16px;
     }
     .container {
@@ -43,36 +43,6 @@
       padding: 36px 28px;
       text-align: center;
       box-shadow: 16px 16px 36px var(--shadow-dark), -8px -8px 24px var(--shadow-light);
-      position: relative;
-      overflow: hidden;
-    }
-    .card::before {
-      content: "";
-      position: absolute;
-      top: -60px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
-      height: 120px;
-      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .app-icon-wrap {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 20px;
-      background: #191b22;
-      border-radius: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: inset 4px 4px 8px #101116, inset -4px -4px 8px #222530;
-      border: 1px solid rgba(0, 229, 160, 0.2);
-    }
-    .app-icon {
-      width: 44px;
-      height: 44px;
-      fill: var(--accent);
     }
     h1 {
       font-size: 26px;
@@ -122,7 +92,7 @@
       font-size: 16px;
       font-weight: 700;
       border-radius: 18px;
-      box-shadow: 0 8px 24px var(--accent-glow);
+      box-shadow: 0 8px 24px rgba(0, 229, 160, 0.25);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
     .download-btn:hover {
@@ -174,11 +144,6 @@
 <body>
   <div class="container">
     <div class="card">
-      <div class="app-icon-wrap">
-        <svg class="app-icon" viewBox="0 0 24 24">
-          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
-        </svg>
-      </div>
 
       <h1>SancFund</h1>
       <p class="subtitle">Receipt Scanner &amp; Expense Tracker</p>
