@@ -31,36 +31,78 @@ class StagingUpdateService extends ChangeNotifier {
   double get downloadProgress => _downloadProgress;
   bool get isDownloading => _isDownloading;
 
-  /// Probes the Tailscale staging server to determine if the device
-  /// is currently connected to the tailnet.
+  /// Probes the Tailscale staging server and device network interfaces to determine
+  /// if the device is currently connected to the tailnet.
   Future<bool> probeTailscaleNetwork() async {
-    // Only perform check in alpha/staging environments
-    if (!ApiConfig.isStaging) {
+    // Strict production guard: never run staging probes in production
+    if (!ApiConfig.isStaging || ApiConfig.isProduction) {
       _isTailscaleConnected = false;
       notifyListeners();
       return false;
     }
 
     final url = ApiConfig.stagingManifestUrl;
-    if (url.isEmpty) {
-      _isTailscaleConnected = false;
-      notifyListeners();
-      return false;
+
+    // Strategy 1: Probe the staging manifest URL directly
+    if (url.isNotEmpty) {
+      try {
+        final uri = Uri.parse(url);
+        final response =
+            await http.get(uri).timeout(const Duration(milliseconds: 2500));
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          _isTailscaleConnected = true;
+          AppLogger.info(
+              'StagingUpdateService', 'Tailscale staging server reachable via manifest.');
+          notifyListeners();
+          return true;
+        }
+      } catch (_) {
+        // Continue to fallback strategies
+      }
     }
 
-    try {
-      final uri = Uri.parse(url);
-      final response = await http.get(uri).timeout(const Duration(seconds: 2));
+    // Strategy 2: Probe the backend API health endpoint
+    if (ApiConfig.baseUrl.isNotEmpty) {
+      try {
+        final healthUri = Uri.parse('${ApiConfig.baseUrl}/health');
+        final response =
+            await http.get(healthUri).timeout(const Duration(milliseconds: 2000));
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        _isTailscaleConnected = true;
-        AppLogger.info(
-            'StagingUpdateService', 'Tailscale staging network reachable.');
-        notifyListeners();
-        return true;
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          _isTailscaleConnected = true;
+          AppLogger.info(
+              'StagingUpdateService', 'Tailscale network reachable via backend API.');
+          notifyListeners();
+          return true;
+        }
+      } catch (_) {
+        // Continue to network interface check
       }
-    } catch (_) {
-      // Offline, not on Tailscale, or staging server unreachable
+    }
+
+    // Strategy 3: Check device network interfaces for Tailscale CGNAT IP (100.64.0.0/10)
+    if (!kIsWeb) {
+      try {
+        final interfaces = await NetworkInterface.list(
+          includeLoopback: false,
+          type: InternetAddressType.IPv4,
+        );
+
+        for (final interface in interfaces) {
+          for (final addr in interface.addresses) {
+            if (_isTailscaleCgnatIp(addr.address)) {
+              _isTailscaleConnected = true;
+              AppLogger.info('StagingUpdateService',
+                  'Tailscale interface detected on device: ${addr.address}');
+              notifyListeners();
+              return true;
+            }
+          }
+        }
+      } catch (_) {
+        // Network interface inspection failed or unsupported
+      }
     }
 
     _isTailscaleConnected = false;
@@ -68,8 +110,25 @@ class StagingUpdateService extends ChangeNotifier {
     return false;
   }
 
+  /// Validates if an IPv4 address falls within the Tailscale CGNAT range (100.64.0.0/10).
+  static bool _isTailscaleCgnatIp(String ip) {
+    final parts = ip.split('.');
+    if (parts.length != 4) return false;
+    final first = int.tryParse(parts[0]);
+    final second = int.tryParse(parts[1]);
+    return first == 100 && second != null && second >= 64 && second <= 127;
+  }
+
   /// Checks if a newer staging manifest is available from the Tailscale host.
   Future<StagingManifest?> checkStagingManifest() async {
+    // Strict production guard: never check staging manifests in production
+    if (!ApiConfig.isStaging || ApiConfig.isProduction) {
+      _isTailscaleConnected = false;
+      _availableUpdate = null;
+      notifyListeners();
+      return null;
+    }
+
     if (_isChecking) return _availableUpdate;
 
     final url = ApiConfig.stagingManifestUrl;

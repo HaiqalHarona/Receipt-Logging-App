@@ -29,7 +29,9 @@ class _AlphaBreadcrumbBadgeState extends State<AlphaBreadcrumbBadge> {
 
   @override
   Widget build(BuildContext context) {
-    if (!ApiConfig.isStaging) return const SizedBox.shrink();
+    if (!ApiConfig.isStaging || ApiConfig.isProduction) {
+      return const SizedBox.shrink();
+    }
 
     return AnimatedBuilder(
       animation: Listenable.merge([

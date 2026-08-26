@@ -7,6 +7,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../core/widgets/alpha_breadcrumb_badge.dart';
+import '../../../../cloud/api/api_config.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../services/app_logger_service.dart';
@@ -881,9 +882,21 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ),
                     ],
                     const SizedBox(height: 28),
-                    const Center(
-                      child: AlphaBreadcrumbBadge(),
-                    ),
+                    if (ApiConfig.isStaging && !ApiConfig.isProduction)
+                      const Center(
+                        child: AlphaBreadcrumbBadge(),
+                      )
+                    else
+                      Center(
+                        child: Text(
+                          '${ApiConfig.appName} v${ApiConfig.appVersion}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: textSecondary.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
