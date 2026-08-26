@@ -50,6 +50,11 @@ class ApiConfig {
       }
     } catch (_) {}
 
+    // Default Tailscale host fallback for alpha / staging
+    if (isStaging) {
+      return 'http://100.98.101.54:9090/staging_manifest.json';
+    }
+
     return '';
   }
 
@@ -65,11 +70,16 @@ class ApiConfig {
       appEnv.toLowerCase() == 'release';
 
   /// Base URL for backend read dynamically from environment or .env.
-  /// Defaults to localhost:8085 for Desktop/Web/iOS, with 10.0.2.2 for Android emulator.
+  /// Defaults to Tailscale server 100.98.101.54:8085 for staging/alpha, localhost:8085 for local dev.
   static String get baseUrl =>
       const String.fromEnvironment('API_BASE_URL').isNotEmpty
           ? const String.fromEnvironment('API_BASE_URL')
-          : _env('API_BASE_URL', 'http://localhost:8085/api/v1');
+          : _env(
+              'API_BASE_URL',
+              isStaging
+                  ? 'http://100.98.101.54:8085/api/v1'
+                  : 'http://localhost:8085/api/v1',
+            );
 
   /// Supabase Project URL read dynamically from environment or .env
   static String get supabaseUrl =>
