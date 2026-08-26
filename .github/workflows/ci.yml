@@ -176,5 +176,16 @@ jobs:
           HAS_TS_SECRET: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
           HAS_HOST_SECRET: ${{ secrets.SERVER_HOST != '' && secrets.SERVER_SSH_KEY != '' }}
 
+      - name: Trigger Portainer Stack Redeploy Webhook
+        if: env.HAS_TS_SECRET == 'true' && env.HAS_WEBHOOK_SECRET == 'true'
+        run: |
+          echo "Triggering Portainer stack redeploy..."
+          curl -k -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
+        env:
+          HAS_TS_SECRET: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
+          HAS_WEBHOOK_SECRET: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
+
+
+
 
 

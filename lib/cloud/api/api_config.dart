@@ -32,10 +32,7 @@ class ApiConfig {
       _env('APP_VERSION_DISPLAY', '$appVersion.0.$appBuildNumber');
 
   /// Staging manifest URL for Tailscale private network updates.
-  static String get stagingManifestUrl => _env(
-        'STAGING_MANIFEST_URL',
-        'http://100.64.0.1:8085/api/v1/staging/version',
-      );
+  static String get stagingManifestUrl => _env('STAGING_MANIFEST_URL', '');
 
   /// Helper boolean checks for environment mode
   static bool get isAlpha => appEnv.toLowerCase() == 'alpha';
