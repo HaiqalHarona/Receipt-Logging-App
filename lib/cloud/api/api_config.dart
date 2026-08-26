@@ -32,13 +32,37 @@ class ApiConfig {
       _env('APP_VERSION_DISPLAY', '$appVersion.0.$appBuildNumber');
 
   /// Staging manifest URL for Tailscale private network updates.
-  static String get stagingManifestUrl => _env('STAGING_MANIFEST_URL', '');
+  static String get stagingManifestUrl {
+    final direct =
+        const String.fromEnvironment('STAGING_MANIFEST_URL').isNotEmpty
+            ? const String.fromEnvironment('STAGING_MANIFEST_URL')
+            : _env('STAGING_MANIFEST_URL', '');
+    if (direct.isNotEmpty) return direct;
+
+    // Fallback derivation from baseUrl host (e.g. port 9090 on same host):
+    try {
+      final uri = Uri.parse(baseUrl);
+      if (uri.host.isNotEmpty &&
+          uri.host != 'localhost' &&
+          uri.host != '127.0.0.1' &&
+          uri.host != '10.0.2.2') {
+        return '${uri.scheme}://${uri.host}:9090/staging_manifest.json';
+      }
+    } catch (_) {}
+
+    return '';
+  }
 
   /// Helper boolean checks for environment mode
   static bool get isAlpha => appEnv.toLowerCase() == 'alpha';
-  static bool get isStaging => appEnv.toLowerCase() == 'staging' || isAlpha;
+  static bool get isStaging =>
+      appEnv.toLowerCase() == 'staging' ||
+      appEnv.toLowerCase() == 'alpha' ||
+      appEnv.toLowerCase() == 'beta';
   static bool get isProduction =>
-      appEnv.toLowerCase() == 'production' || appEnv.toLowerCase() == 'prod';
+      appEnv.toLowerCase() == 'production' ||
+      appEnv.toLowerCase() == 'prod' ||
+      appEnv.toLowerCase() == 'release';
 
   /// Base URL for backend read dynamically from environment or .env.
   /// Defaults to localhost:8085 for Desktop/Web/iOS, with 10.0.2.2 for Android emulator.

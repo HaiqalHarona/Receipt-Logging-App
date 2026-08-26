@@ -94,8 +94,11 @@ jobs:
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL || 'https://dummy.supabase.co' }}" > .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci' }}" >> .env
-          echo "FASTAPI_BASE_URL=${{ secrets.FASTAPI_BASE_URL || 'https://dummy-receipt-api.com' }}" >> .env
+          echo "FASTAPI_BASE_URL=${{ secrets.FASTAPI_BASE_URL || 'http://100.115.92.20:8085' }}" >> .env
+          echo "API_BASE_URL=${{ secrets.API_BASE_URL || 'http://100.115.92.20:8085/api/v1' }}" >> .env
           echo "OCR_SPACE_API_KEY=${{ secrets.OCR_SPACE_API_KEY || 'dummy_ocr_key' }}" >> .env
+          echo "APP_ENV=alpha" >> .env
+          echo "STAGING_MANIFEST_URL=http://${{ secrets.SERVER_HOST || '100.115.92.20' }}:9090/staging_manifest.json" >> .env
 
       - name: Install dependencies
         run: flutter pub get
