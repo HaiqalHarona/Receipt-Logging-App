@@ -1,20 +1,20 @@
-﻿# Receipt Logger (SancFund)
+# Receipt Logger (SancFund)
 
 A privacy-first, offline-first mobile application built with Flutter for scanning receipts, extracting structured transaction data using Google Gemini 3.6 Flash Vision AI, and tracking spending trends with an elegant Neumorphic design system.
 
 ---
 
-## 📚 Documentation Index
+## Documentation Index
 
 Comprehensive documentation is organized under the [`docs/`](docs/) directory:
 
-### 🧠 AI Context & System Architecture
+### AI Context & System Architecture
 Architectural blueprints, directory trees, endpoint matrices, and structural specifications intended for AI agents and core architecture references:
 
 - **[Project Scope & Architecture Blueprint](docs/ai_context/PROJECT_SCOPE.md)**: End-to-end processing pipeline, 23-endpoint backend matrix, rate limit handling, local database export, and active route mapping.
 - **[Project Structure & Directory Tree](docs/ai_context/PROJECT_STRUCTURE.md)**: Feature-first directory breakdown, layered Clean Architecture, Riverpod 2.x state management, Isar 3.x local database, and GoRouter declarative navigation.
 
-### 🛠️ Developer & Team User Guides
+### Developer & Team User Guides
 Guides for backend API integration, data flow pipelines, git branching strategy, CI/CD automation, alpha staging delivery, and agent swarm protocols:
 
 - **[Alpha Staging, Tailscale Tunneling & OTA Updates](docs/user_guides/ALPHA_STAGING.md)**: Continuous Alpha staging delivery, Tailscale mesh VPN tunneling, Portainer Nginx APK distribution server (`:9090`), and real-time in-app update notifications.
@@ -23,7 +23,7 @@ Guides for backend API integration, data flow pipelines, git branching strategy,
 - **[Git Branching & CI/CD Guide](docs/user_guides/BRANCHING_AND_CICD.md)**: Dual-trunk / Light GitFlow workflow, branch protection rules, and GitHub Actions automated pipeline breakdown (`analyze-and-test`, `build-android`, `deploy-to-tailscale-server`).
 - **[Agent Swarm Specifications](docs/user_guides/AGENTS.md)**: Subagent roles (`@ui_builder`, `@test_writer`, `@janitor`), handoff protocols, and coding constraints.
 
-### ⚖️ Legal & Compliance Documents
+### Legal & Compliance Documents
 In-app legal documents rendered dynamically via the Markdown viewer:
 
 - **[Terms of Service](docs/legal_docs/TERMS_OF_SERVICE.md)**
@@ -33,7 +33,7 @@ In-app legal documents rendered dynamically via the Markdown viewer:
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites & FVM Setup
 
@@ -76,7 +76,7 @@ dart format lib test
 
 ---
 
-## 🏗️ Tech Stack Summary
+## Tech Stack Summary
 
 | Layer | Technology | Details |
 |---|---|---|
