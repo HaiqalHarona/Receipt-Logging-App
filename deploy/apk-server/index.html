@@ -180,11 +180,15 @@
           return res.json();
         })
         .then(function(data) {
-          var label = 'v' + (data.version || '1.0.0') + ' (Build ' + (data.build_number || '1') + ')';
+          var buildNum = data.buildNumber || data.build_number || '1';
+          var label = data.versionDisplay
+            ? 'ALPHA v' + data.versionDisplay
+            : 'v' + (data.version || '1.0.1') + ' (Build ' + buildNum + ')';
           document.getElementById('version-label').innerText = label;
 
-          if (data.release_notes && data.release_notes.trim().length > 0) {
-            document.getElementById('notes-text').innerText = data.release_notes;
+          var notes = data.releaseNotes || data.release_notes;
+          if (notes && notes.trim().length > 0) {
+            document.getElementById('notes-text').innerText = notes;
             document.getElementById('notes-container').style.display = 'block';
           }
         })
