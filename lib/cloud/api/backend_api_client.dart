@@ -17,6 +17,8 @@
 ///     [resetPasswordInitiate] — POST /api/v1/user/reset-password-initiate
 ///     [resetPasswordOtp]    — POST /api/v1/user/reset-password-otp
 ///     [confirmPasswordReset] — POST /api/v1/user/password-reset-new
+///     [initiateVerification] — POST /api/v1/user/verify-initiate
+///     [completeVerification] — POST /api/v1/user/verify-complete
 ///
 ///   Receipt Scanning (AI OCR & Async Bulk Queue):
 ///     [parseManyReceiptImages] — POST /api/v1/scan/parse-many (1–10 images, returns batch_id)
@@ -1516,6 +1518,74 @@ class BackendApiClient {
     final response = await _sendRequest('DELETE', uri, headers: headers);
 
     return response.statusCode == 200;
+  }
+
+  // ── EMAIL VERIFICATION ────────────────────────────────────────────────────
+
+  /// Initiates email OTP verification via POST /api/v1/user/verify-initiate.
+  ///
+  /// Dispatches a 6-digit OTP to [identifier] (email address).
+  /// Returns `({success, cooldownSeconds})`.
+  /// Throws [RateLimitException] on 429 (resend cooldown active).
+  Future<({bool success, int cooldownSeconds})> initiateVerification({
+    required String type,
+    required String identifier,
+    String? username,
+    String? userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/verify-initiate');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
+    );
+    headers['Content-Type'] = 'application/json';
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({'type': type, 'identifier': identifier}),
+    );
+
+    _assertStatus(response, 200);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (
+      success: (data['success'] as bool?) ?? true,
+      cooldownSeconds: (data['cooldown_seconds'] as int?) ?? 60,
+    );
+  }
+
+  /// Completes email OTP verification via POST /api/v1/user/verify-complete.
+  ///
+  /// Validates [otp] against the server-stored hash for [identifier].
+  /// On success, returns updated [UserRecordDto] with [emailVerifiedAt] set.
+  /// Throws [ApiException] on wrong OTP, brute-force lockout, or expired code.
+  Future<UserRecordDto> completeVerification({
+    required String type,
+    required String identifier,
+    required String otp,
+    String? username,
+    String? userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/verify-complete');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
+    );
+    headers['Content-Type'] = 'application/json';
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({'type': type, 'identifier': identifier, 'otp': otp}),
+    );
+
+    _assertStatus(response, 200);
+    return UserRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   // ── INTERNAL ──────────────────────────────────────────────────────────────────
