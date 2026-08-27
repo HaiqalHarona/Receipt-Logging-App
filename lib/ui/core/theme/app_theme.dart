@@ -74,7 +74,7 @@ class NeumorphicCardWidget extends StatelessWidget {
   final EdgeInsets? padding;
   final EdgeInsets? margin;
   final double borderRadius;
-  final double depth;
+  final double? depth;
   final double intensity;
   final Color? color;
   final VoidCallback? onTap;
@@ -85,7 +85,7 @@ class NeumorphicCardWidget extends StatelessWidget {
     this.padding,
     this.margin,
     this.borderRadius = 16,
-    this.depth = 6,
+    this.depth,
     this.intensity = 0.85,
     this.color,
     this.onTap,
@@ -96,12 +96,13 @@ class NeumorphicCardWidget extends StatelessWidget {
     final controller = AppThemeController.instance;
     final isDark = controller.isDarkMode;
     final cardColor = color ?? controller.currentBaseColor;
+    final effectiveDepth = depth ?? controller.neuDepth;
 
     final card = Neumorphic(
       margin: margin ?? EdgeInsets.zero,
       padding: padding ?? const EdgeInsets.all(16),
       style: NeumorphicStyle(
-        depth: depth,
+        depth: effectiveDepth,
         intensity: intensity,
         color: cardColor,
         boxShape:
@@ -132,7 +133,7 @@ class NeumorphicButtonWidget extends StatelessWidget {
   final VoidCallback? onPressed;
   final Color? color;
   final double borderRadius;
-  final double depth;
+  final double? depth;
   final EdgeInsets? padding;
   final EdgeInsets? margin;
 
@@ -142,7 +143,7 @@ class NeumorphicButtonWidget extends StatelessWidget {
     this.onPressed,
     this.color,
     this.borderRadius = 14,
-    this.depth = 6,
+    this.depth,
     this.padding,
     this.margin,
   });
@@ -158,7 +159,7 @@ class NeumorphicButtonWidget extends StatelessWidget {
         ? hsl.withLightness((hsl.lightness * 0.55).clamp(0.0, 1.0)).toColor()
         : baseBtnColor;
 
-    final effectiveDepth = isDisabled ? -4.0 : depth;
+    final effectiveDepth = isDisabled ? -4.0 : (depth ?? controller.neuDepth);
 
     return Container(
       margin: margin,
@@ -241,7 +242,7 @@ class NeumorphicIconBadge extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
   final double iconSize;
-  final double depth;
+  final double? depth;
   final bool isInset;
   final VoidCallback? onTap;
 
@@ -250,7 +251,7 @@ class NeumorphicIconBadge extends StatelessWidget {
     required this.icon,
     this.iconColor,
     this.iconSize = 20,
-    this.depth = 5,
+    this.depth,
     this.isInset = false,
     this.onTap,
   });
@@ -261,10 +262,12 @@ class NeumorphicIconBadge extends StatelessWidget {
     final isDark = controller.isDarkMode;
     final accent = controller.accentColor;
     final base = controller.currentBaseColor;
+    final effectiveDepth =
+        depth ?? (controller.neuDepth * 0.75).clamp(2.0, 8.0);
 
     final widget = Neumorphic(
       style: NeumorphicStyle(
-        depth: isInset ? -depth : depth,
+        depth: isInset ? -effectiveDepth : effectiveDepth,
         intensity: 0.85,
         boxShape: const NeumorphicBoxShape.circle(),
         color: base,
