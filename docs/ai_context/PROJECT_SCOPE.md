@@ -1,4 +1,4 @@
-# Receipt Logger — Project Scope & Architecture Blueprint
+﻿# Receipt Logger — Project Scope & Architecture Blueprint
 
 ## Overview
 Privacy-first, offline-first receipt and expense tracking mobile application built with Flutter, Riverpod 2.x, Isar 3.x, GoRouter, and a Neumorphic Design System (`flutter_neumorphic_plus`).
@@ -38,7 +38,7 @@ Privacy-first, offline-first receipt and expense tracking mobile application bui
 - **Primary Processing**: Camera capture sends 1 to 10 receipt images to the FastAPI backend (`POST /api/v1/scan/parse-many`) running Vision AI (Gemini 3.6 Flash) with Redis queue background processing and real-time SSE updates.
 - **Rate Limit Handling (`HTTP 429`)**: `BackendApiClient` throws `RateLimitException` with `retryAfterSeconds` so UI screens can show live countdown timers and temporarily disable CTA buttons.
 - **Offline Fallback Queue**: If offline during capture, raw images are stored locally with `isSynced = false` and automatically processed via `connectivity_plus` when network connectivity is restored.
-- **Local Persistence**: Fast offline-first storage via Isar 3.x.
+- **Local Persistence & Export**: Fast offline-first storage via Isar 3.x with standalone on-device JSON & CSV database export.
 
 ---
 
@@ -72,26 +72,29 @@ Privacy-first, offline-first receipt and expense tracking mobile application bui
 
 ---
 
-## Planned Architecture Scope & Reference Image Mapping (9 Core Screens)
+## Active Screen Architecture & Route Mapping
 
-| # | Screen Name | Description & Core Logic | Route Path | Implementation Status |
-|---|---|---|---|---|
-| 1 | **Splash** | Animated Neumorphic logo & app initialization check | `/splash` | Planned |
-| 2 | **Dashboard (Home)** | Spending summary metrics, weekly scan progress, recent entries, primary scan CTA | `/dashboard` | Planned |
-| 3 | **Camera / Vision Scanner** | Viewfinder, image capture, API upload overlay, OCR status feedback | `/scanner` | Planned |
-| 4 | **Data Verification (Review/Edit)** | Post-scan modal/screen to validate & edit AI-extracted items, merchant, and total before DB commit | Bottom sheet on `/scanner` | Planned |
-| 5 | **Receipt Detail** | Itemized transaction breakdown, date/amount editor, and record deletion | `/dashboard/receipt/:id` | Planned |
-| 6 | **Receipt History / Ledger** | Searchable & filterable transaction ledger with category drill-down | `/ledger` | Planned |
-| 7 | **Analytics & Comparison** | Spending trend charts, category breakdowns, price comparison over time | `/analytics` | Planned |
-| 8 | **Settings & Data Management** | Backend API URL config, light/dark Neumorphic theme toggle, local DB export & wipe | `/settings` | Planned |
-| 9 | **Paywall & Authentication** | Premium tier upgrade & cloud sync sign-in (`/user/create`, `/user/login`, `/devices/link`) | `/auth` | Planned |
+| # | Screen Name | Description & Core Logic | Route Path | Implementation File | Status |
+|---|---|---|---|---|---|
+| 1 | **Splash** | Animated Neumorphic logo & app initialization check | `/splash` | [`lib/ui/features/splash/views/splash_screen.dart`](file:///lib/ui/features/splash/views/splash_screen.dart) | Production Ready |
+| 2 | **Dashboard (Home)** | Spending summary metrics, monthly carousel, recent entries, primary scan CTA | `/dashboard` | [`lib/ui/features/dashboard/views/dashboard_screen.dart`](file:///lib/ui/features/dashboard/views/dashboard_screen.dart) | Production Ready |
+| 3 | **Camera / Scanner** | Real-time viewfinder, image picker, upload overlay, batch OCR parser | `/scanner` | [`lib/ui/features/scanner/views/scanner_screen.dart`](file:///lib/ui/features/scanner/views/scanner_screen.dart) | Production Ready |
+| 4 | **Verification Review** | Post-scan review sheet to validate & edit AI-extracted items and totals before saving | `/verification` | [`lib/ui/features/scanner/views/verification_screen.dart`](file:///lib/ui/features/scanner/views/verification_screen.dart) | Production Ready |
+| 5 | **Receipt Detail** | Itemized transaction breakdown, line-item viewer, image viewer, record deletion | `/receipt-detail` | [`lib/ui/features/receipt_detail/views/receipt_detail_screen.dart`](file:///lib/ui/features/receipt_detail/views/receipt_detail_screen.dart) | Production Ready |
+| 6 | **Receipt History / Ledger** | Searchable & filterable transaction ledger with category drill-down | `/history` | [`lib/ui/features/history/views/history_screen.dart`](file:///lib/ui/features/history/views/history_screen.dart) | Production Ready |
+| 7 | **AI Financial Assistant** | Multimodal RAG chat with dual local/cloud persistence and spending queries | `/ai-assistant` | [`lib/ui/features/ai_assistant/views/ai_assistant_screen.dart`](file:///lib/ui/features/ai_assistant/views/ai_assistant_screen.dart) | Production Ready |
+| 8 | **Analytics & Comparison** | Spending trend line charts, category breakdowns, monthly spending graphs | `/analytics` | [`lib/ui/features/analytics/views/analytics_screen.dart`](file:///lib/ui/features/analytics/views/analytics_screen.dart) | Production Ready |
+| 9 | **Settings** | App settings, currency, theme presets, feedback modal, local DB export, OTA updates | `/settings` | [`lib/ui/features/settings/views/settings_screen.dart`](file:///lib/ui/features/settings/views/settings_screen.dart) | Production Ready |
+| 10 | **User Account Settings** | Profile management, password reset with cooldown, mobile number linking, logout | `/user-settings` | [`lib/ui/features/settings/views/user_settings_screen.dart`](file:///lib/ui/features/settings/views/user_settings_screen.dart) | Production Ready |
+| 11 | **Theme Customization** | Light/Dark/System modes, font scale adjustments (S, M, L, XL), Neumorphic presets | `/customization` | [`lib/ui/features/settings/views/customization_screen.dart`](file:///lib/ui/features/settings/views/customization_screen.dart) | Production Ready |
+| 12 | **Auth & Onboarding** | Sign Up, Log In, Guest onboarding, Device linking | `/auth` | [`lib/ui/features/auth/views/login_screen.dart`](file:///lib/ui/features/auth/views/login_screen.dart) | Production Ready |
+| 13 | **Database Viewer (Dev)** | Live Isar collection inspector with table counts (gated by `APP_ENV=development`) | `/db-viewer` | [`lib/ui/features/developer_tools/views/db_viewer_screen.dart`](file:///lib/ui/features/developer_tools/views/db_viewer_screen.dart) | Production Ready |
+| 14 | **Legal Documents** | In-app Terms of Service, Privacy Policy, Cookie Policy, Accessibility Statement | `/terms`, `/privacy`, `/cookies`, `/accessibility` | [`lib/ui/features/legal/views/legal_document_screen.dart`](file:///lib/ui/features/legal/views/legal_document_screen.dart) | Production Ready |
 
 ---
 
-## Active Target Routes (Rebuild Phase)
+## Staging & OTA Update Architecture
 
-1. **Splash Screen** (`/splash`) — [splash_screen.dart](file:///C:/mobile-development/receipt_logging_app/lib/ui/features/splash/views/splash_screen.dart)
-2. **Scanner Screen** (`/scanner`) — [scanner_screen.dart](file:///C:/mobile-development/receipt_logging_app/lib/ui/features/scanner/views/scanner_screen.dart)
-3. **Dashboard Screen** (`/dashboard`) — [dashboard_screen.dart](file:///C:/mobile-development/receipt_logging_app/lib/ui/features/dashboard/views/dashboard_screen.dart)
-4. **Receipt Detail Screen** (`/dashboard/receipt/:id`) — [receipt_detail_screen.dart](file:///C:/mobile-development/receipt_logging_app/lib/ui/features/receipt_detail/views/receipt_detail_screen.dart)
-5. **Settings Screen** (`/settings`) — [settings_screen.dart](file:///C:/mobile-development/receipt_logging_app/lib/ui/features/settings/views/settings_screen.dart)
+- **Alpha Staging Channel**: Automated deployment to homelab APK server via Tailscale mesh VPN upon pushing to the `alpha` branch.
+- **In-App OTA Polling**: `OtaUpdateService` queries `STAGING_MANIFEST_URL` periodically and prompts users with `StagingUpdateDialog` whenever a newer build number is published.
+- **Local Database Backups**: `DataExportService` allows users to export all receipts, conversations, and custom categories into portable `.json` or `.csv` files stored directly on device storage.

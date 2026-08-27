@@ -1,27 +1,30 @@
-# Receipt Logging — Git Branching Strategy and CI/CD Pipeline Guide
+﻿# Receipt Logging — Git Branching Strategy and CI/CD Pipeline Guide
 
 This document defines the Branching Model, Pull Request Protocols, Code Quality Gates, and GitHub Actions CI/CD Pipeline for the Receipt Logging mobile and web application.
 
 ---
 
-## 1. Branching Model Architecture (Light GitFlow)
+## 1. Branching Model Architecture (Light GitFlow with Continuous Staging)
 
-Our repository uses a Dual-Trunk / Light GitFlow branching strategy designed for high-velocity multi-developer collaboration while maintaining production stability.
+Our repository uses a multi-trunk branching strategy tailored for continuous integration and automated homelab staging delivery:
 
 ```
-+-----------------------------------------------------------------------------+
-|              BRANCH HIERARCHY OVERVIEW             |
-|                                       |
-|  [master / main] -------------------*---------------------------*------- |
-|  (Production)            ^              ^ (Hotfix)|
-|                    | (Release PR)       |     |
-|  [develop]    ----*--------------*--------------*------------+------- |
-|  (Staging Hub)    ^               ^           |
-|            | (Feature PR)        | (Bugfix PR)     |
-|  [feature/*]   ----+--------------        |           |
-|  (Topic/Task)                    |           |
-|  [bugfix/*]    ----------------------------------+           |
-+-----------------------------------------------------------------------------+
++-------------------------------------------------------------------------------------------------+
+|                                 BRANCH HIERARCHY OVERVIEW                                       |
+|                                                                                                 |
+|  [master / main] ----------------------------*---------------------------------------*-------- |
+|  (Production)                                ^                                       ^ (Hotfix) |
+|                                              | (Release PR)                          |          |
+|  [develop]       -------------*--------------*-----------------------*---------------+--------- |
+|  (Integration)                ^                                      ^                          |
+|                               | (Feature PR)                         | (Bugfix PR)              |
+|  [alpha]         -------------*--------------------------------------*------------------------- |
+|  (Staging / OTA)              | (Auto Deploy via Tailscale to Portainer APK Server)             |
+|                               |                                                                 |
+|  [feature/*]     -------------+                                                                 |
+|  (Topic/Task)                                                                                   |
+|  [bugfix/*]      ----------------------------------------------------+                          |
++-------------------------------------------------------------------------------------------------+
 ```
 
 ---
@@ -30,10 +33,11 @@ Our repository uses a Dual-Trunk / Light GitFlow branching strategy designed for
 
 ### Permanent Long-Lived Branches
 
-| Branch | Purpose and Role | Stability | Protection Rules |
+| Branch | Purpose and Role | Stability | CI/CD Action & Protection Rules |
 |---|---|---|---|
-| **`master` / `main`** | **Production Release Branch**<br>Contains only verified, tested, store-ready code. Represents the current version deployed to production/app stores. Direct commits are strictly forbidden. | Highest (Always Deployable) | • Require PR with at least 1 approval<br>• Require CI (`Analyze & Test`) to pass<br>• No force pushes<br>• No deletions |
-| **`develop`** | **Active Integration & Staging Hub**<br>The primary development branch. All completed feature and bugfix branches merge here. Serves as the base branch for testing staging builds. | Staging (Code Complete) | • Require PR with at least 1 approval<br>• Require CI (`Analyze & Test`) to pass<br>• No force pushes |
+| **`master` / `main`** | **Production Release Branch**<br>Contains only verified, store-ready code. Direct commits are strictly forbidden. | Highest (Always Deployable) | • Require PR with at least 1 approval<br>• Require CI (`Analyze & Test`) to pass<br>• No force pushes |
+| **`develop`** | **Active Integration Hub**<br>The primary collaborative development branch. Feature and bugfix branches merge here. | Integration (Code Complete) | • Require PR with at least 1 approval<br>• Require CI (`Analyze & Test`) to pass<br>• No force pushes |
+| **`alpha`** | **Continuous Staging & Homelab OTA Distribution**<br>Pushes to `alpha` trigger automated APK compilation, build number stamping, and SCP deployment over Tailscale mesh VPN to Portainer APK distribution server. | Staging / QA Active | • Automatically builds `SancFund.apk`<br>• Generates `staging_manifest.json`<br>• Triggers Portainer webhook redeploy |
 
 ---
 
@@ -41,10 +45,9 @@ Our repository uses a Dual-Trunk / Light GitFlow branching strategy designed for
 
 | Branch Type | Base Branch | Merge Target | Naming Convention & Examples | Lifecycle |
 |---|---|---|---|---|
-| **`feature/*`** | `develop` | `develop` | `feature/<description>`<br>• `feature/theme-persistence`<br>• `feature/ocr-batch-processing`<br>• `feature/settings-export` | Deleted immediately after PR squash-merge |
-| **`bugfix/*`** | `develop` | `develop` | `bugfix/<description>`<br>• `bugfix/currency-conversion-overflow`<br>• `bugfix/camera-preview-aspect-ratio` | Deleted immediately after PR merge |
+| **`feature/*`** | `develop` | `develop` | `feature/<description>`<br>• `feature/theme-customization`<br>• `feature/ocr-batch-processing`<br>• `feature/database-export` | Deleted immediately after PR squash-merge |
+| **`bugfix/*`** | `develop` | `develop` | `bugfix/<description>`<br>• `bugfix/text-scale-overflow`<br>• `bugfix/camera-preview-aspect-ratio` | Deleted immediately after PR merge |
 | **`hotfix/*`** | `master` | `master` and `develop` | `hotfix/<description>`<br>• `hotfix/supabase-auth-token-crash`<br>• `hotfix/isar-db-migration-lock` | Deleted after dual-merge to `master` and `develop` |
-| **`release/*`** *(optional)* | `develop` | `master` and `develop` | `release/vX.Y.Z`<br>• `release/v1.0.0`<br>• `release/v1.1.0` | Created for final QA freeze; merged with version tag |
 
 ---
 
@@ -56,26 +59,27 @@ sequenceDiagram
   participant Dev as Developer
   participant FeatureBranch as feature/xyz
   participant CI as GitHub Actions CI
-  participant Develop as develop (Staging)
+  participant Alpha as alpha (Staging)
+  participant Server as Portainer Server (100.98.101.54:9090)
   participant Master as master (Production)
 
   Dev->>FeatureBranch: git checkout -b feature/receipt-export develop
   Dev->>FeatureBranch: Commit code & verify local tests
   Dev->>FeatureBranch: git push origin feature/receipt-export
-  Dev->>Develop: Open Pull Request targeting 'develop'
+  Dev->>Alpha: Merge to 'alpha' branch
   
-  FeatureBranch->>CI: Trigger "Analyze & Test" Job
-  CI-->>Develop: CI Status Check: PASSED (Format, Lint, Tests, Coverage)
-  Note over Develop: Code Review & QA Verification
-  Develop->>Develop: Squash & Merge PR into develop
+  Alpha->>CI: Trigger Workflow (.github/workflows/ci.yml)
+  CI->>CI: Run "Analyze and Test" (format, analyze, coverage)
+  CI->>CI: Run "Build Android APK" (version stamping, SancFund.apk)
+  CI->>CI: Generate staging_manifest.json (buildNumber: github.run_number)
+  CI->>Server: Connect via Tailscale mesh VPN & SCP files to /opt/apk-server/apks/
+  CI->>Server: Trigger Portainer Stack Redeploy Webhook
+  Server-->>Dev: Live OTA update available on mobile app & download portal
   
-  Develop->>CI: Trigger Staging Build (Dev APK & Web Bundle)
-  
-  Note over Develop,Master: Ready for Production Release (v1.0.0)
-  Develop->>Master: Open Release PR: develop -> master
+  Note over Alpha,Master: Ready for Production Release
+  Alpha->>Master: Open Release PR: develop -> master
   Master->>CI: Run Full Test Suite & Release Validation
   Master->>Master: Merge PR & Create Tag (v1.0.0)
-  Master->>CI: Trigger Production Release Build (Release APK & Web Release)
 ```
 
 ---
@@ -88,14 +92,20 @@ The automated pipeline is defined in [`.github/workflows/ci.yml`](file:///.githu
 
 | Job Name | Trigger Events | Steps Executed | Artifacts Generated |
 |---|---|---|---|
-| **`analyze-and-test`** | • Pull Request to `master`, `main`, `develop`<br>• Push to `master`, `main`, `develop`<br>• Manual `workflow_dispatch` | 1. Set up Java 17 and Flutter SDK (stable)<br>2. Generate CI `.env`<br>3. `flutter pub get`<br>4. `dart format --output=none --set-exit-if-changed lib test`<br>5. `flutter analyze`<br>6. `flutter test --coverage` | `coverage-report` (`lcov.info`) |
-| **`build-android`** | • Push on Release Tag (`v*.*.*`)<br>• Manual `workflow_dispatch`<br>*(Requires `analyze-and-test` to pass)* | 1. Set up Java 17 and Flutter SDK<br>2. Inject environment secrets<br>3. `flutter build apk --release --no-tree-shake-icons` | `android-release-apk` (`app-release.apk`) |
-| **`build-ios`** | • Push on Release Tag (`v*.*.*`)<br>• Manual `workflow_dispatch`<br>*(Requires `analyze-and-test` to pass)* | 1. Set up macOS runner & Flutter SDK<br>2. Inject environment secrets<br>3. `flutter build ios --release --no-codesign --no-tree-shake-icons` | `ios-release-app` (`Runner.app`) |
-| **`build-web`** | • Push on Release Tag (`v*.*.*`)<br>• Manual `workflow_dispatch`<br>*(Requires `analyze-and-test` to pass)* | 1. Set up Flutter SDK<br>2. Inject environment secrets<br>3. `flutter build web --release` | `web-release-bundle` (`build/web`) |
+| **`analyze-and-test`** | • Pull Request to `master`, `develop`, `alpha`<br>• Push to `master`, `develop`, `alpha`<br>• Manual `workflow_dispatch` | 1. Set up Java 17 and Flutter SDK (stable)<br>2. Generate CI `.env`<br>3. `flutter pub get`<br>4. `dart format --output=none --set-exit-if-changed lib test`<br>5. `flutter analyze`<br>6. `flutter test --coverage` | `coverage-report` (`lcov.info`) |
+| **`build-android`** | • Push to `alpha`, `develop`, `master`<br>• Release Tag (`v*.*.*`)<br>• Manual `workflow_dispatch` | 1. Set up Java 17 & Flutter SDK<br>2. Stamped `--build-name`, `--build-number`, and `--dart-define` metadata<br>3. Compile `build/app/outputs/flutter-apk/SancFund.apk`<br>4. Generate `staging_manifest.json` | `android-release-apk` (`SancFund.apk`)<br>`staging-manifest` (`staging_manifest.json`) |
+| **`deploy-to-tailscale-server`** | • Push to `alpha`<br>• Manual `workflow_dispatch` | 1. Connect runner to Tailscale mesh VPN (`tailscale/github-action@v3`)<br>2. SCP `SancFund.apk`, `staging_manifest.json`, and `index.html` to staging server<br>3. Trigger Portainer stack redeploy webhook | Deployed to `http://100.98.101.54:9090/` |
 
 ---
 
-## 5. Local Verification Commands
+## 5. Staging & OTA Updates Guide
+
+For full technical specifications on the homelab Nginx setup, Portainer stack, Tailscale mesh networking, in-app update checking (`OtaUpdateService`), and version breadcrumbs, see:
+- **[Alpha Staging Guide](file:///docs/user_guides/ALPHA_STAGING.md)**
+
+---
+
+## 6. Local Verification Commands
 
 Before opening a pull request, run the following validation suite locally:
 

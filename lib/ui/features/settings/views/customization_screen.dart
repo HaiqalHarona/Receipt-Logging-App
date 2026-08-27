@@ -592,8 +592,9 @@ class _ModeChip extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color:
-                        isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+                    color: isSelected
+                        ? accent
+                        : textPrimary.withValues(alpha: 0.6),
                   ),
                 ),
               ),
