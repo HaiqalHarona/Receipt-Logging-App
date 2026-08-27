@@ -18,10 +18,9 @@ class ApiConfig {
           : _env('APP_NAME', 'Receipt Logger');
 
   /// Current environment stage (alpha, staging, beta, production). Defaults to alpha.
-  static String get appEnv =>
-      const String.fromEnvironment('APP_ENV').isNotEmpty
-          ? const String.fromEnvironment('APP_ENV')
-          : _env('APP_ENV', 'alpha');
+  static String get appEnv => const String.fromEnvironment('APP_ENV').isNotEmpty
+      ? const String.fromEnvironment('APP_ENV')
+      : _env('APP_ENV', 'alpha');
 
   /// Semantic version string (MAJOR.MINOR.PATCH), defaults to 1.0.1.
   static String get appVersion =>
@@ -79,6 +78,7 @@ class ApiConfig {
       appEnv.toLowerCase() == 'production' ||
       appEnv.toLowerCase() == 'prod' ||
       appEnv.toLowerCase() == 'release';
+
   /// True only when APP_ENV is explicitly 'development' or 'dev'.
   static bool get isDevelopment =>
       appEnv.toLowerCase() == 'development' || appEnv.toLowerCase() == 'dev';

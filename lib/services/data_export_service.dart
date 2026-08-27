@@ -6,13 +6,36 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:isar/isar.dart';
 import 'app_logger_service.dart';
 import 'category_service.dart';
+import '../cloud/api/api_config.dart';
 import '../data/repositories/receipt_repository.dart';
 import '../data/repositories/conversation_repository.dart';
 import '../services/isar_service.dart';
 import '../data/models/chat_message_isar.dart';
+
+enum ExportFormat { json, csv }
+
+class DataExportResult {
+  final bool success;
+  final String? filePath;
+  final int receiptsCount;
+  final int conversationsCount;
+  final int messagesCount;
+  final String? errorMessage;
+
+  const DataExportResult({
+    required this.success,
+    this.filePath,
+    this.receiptsCount = 0,
+    this.conversationsCount = 0,
+    this.messagesCount = 0,
+    this.errorMessage,
+  });
+}
 
 class DataExportService {
   DataExportService._();
@@ -155,5 +178,252 @@ class DataExportService {
       r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
     );
     return uuidRegex.hasMatch(id);
+  }
+
+  /// Exports ALL local Isar database records (both guest and cloud-synced) to
+  /// a local file on the device in either JSON or CSV format.
+  /// Zero network/cloud requests — purely reads from local Isar database.
+  Future<DataExportResult> exportToFile({
+    ExportFormat format = ExportFormat.json,
+    Directory? targetDirectory,
+  }) async {
+    try {
+      await ReceiptRepository.instance.init();
+      await ConversationRepository.instance.init();
+      try {
+        await CategoryService.instance.init();
+      } catch (_) {}
+
+      final receipts = ReceiptRepository.instance.receipts;
+      final conversations = ConversationRepository.instance.conversations;
+
+      // ── 1. Receipts & Line Items ───────────────────────────────────────────
+      final List<Map<String, dynamic>> receiptsJson = receipts.map((r) {
+        return {
+          'id': r.id,
+          'merchant': r.merchant,
+          'amount': r.amount,
+          'currency': r.currency,
+          'category': r.category,
+          'date': r.date,
+          'line_items': r.lineItems.map((l) => l.toJson()).toList(),
+          'created_at':
+              (r.createdAt ?? DateTime.now()).toUtc().toIso8601String(),
+        };
+      }).toList();
+
+      // ── 2. Conversations ───────────────────────────────────────────────────
+      final List<Map<String, dynamic>> conversationsJson =
+          conversations.map((c) {
+        return {
+          'id': c.id,
+          'title': c.title,
+          'created_at': c.createdAt.toUtc().toIso8601String(),
+          'updated_at': c.updatedAt.toUtc().toIso8601String(),
+        };
+      }).toList();
+
+      // ── 3. Chat Messages (from Isar) ────────────────────────────────────────
+      final List<Map<String, dynamic>> chatMessagesJson = [];
+      if (IsarService.isInitialized && conversations.isNotEmpty) {
+        for (final conv in conversations) {
+          final msgs = await IsarService.isar.chatMessageIsarModels
+              .where()
+              .conversationIdEqualTo(conv.id)
+              .findAll();
+          for (final m in msgs) {
+            chatMessagesJson.add({
+              'id': m.messageId,
+              'conversation_id': m.conversationId,
+              'sender': m.sender,
+              'content': m.content,
+              'created_at': m.createdAt.toUtc().toIso8601String(),
+            });
+          }
+        }
+      }
+
+      // ── 4. Custom Categories ───────────────────────────────────────────────
+      final customCategories = CategoryService.instance.customCategories;
+      final customCategoriesJson =
+          customCategories.map((c) => c.toJson()).toList();
+
+      // ── 5. File Content Generation ─────────────────────────────────────────
+      final String fileContent;
+      final String fileExt;
+
+      if (format == ExportFormat.json) {
+        fileExt = 'json';
+        final Map<String, dynamic> exportPayload = {
+          'export_version': '1.0',
+          'exported_at': DateTime.now().toUtc().toIso8601String(),
+          'app_version': ApiConfig.appVersionDisplay,
+          'summary': {
+            'receipts_count': receiptsJson.length,
+            'conversations_count': conversationsJson.length,
+            'chat_messages_count': chatMessagesJson.length,
+            'custom_categories_count': customCategoriesJson.length,
+          },
+          'receipts': receiptsJson,
+          'conversations': conversationsJson,
+          'chat_messages': chatMessagesJson,
+          'custom_categories': customCategoriesJson,
+        };
+        fileContent = const JsonEncoder.withIndent('  ').convert(exportPayload);
+      } else {
+        fileExt = 'csv';
+        final StringBuffer buffer = StringBuffer();
+        // RFC 4180 Unified Header
+        buffer.writeln(
+            'Record_Type,ID,Reference_ID,Name_or_Sender,Category,Amount,Currency,Date_or_Timestamp,Details_or_Content');
+
+        // Receipts
+        for (final r in receipts) {
+          final lineItemsSummary = r.lineItems
+              .map((l) =>
+                  '${l.description} (${l.quantity ?? 1}x @ ${l.effectiveUnitPrice})')
+              .join('; ');
+          buffer.writeln([
+            _csvEscape('RECEIPT'),
+            _csvEscape(r.id),
+            _csvEscape(''),
+            _csvEscape(r.merchant),
+            _csvEscape(r.category),
+            _csvEscape(r.amount.toStringAsFixed(2)),
+            _csvEscape(r.currency),
+            _csvEscape(r.date),
+            _csvEscape(lineItemsSummary),
+          ].join(','));
+        }
+
+        // Line Items
+        for (final r in receipts) {
+          for (final l in r.lineItems) {
+            buffer.writeln([
+              _csvEscape('LINE_ITEM'),
+              _csvEscape(''),
+              _csvEscape(r.id),
+              _csvEscape(l.description),
+              _csvEscape(r.category),
+              _csvEscape(l.lineTotal.toStringAsFixed(2)),
+              _csvEscape(r.currency),
+              _csvEscape(r.date),
+              _csvEscape(
+                  'Qty: ${l.quantity ?? 1}, Unit Price: ${l.effectiveUnitPrice}'),
+            ].join(','));
+          }
+        }
+
+        // Conversations
+        for (final c in conversations) {
+          buffer.writeln([
+            _csvEscape('CONVERSATION'),
+            _csvEscape(c.id),
+            _csvEscape(''),
+            _csvEscape(c.title),
+            _csvEscape('AI_Chat'),
+            _csvEscape(''),
+            _csvEscape(''),
+            _csvEscape(c.createdAt.toUtc().toIso8601String()),
+            _csvEscape('Updated: ${c.updatedAt.toUtc().toIso8601String()}'),
+          ].join(','));
+        }
+
+        // Chat Messages
+        for (final m in chatMessagesJson) {
+          buffer.writeln([
+            _csvEscape('CHAT_MESSAGE'),
+            _csvEscape(m['id']),
+            _csvEscape(m['conversation_id']),
+            _csvEscape(m['sender']),
+            _csvEscape('ChatMessage'),
+            _csvEscape(''),
+            _csvEscape(''),
+            _csvEscape(m['created_at']),
+            _csvEscape(m['content']),
+          ].join(','));
+        }
+
+        // Custom Categories
+        for (final cat in customCategories) {
+          buffer.writeln([
+            _csvEscape('CATEGORY'),
+            _csvEscape(cat.name),
+            _csvEscape(''),
+            _csvEscape(cat.name),
+            _csvEscape('Category'),
+            _csvEscape(''),
+            _csvEscape(''),
+            _csvEscape(''),
+            _csvEscape(
+                'IconCode: ${cat.iconCodePoint}, ColorValue: ${cat.colorValue}'),
+          ].join(','));
+        }
+
+        fileContent = buffer.toString();
+      }
+
+      // ── 6. Write File to Storage ───────────────────────────────────────────
+      final timestamp = DateTime.now()
+          .toLocal()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .substring(0, 19);
+      final fileName = 'sancfund_export_$timestamp.$fileExt';
+
+      Directory? targetDir = targetDirectory;
+      if (targetDir == null) {
+        if (!kIsWeb && Platform.isAndroid) {
+          try {
+            targetDir = await getDownloadsDirectory();
+          } catch (_) {}
+        }
+
+        if (targetDir == null || !await targetDir.exists()) {
+          try {
+            targetDir = await getApplicationDocumentsDirectory();
+          } catch (_) {
+            try {
+              targetDir = await getTemporaryDirectory();
+            } catch (_) {
+              targetDir = Directory.systemTemp;
+            }
+          }
+        }
+      }
+      targetDir = Directory.systemTemp;
+
+      final file = File('${targetDir.path}/$fileName');
+      await file.writeAsString(fileContent, flush: true);
+
+      AppLogger.info('DataExport',
+          'Local DB exported successfully to ${file.path} (${fileContent.length} bytes)');
+
+      return DataExportResult(
+        success: true,
+        filePath: file.path,
+        receiptsCount: receiptsJson.length,
+        conversationsCount: conversationsJson.length,
+        messagesCount: chatMessagesJson.length,
+      );
+    } catch (e, st) {
+      AppLogger.error('DataExport', 'exportToFile failed', e, st);
+      return DataExportResult(
+        success: false,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  static String _csvEscape(dynamic value) {
+    if (value == null) return '';
+    final str = value.toString();
+    if (str.contains(',') ||
+        str.contains('"') ||
+        str.contains('\n') ||
+        str.contains('\r')) {
+      return '"${str.replaceAll('"', '""')}"';
+    }
+    return str;
   }
 }
