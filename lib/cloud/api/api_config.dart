@@ -18,18 +18,29 @@ class ApiConfig {
           : _env('APP_NAME', 'Receipt Logger');
 
   /// Current environment stage (alpha, staging, beta, production). Defaults to alpha.
-  static String get appEnv => _env('APP_ENV', 'alpha');
+  static String get appEnv =>
+      const String.fromEnvironment('APP_ENV').isNotEmpty
+          ? const String.fromEnvironment('APP_ENV')
+          : _env('APP_ENV', 'alpha');
 
   /// Semantic version string (MAJOR.MINOR.PATCH), defaults to 1.0.1.
-  static String get appVersion => _env('APP_VERSION', '1.0.1');
+  static String get appVersion =>
+      const String.fromEnvironment('APP_VERSION').isNotEmpty
+          ? const String.fromEnvironment('APP_VERSION')
+          : _env('APP_VERSION', '1.0.1');
 
-  /// Build / revision number, defaults to 1.
-  static int get appBuildNumber =>
-      int.tryParse(_env('APP_BUILD_NUMBER', '1')) ?? 1;
+  /// Build / revision number (monotonic CI run integer), defaults to 1.
+  static int get appBuildNumber {
+    const fromEnv = int.fromEnvironment('APP_BUILD_NUMBER');
+    if (fromEnv != 0) return fromEnv;
+    return int.tryParse(_env('APP_BUILD_NUMBER', '1')) ?? 1;
+  }
 
-  /// Formatted display version string (e.g. 1.0.1.0.1).
+  /// Formatted display version string (e.g. 1.0.1.0.25).
   static String get appVersionDisplay =>
-      _env('APP_VERSION_DISPLAY', '$appVersion.0.$appBuildNumber');
+      const String.fromEnvironment('APP_VERSION_DISPLAY').isNotEmpty
+          ? const String.fromEnvironment('APP_VERSION_DISPLAY')
+          : _env('APP_VERSION_DISPLAY', '$appVersion.0.$appBuildNumber');
 
   /// Staging manifest URL for Tailscale private network updates.
   static String get stagingManifestUrl {
@@ -68,6 +79,9 @@ class ApiConfig {
       appEnv.toLowerCase() == 'production' ||
       appEnv.toLowerCase() == 'prod' ||
       appEnv.toLowerCase() == 'release';
+  /// True only when APP_ENV is explicitly 'development' or 'dev'.
+  static bool get isDevelopment =>
+      appEnv.toLowerCase() == 'development' || appEnv.toLowerCase() == 'dev';
 
   /// Base URL for backend read dynamically from environment or .env.
   /// Defaults to Tailscale server 100.98.101.54:8085 for staging/alpha, localhost:8085 for local dev.

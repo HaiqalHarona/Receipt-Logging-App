@@ -99,7 +99,7 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SizedBox(
-        height: 98,
+        height: MediaQuery.textScalerOf(context).scale(98).clamp(98.0, 135.0),
         width: double.infinity,
         child: PageView.builder(
           controller: _pageController,

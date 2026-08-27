@@ -85,15 +85,19 @@ class _AlphaBreadcrumbBadgeState extends State<AlphaBreadcrumbBadge> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  '${ApiConfig.appEnv.toUpperCase()} v${ApiConfig.appVersionDisplay}',
-                  style: TextStyle(
-                    fontSize: widget.compact ? 10.5 : 11.5,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3,
-                    color: isTailscale
-                        ? textSecondary
-                        : textSecondary.withValues(alpha: 0.7),
+                Flexible(
+                  child: Text(
+                    '${ApiConfig.appEnv.toUpperCase()} v${ApiConfig.appVersionDisplay}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: widget.compact ? 10.5 : 11.5,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                      color: isTailscale
+                          ? textSecondary
+                          : textSecondary.withValues(alpha: 0.7),
+                    ),
                   ),
                 ),
                 if (isTailscale) ...[

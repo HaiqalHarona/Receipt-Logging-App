@@ -275,7 +275,14 @@ class _NavItem extends StatelessWidget {
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
                   letterSpacing: 0.2,
                 ),
-                child: Text(label),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
             ],
           ),

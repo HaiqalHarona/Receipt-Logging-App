@@ -105,7 +105,23 @@ jobs:
 
       - name: Build Android APK
         run: |
-          flutter build apk --release --no-tree-shake-icons
+          BUILD_NUM=${{ github.run_number }}
+          VERSION_NAME="1.0.1"
+          VERSION_DISPLAY="1.0.1.0.${BUILD_NUM}"
+          
+          flutter build apk --release --no-tree-shake-icons \
+            --build-name="${VERSION_NAME}" \
+            --build-number="${BUILD_NUM}" \
+            --dart-define=APP_ENV=alpha \
+            --dart-define=APP_VERSION="${VERSION_NAME}" \
+            --dart-define=APP_BUILD_NUMBER="${BUILD_NUM}" \
+            --dart-define=APP_VERSION_DISPLAY="${VERSION_DISPLAY}" \
+            --dart-define=STAGING_MANIFEST_URL="http://${{ secrets.SERVER_HOST || '100.98.101.54' }}:9090/staging_manifest.json" \
+            --dart-define=API_BASE_URL="${{ secrets.API_BASE_URL || 'http://100.98.101.54:8085/api/v1' }}" \
+            --dart-define=FASTAPI_BASE_URL="${{ secrets.FASTAPI_BASE_URL || 'http://100.98.101.54:8085' }}" \
+            --dart-define=SUPABASE_URL="${{ secrets.SUPABASE_URL || 'https://dummy.supabase.co' }}" \
+            --dart-define=SUPABASE_ANON_KEY="${{ secrets.SUPABASE_ANON_KEY || 'dummy_anon_key_for_ci' }}"
+
           cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/SancFund.apk
 
       - name: Upload Android APK Artifact

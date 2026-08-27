@@ -412,15 +412,18 @@ class _SettingsScreenState extends State<SettingsScreen>
                               horizontal: 16, vertical: 12),
                           child: Row(
                             children: [
-                              Text(
-                                'Theme Mode',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: textPrimary,
+                              Expanded(
+                                child: Text(
+                                  'Theme Mode',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: textPrimary,
+                                  ),
                                 ),
                               ),
-                              const Spacer(),
+                              const SizedBox(width: 8),
                               _buildModeChip(
                                 icon: Icons.dark_mode_rounded,
                                 label: 'Dark',
@@ -829,7 +832,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ],
                     ),
-                    if (kDebugMode) ...[
+                    if (kDebugMode && ApiConfig.isDevelopment) ...[
                       const SizedBox(height: 24),
                       // ── SECTION 5: DEVELOPER TOOLS ────────────────────────
                       _buildSectionHeader("DEVELOPER TOOLS", textSecondary),
@@ -975,13 +978,17 @@ class _SettingsScreenState extends State<SettingsScreen>
                 color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color:
-                      isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color:
+                        isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+                  ),
                 ),
               ),
             ],

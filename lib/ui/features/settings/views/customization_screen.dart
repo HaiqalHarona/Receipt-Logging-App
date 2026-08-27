@@ -584,13 +584,17 @@ class _ModeChip extends StatelessWidget {
                 color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color:
-                      isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color:
+                        isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+                  ),
                 ),
               ),
             ],
@@ -637,12 +641,15 @@ class _FontScaleChip extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14),
           child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+            child: MediaQuery.withNoTextScaling(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color:
+                      isSelected ? accent : textPrimary.withValues(alpha: 0.6),
+                ),
               ),
             ),
           ),

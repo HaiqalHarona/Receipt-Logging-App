@@ -50,9 +50,8 @@ class ReceiptListItemWidget extends StatelessWidget {
           intensity: 0.8,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
         ),
-        child: SizedBox(
-          height: 76,
-          width: double.infinity,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 76),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
