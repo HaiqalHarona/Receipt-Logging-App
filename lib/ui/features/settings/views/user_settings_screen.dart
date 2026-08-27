@@ -1,11 +1,14 @@
 // File: lib/ui/features/settings/views/user_settings_screen.dart
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
@@ -285,14 +288,33 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     if (_isExporting) return;
     setState(() => _isExporting = true);
     try {
-      final exportData = await DataExportService.instance.exportGuestData();
-      final receiptsCount = (exportData['receipts'] as List).length;
+      final result = await DataExportService.instance
+          .exportToFile(format: ExportFormat.json);
       if (mounted) {
-        AppSnackBar.show(
-          context,
-          message:
-              "Export generated: $receiptsCount receipts ready for backup.",
-        );
+        if (result.success && result.filePath != null) {
+          final path = result.filePath!;
+          AppSnackBar.show(
+            context,
+            message: "Backup saved (${result.receiptsCount} receipts):\n$path",
+          );
+
+          if (!kIsWeb && Platform.isIOS) {
+            try {
+              await Share.shareXFiles([XFile(path)],
+                  text: 'SancFund Database Backup');
+            } catch (_) {}
+          } else if (!kIsWeb && Platform.isAndroid) {
+            try {
+              await OpenFilex.open(path);
+            } catch (_) {}
+          }
+        } else {
+          AppSnackBar.show(
+            context,
+            message: "Export failed: ${result.errorMessage ?? 'Unknown error'}",
+            isError: true,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
