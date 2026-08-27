@@ -581,4 +581,53 @@ class AuthService extends ChangeNotifier {
       AppLogger.warning('AuthService', 'Device linking deferred', e);
     }
   }
+
+  // ── EMAIL VERIFICATION ───────────────────────────────────────────────────────
+
+  /// Initiates email OTP verification. Delegates to [BackendApiClient.initiateVerification].
+  ///
+  /// Returns `({success, cooldownSeconds})` on success.
+  /// Throws [ApiException] / [RateLimitException] on failure.
+  Future<({bool success, int cooldownSeconds})> initiateVerification({
+    required String type,
+    required String identifier,
+  }) async {
+    final result = await BackendApiClient.instance.initiateVerification(
+      type: type,
+      identifier: identifier,
+    );
+    AppLogger.info(
+        'AuthService', 'Verification initiated: type=$type, id=$identifier');
+    return result;
+  }
+
+  /// Completes email OTP verification. Delegates to [BackendApiClient.completeVerification].
+  ///
+  /// On success, updates [_cachedProfile] with the returned [UserRecordDto]
+  /// (which has [emailVerifiedAt] set) and persists it to SharedPreferences.
+  /// Notifies all listeners so that UI can reactively refresh.
+  Future<UserRecordDto> completeVerification({
+    required String type,
+    required String identifier,
+    required String otp,
+  }) async {
+    final updatedProfile = await BackendApiClient.instance.completeVerification(
+      type: type,
+      identifier: identifier,
+      otp: otp,
+    );
+
+    // Update local cache so UI reacts immediately
+    _cachedProfile = updatedProfile;
+    _email = updatedProfile.email;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyEmail, updatedProfile.email);
+    } catch (_) {}
+
+    notifyListeners();
+    AppLogger.info('AuthService',
+        'Email verified for user: ${updatedProfile.username}, email=${updatedProfile.email}');
+    return updatedProfile;
+  }
 }

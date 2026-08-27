@@ -53,6 +53,9 @@ class UserRecordDto {
     this.avatarImagePath,
     this.customCategories = const [],
     this.preferences = const {},
+    this.emailVerifiedAt,
+    this.mobileVerifiedAt,
+    this.tier = 'free',
     this.deletedAt,
   });
 
@@ -64,8 +67,15 @@ class UserRecordDto {
   final String? avatarImagePath;
   final List<CustomCategoryDto> customCategories;
   final Map<String, dynamic> preferences;
+  final String? emailVerifiedAt;
+  final String? mobileVerifiedAt;
+  final String tier;
   final String createdAt;
   final String? deletedAt;
+
+  /// Whether the user's email address has been verified.
+  bool get isEmailVerified =>
+      emailVerifiedAt != null && emailVerifiedAt!.isNotEmpty;
 
   factory UserRecordDto.fromJson(Map<String, dynamic> json) {
     return UserRecordDto(
@@ -81,6 +91,9 @@ class UserRecordDto {
               .toList() ??
           const [],
       preferences: (json['preferences'] as Map<String, dynamic>?) ?? const {},
+      emailVerifiedAt: json['email_verified_at'] as String?,
+      mobileVerifiedAt: json['mobile_verified_at'] as String?,
+      tier: (json['tier'] as String?) ?? 'free',
       createdAt: (json['created_at'] as String?) ?? '',
       deletedAt: json['deleted_at'] as String?,
     );
@@ -95,6 +108,9 @@ class UserRecordDto {
         if (avatarImagePath != null) 'avatar_image_path': avatarImagePath,
         'custom_categories': customCategories.map((c) => c.toJson()).toList(),
         'preferences': preferences,
+        if (emailVerifiedAt != null) 'email_verified_at': emailVerifiedAt,
+        if (mobileVerifiedAt != null) 'mobile_verified_at': mobileVerifiedAt,
+        'tier': tier,
         'created_at': createdAt,
         if (deletedAt != null) 'deleted_at': deletedAt,
       };

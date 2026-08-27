@@ -38,6 +38,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   bool _isExporting = false;
   final ImagePicker _imagePicker = ImagePicker();
 
+  // ── EMAIL VERIFICATION STATE ─────────────────────────────────────────────
+  /// Remaining cooldown seconds for OTP resend (persists across modal dismissals).
+  int _verifyResendCooldownRemaining = 0;
+  DateTime? _verifyCooldownStartedAt;
+
   @override
   void initState() {
     super.initState();
@@ -309,6 +314,67 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     }
   }
 
+  // ── EMAIL VERIFICATION BOTTOM SHEET ─────────────────────────────────────
+  Future<void> _showEmailVerificationBottomSheet({
+    required BuildContext context,
+    required String email,
+    required Color accent,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) async {
+    AppLogger.info('UI', 'User opened Email Verification modal');
+
+    final controller = AppThemeController.instance;
+
+    // Recalculate remaining cooldown from stored start time
+    int cooldownRemaining = 0;
+    if (_verifyCooldownStartedAt != null) {
+      final elapsed =
+          DateTime.now().difference(_verifyCooldownStartedAt!).inSeconds;
+      cooldownRemaining = (60 - elapsed).clamp(0, 60);
+      if (cooldownRemaining > 0) {
+        _verifyResendCooldownRemaining = cooldownRemaining;
+      } else {
+        _verifyResendCooldownRemaining = 0;
+        _verifyCooldownStartedAt = null;
+      }
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EmailVerificationSheet(
+        email: email,
+        accent: accent,
+        textPrimary: textPrimary,
+        textSecondary: textSecondary,
+        controller: controller,
+        initialCooldownRemaining: _verifyResendCooldownRemaining,
+        onCooldownStarted: (startedAt) {
+          if (mounted) {
+            setState(() {
+              _verifyCooldownStartedAt = startedAt;
+              _verifyResendCooldownRemaining = 60;
+            });
+          }
+        },
+        onVerified: (updatedProfile) {
+          if (mounted) {
+            setState(() {
+              _profile = updatedProfile;
+            });
+            AppSnackBar.show(
+              context,
+              message: '✓ Email verified successfully!',
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  // ignore: unused_element
   Future<void> _showAddMobileBottomSheet(BuildContext context, Color accent,
       Color textPrimary, Color textSecondary) async {
     AppLogger.info('UI', 'User opened Add Mobile modal');
@@ -1567,14 +1633,66 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       ],
                                     ),
                                   ),
-                                  Icon(Icons.verified_user_rounded,
-                                      color: Colors.green, size: 18),
+                                  // Verified badge or Verify button
+                                  if (_profile?.isEmailVerified == true)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.verified_rounded,
+                                          color: Colors.green,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          "Verified",
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    GestureDetector(
+                                      onTap: () =>
+                                          _showEmailVerificationBottomSheet(
+                                        context: context,
+                                        email: email,
+                                        accent: accent,
+                                        textPrimary: textPrimary,
+                                        textSecondary: textSecondary,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: accent.withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color:
+                                                accent.withValues(alpha: 0.3),
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          "Verify",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: accent,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
                             _buildDivider(textSecondary),
 
-                            // Mobile Number Row
+                            // Mobile Number Row (Temporarily disabled - Coming Soon)
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 14),
@@ -1583,11 +1701,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: accent.withValues(alpha: 0.12),
+                                      color: hasMobile
+                                          ? accent.withValues(alpha: 0.12)
+                                          : textSecondary.withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: Icon(Icons.phone_iphone_rounded,
-                                        size: 18, color: accent),
+                                    child: Icon(
+                                      Icons.phone_iphone_rounded,
+                                      size: 18,
+                                      color: hasMobile
+                                          ? accent
+                                          : textSecondary.withValues(alpha: 0.5),
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -1621,29 +1746,31 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       ],
                                     ),
                                   ),
-                                  GestureDetector(
-                                    onTap: () => _showAddMobileBottomSheet(
-                                      context,
-                                      accent,
-                                      textPrimary,
-                                      textSecondary,
-                                    ),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                            color:
-                                                accent.withValues(alpha: 0.5),
-                                            width: 1),
+                                  Tooltip(
+                                    message: "Coming Soon",
+                                    triggerMode: TooltipTriggerMode.tap,
+                                    child: Neumorphic(
+                                      style: NeumorphicStyle(
+                                        depth: -2.5,
+                                        intensity: 0.8,
+                                        color: NeumorphicTheme.baseColor(context),
+                                        boxShape: NeumorphicBoxShape.roundRect(
+                                            BorderRadius.circular(8)),
+                                        border: NeumorphicBorder(
+                                          color: textSecondary.withValues(alpha: 0.25),
+                                          width: 1,
+                                        ),
                                       ),
-                                      child: Text(
-                                        hasMobile ? "Edit" : "+ Add",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: accent,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 5),
+                                        child: Text(
+                                          hasMobile ? "Edit" : "+ Add",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: textSecondary.withValues(alpha: 0.6),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -2414,6 +2541,409 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
           fontSize: 24,
           fontWeight: FontWeight.bold,
           color: accent,
+        ),
+      ),
+    );
+  }
+}
+
+// ── EMAIL VERIFICATION BOTTOM SHEET WIDGET ────────────────────────────────────
+
+class _EmailVerificationSheet extends StatefulWidget {
+  const _EmailVerificationSheet({
+    required this.email,
+    required this.accent,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.controller,
+    required this.initialCooldownRemaining,
+    required this.onCooldownStarted,
+    required this.onVerified,
+  });
+
+  final String email;
+  final Color accent;
+  final Color textPrimary;
+  final Color textSecondary;
+  final AppThemeController controller;
+  final int initialCooldownRemaining;
+  final void Function(DateTime startedAt) onCooldownStarted;
+  final void Function(UserRecordDto updatedProfile) onVerified;
+
+  @override
+  State<_EmailVerificationSheet> createState() =>
+      _EmailVerificationSheetState();
+}
+
+class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
+  int _step = 1; // 1 = Confirm Email, 2 = Enter OTP
+
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  final _otpController = TextEditingController();
+  int _cooldownRemaining = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cooldownRemaining = widget.initialCooldownRemaining;
+    if (_cooldownRemaining > 0) {
+      _startCooldownTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void _startCooldownTimer() {
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return false;
+      setState(() {
+        if (_cooldownRemaining > 0) _cooldownRemaining--;
+      });
+      return _cooldownRemaining > 0;
+    });
+  }
+
+  Future<void> _onSendCode() async {
+    if (_isLoading || _cooldownRemaining > 0) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      await AuthService.instance.initiateVerification(
+        type: 'email',
+        identifier: widget.email,
+      );
+      final now = DateTime.now();
+      widget.onCooldownStarted(now);
+      if (!mounted) return;
+      setState(() {
+        _cooldownRemaining = 60;
+        _step = 2;
+        _isLoading = false;
+      });
+      _startCooldownTimer();
+    } on RateLimitException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+        _cooldownRemaining = e.retryAfterSeconds;
+        _step = 2;
+      });
+      _startCooldownTimer();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _onVerifyCode() async {
+    final otp = _otpController.text.trim();
+    if (otp.length != 6 || _isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final updatedProfile = await AuthService.instance.completeVerification(
+        type: 'email',
+        identifier: widget.email,
+        otp: otp,
+      );
+      if (!mounted) return;
+      widget.onVerified(updatedProfile);
+      Navigator.of(context).pop();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = widget.controller.currentBaseColor;
+    final accent = widget.accent;
+    final textPrimary = widget.textPrimary;
+    final textSecondary = widget.textSecondary;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Neumorphic(
+        style: NeumorphicStyle(
+          depth: 8,
+          color: baseColor,
+          boxShape: NeumorphicBoxShape.roundRect(
+            const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: textSecondary.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Title
+                Text(
+                  _step == 1 ? 'Verify Email Address' : 'Enter Verification Code',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _step == 1
+                      ? 'We\'ll send a 6-digit code to your email address.'
+                      : 'Enter the 6-digit code sent to:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: textSecondary,
+                  ),
+                ),
+                if (_step == 2) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.email,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+
+                // Step 1: Email confirmation + Send button
+                if (_step == 1) ...[
+                  Neumorphic(
+                    style: NeumorphicStyle(
+                      depth: -3,
+                      color: baseColor,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 14),
+                      child: Row(
+                        children: [
+                          Icon(Icons.email_outlined,
+                              size: 18, color: textSecondary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              widget.email,
+                              style: TextStyle(
+                                  fontSize: 14, color: textPrimary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildCta(
+                    label: 'Send Verification Code',
+                    onTap: _onSendCode,
+                    accent: accent,
+                    baseColor: baseColor,
+                    isLoading: _isLoading,
+                  ),
+                ],
+
+                // Step 2: OTP input + Verify button
+                if (_step == 2) ...[
+                  Neumorphic(
+                    style: NeumorphicStyle(
+                      depth: -3,
+                      color: baseColor,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 4),
+                      child: TextField(
+                        controller: _otpController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 8,
+                          color: textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          counterText: '',
+                          hintText: '------',
+                          hintStyle: TextStyle(
+                            fontSize: 28,
+                            letterSpacing: 8,
+                            color: textSecondary.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Resend cooldown or Resend link
+                  Center(
+                    child: _cooldownRemaining > 0
+                        ? Text(
+                            'Resend code in ${_cooldownRemaining}s',
+                            style: TextStyle(
+                                fontSize: 12, color: textSecondary),
+                          )
+                        : GestureDetector(
+                            onTap: _isLoading ? null : _onSendCode,
+                            child: Text(
+                              'Resend Code',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: accent,
+                              ),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildCta(
+                    label: 'Verify Code',
+                    onTap: _otpController.text.trim().length == 6
+                        ? _onVerifyCode
+                        : null,
+                    accent: accent,
+                    baseColor: baseColor,
+                    isLoading: _isLoading,
+                  ),
+                ],
+
+                // Error message
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.redAccent.withValues(alpha: 0.2),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded,
+                            size: 16, color: Colors.redAccent),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCta({
+    required String label,
+    required VoidCallback? onTap,
+    required Color accent,
+    required Color baseColor,
+    required bool isLoading,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Neumorphic(
+        style: NeumorphicStyle(
+          depth: onTap != null ? 4 : -2,
+          color: onTap != null ? accent : baseColor,
+          boxShape:
+              NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: onTap != null
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.4),
+                      ),
+                    ),
+            ),
+          ),
         ),
       ),
     );
