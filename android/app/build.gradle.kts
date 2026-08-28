@@ -26,11 +26,28 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("staging") {
+            val stagingKeystore = file("staging.keystore")
+            if (stagingKeystore.exists()) {
+                storeFile = stagingKeystore
+                storePassword = "sancfundstaging"
+                keyAlias = "staging"
+                keyPassword = "sancfundstaging"
+            } else {
+                initWith(getByName("debug"))
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("staging")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("staging")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
