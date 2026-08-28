@@ -229,10 +229,22 @@ class StagingUpdateService extends ChangeNotifier {
       }
 
       final contentLength = response.contentLength ?? 0;
-      final tempDir = await getTemporaryDirectory();
+      Directory? targetDir;
+      if (!kIsWeb && Platform.isAndroid) {
+        try {
+          targetDir = await getExternalStorageDirectory();
+        } catch (_) {}
+        if (targetDir == null || !await targetDir.exists()) {
+          try {
+            targetDir = await getDownloadsDirectory();
+          } catch (_) {}
+        }
+      }
+      targetDir ??= await getTemporaryDirectory();
+
       final fileName =
-          'receipt_logger_${manifest.versionDisplay.replaceAll('.', '_')}.apk';
-      final file = File('${tempDir.path}/$fileName');
+          'sancfund_${manifest.versionDisplay.replaceAll('.', '_')}.apk';
+      final file = File('${targetDir.path}/$fileName');
 
       int bytesReceived = 0;
       final sink = file.openWrite();

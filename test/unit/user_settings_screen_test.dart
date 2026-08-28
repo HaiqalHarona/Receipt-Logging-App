@@ -60,6 +60,43 @@ void main() {
     });
 
     testWidgets(
+        'Mobile Number + Add button is disabled with Coming Soon tooltip and does not open modal',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-mock-12345',
+          username: 'TestUserQA',
+          email: 'testuser@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+        ),
+        userToken: 'mock-token-xyz',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final tooltipFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is Tooltip && (widget.message?.contains('Coming Soon') ?? false),
+      );
+      expect(tooltipFinder, findsOneWidget);
+
+      // Tapping + Add does not open bottom sheet
+      await tester.tap(find.text('+ Add'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('Update Mobile Number'), findsNothing);
+      expect(find.text('Save Mobile'), findsNothing);
+    });
+
+    testWidgets(
         'Tapping Reset Password opens the bottom sheet with all required inputs',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
@@ -161,5 +198,72 @@ void main() {
       expect(profile.countryCode, equals('+60'));
       expect(profile.mobileNumber, equals('123456789'));
     });
+
+    testWidgets(
+        'Unverified email displays Verify button, and tapping it opens verification sheet',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-unverified-1',
+          username: 'UnverifiedUser',
+          email: 'unverified@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          emailVerifiedAt: null,
+        ),
+        userToken: 'mock-token-xyz',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify button should be visible
+      expect(find.text('Verify'), findsOneWidget);
+      expect(find.text('Verified'), findsNothing);
+
+      // Tap Verify button
+      await tester.tap(find.text('Verify'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Modal bottom sheet should be open
+      expect(find.text('Verify Email Address'), findsOneWidget);
+      expect(find.text('Send Verification Code'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Verified email displays Verified badge and no Verify button',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-verified-1',
+          username: 'VerifiedUser',
+          email: 'verified@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          emailVerifiedAt: '2026-08-20T10:00:00Z',
+        ),
+        userToken: 'mock-token-xyz',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // "Verified" badge should be visible, "Verify" button should not be present
+      expect(find.text('Verified'), findsOneWidget);
+      expect(find.text('Verify'), findsNothing);
+    });
   });
 }
+
+
