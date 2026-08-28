@@ -103,6 +103,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Decode Android Staging Keystore from Secret
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/staging.keystore
+        env:
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+
       - name: Build Android APK
         run: |
           BUILD_NUM=${{ github.run_number }}
