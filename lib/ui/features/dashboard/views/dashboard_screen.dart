@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../view_models/dashboard_view_model.dart';
@@ -31,7 +32,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   Widget build(BuildContext context) {
     super.build(context);
     return AnimatedBuilder(
-      animation: Listenable.merge([AppThemeController.instance, _viewModel]),
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        _viewModel,
+        LocalImageCacheService.instance,
+        AuthService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -269,6 +275,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 snapshot.data!.existsSync()) {
               return Image.file(
                 snapshot.data!,
+                key: ValueKey(
+                    'dash_avatar_${snapshot.data!.path}_${LocalImageCacheService.instance.avatarRevision}'),
                 fit: BoxFit.cover,
                 width: 50,
                 height: 50,

@@ -263,5 +263,86 @@ void main() {
       expect(find.text('Verified'), findsOneWidget);
       expect(find.text('Verify'), findsNothing);
     });
+
+    testWidgets(
+        'Plan & Usage section renders with FREE tier and Upgrade button; tapping opens Upgrade bottom sheet',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-free-1',
+          username: 'FreeTierUser',
+          email: 'free@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          tier: 'free',
+        ),
+        userToken: 'mock-token-xyz',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // PLAN & USAGE section header
+      expect(find.text('PLAN & USAGE'), findsOneWidget);
+      expect(find.text('FREE'), findsAtLeastNWidgets(1));
+
+      // Enticing Upgrade button is present on Free tier
+      expect(find.text('Upgrade'), findsOneWidget);
+
+      // Tap Upgrade button
+      await tester.tap(find.text('Upgrade'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Upgrade bottom sheet is opened
+      expect(find.text('Upgrade to Premium'), findsOneWidget);
+      expect(find.text('50 Daily Receipt Scans'), findsOneWidget);
+      expect(find.text('50,000 AI Chat Tokens'), findsOneWidget);
+      expect(find.text('Priority Vision OCR Processing'), findsOneWidget);
+      expect(find.text('Advanced Financial Exports'), findsOneWidget);
+      expect(find.text('\$4.99'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Dev tier renders DEV badge without icon, hides Upgrade button, and sets quota bars to 100% full',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-dev-1',
+          username: 'DevTierUser',
+          email: 'dev@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          tier: 'dev',
+        ),
+        userToken: 'mock-token-xyz',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('DEV'), findsAtLeastNWidgets(1));
+      // Upgrade button should be hidden for Dev tier
+      expect(find.text('Upgrade'), findsNothing);
+
+      // Verify LinearProgressIndicators are rendered at 1.0
+      final indicators = tester.widgetList<LinearProgressIndicator>(
+        find.byType(LinearProgressIndicator),
+      );
+      expect(indicators.length, equals(2));
+      for (final indicator in indicators) {
+        expect(indicator.value, equals(1.0));
+      }
+    });
   });
 }

@@ -287,6 +287,7 @@ class AuthService extends ChangeNotifier {
         size: 'large',
         bytes: imageBytes,
       );
+      await LocalImageCacheService.instance.evictAvatarCache();
 
       AppLogger.info('AuthService',
           'Avatar updated in backend and cache: ${updated.avatarImagePath}');

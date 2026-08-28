@@ -540,11 +540,15 @@ class BackendApiClient {
     String? userToken,
     String size = 'medium',
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/user/me/avatar?size=$size');
+    final t = DateTime.now().millisecondsSinceEpoch;
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}/user/me/avatar?size=$size&_t=$t');
     final headers = ApiConfig.buildUserHeaders(
       username: username,
       userToken: userToken,
     );
+    headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    headers['Pragma'] = 'no-cache';
 
     try {
       final response = await _sendRequest('GET', uri, headers: headers);
