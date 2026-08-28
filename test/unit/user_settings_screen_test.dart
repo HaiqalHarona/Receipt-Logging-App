@@ -83,7 +83,8 @@ void main() {
 
       final tooltipFinder = find.byWidgetPredicate(
         (widget) =>
-            widget is Tooltip && (widget.message?.contains('Coming Soon') ?? false),
+            widget is Tooltip &&
+            (widget.message?.contains('Coming Soon') ?? false),
       );
       expect(tooltipFinder, findsOneWidget);
 
@@ -236,8 +237,7 @@ void main() {
       expect(find.text('Send Verification Code'), findsOneWidget);
     });
 
-    testWidgets(
-        'Verified email displays Verified badge and no Verify button',
+    testWidgets('Verified email displays Verified badge and no Verify button',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
@@ -265,5 +265,3 @@ void main() {
     });
   });
 }
-
-

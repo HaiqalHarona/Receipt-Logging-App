@@ -9,6 +9,7 @@ import '../cloud/api/api_config.dart';
 import '../cloud/api/backend_api_client.dart';
 import '../cloud/models/receipt_models.dart';
 import '../cloud/services/auth_service.dart';
+import '../cloud/services/quota_service.dart';
 import '../data/mappers/line_item_mapper.dart';
 import '../domain/models/receipt.dart';
 import '../ui/core/router/app_router.dart';
@@ -114,9 +115,12 @@ class ScanBatchController extends ChangeNotifier {
         deviceToken: deviceToken,
         username: username,
       );
+      QuotaService.instance.recordLocalScanIncrement(imageFiles.length);
+      unawaited(QuotaService.instance.refreshQuota());
     } catch (e) {
       AppLogger.error('ScanBatch', 'POST /scan/parse-many failed', e);
       final msg = e is ApiException ? e.message : e.toString();
+      unawaited(QuotaService.instance.refreshQuota());
       _showError(msg, images);
       return;
     }
@@ -360,6 +364,14 @@ class ScanBatchController extends ChangeNotifier {
   String _sanitizeErrorMessage(String? raw) {
     if (raw == null || raw.isEmpty) return _kFriendlyErrorMessage;
     final lower = raw.toLowerCase();
+    // Preserve descriptive quota exhaustion messages containing countdown/UTC
+    if (lower.contains('quota reached') ||
+        lower.contains('resets in') ||
+        lower.contains('00:00 utc') ||
+        lower.contains('daily scan quota') ||
+        lower.contains('daily chat token quota')) {
+      return raw;
+    }
     if (lower.contains('token usage limit') ||
         lower.contains('high demand') ||
         lower.contains('429') ||
@@ -380,6 +392,10 @@ class ScanBatchController extends ChangeNotifier {
   }
 
   void _showError(String message, List<XFile>? retryImages) {
+    final lower = message.toLowerCase();
+    if (lower.contains('quota') || lower.contains('429')) {
+      unawaited(QuotaService.instance.refreshQuota());
+    }
     final friendlyMessage = _sanitizeErrorMessage(message);
     ScanProgressSnackBar.showError(
       message: friendlyMessage,

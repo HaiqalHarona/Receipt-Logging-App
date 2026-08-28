@@ -52,7 +52,9 @@ import '../models/device_models.dart';
 import '../models/user_models.dart';
 import '../models/receipt_models.dart';
 import '../models/chat_models.dart';
+import '../models/quota_models.dart';
 import '../services/auth_service.dart';
+import '../services/device_identity_service.dart';
 
 /// Thin exception wrapper for backend-reported errors.
 class ApiException implements Exception {
@@ -505,6 +507,30 @@ class BackendApiClient {
     _assertStatus(response, 200);
     return UserRecordDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Fetches caller's daily scan and chat quota metrics from GET /user/quota.
+  Future<QuotaStatusDto?> fetchQuotaStatus() async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/quota');
+    final isUser = AuthService.instance.isLoggedIn;
+    final headers = ApiConfig.buildScanHeaders(
+      requestType: isUser ? 'user' : 'guest',
+      deviceName: DeviceIdentityService.instance.deviceId,
+      deviceToken: DeviceIdentityService.instance.deviceToken,
+    );
+
+    try {
+      final response = await _sendRequest('GET', uri, headers: headers);
+      if (response.statusCode == 200) {
+        return QuotaStatusDto.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      }
+      return null;
+    } catch (e, st) {
+      AppLogger.error('HTTP', 'fetchQuotaStatus error', e, st);
+      return null;
+    }
   }
 
   /// Fetches authenticated user's avatar image binary from GET /user/me/avatar.

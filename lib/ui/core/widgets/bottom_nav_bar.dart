@@ -1,8 +1,10 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../services/scan_batch_controller.dart';
+import '../../../../cloud/services/quota_service.dart';
 import '../theme/theme_controller.dart';
 import 'scan_progress_snack_bar.dart';
+import 'app_snack_bar.dart';
 
 class AppBottomNavBar extends StatelessWidget {
   final String currentPath;
@@ -18,6 +20,7 @@ class AppBottomNavBar extends StatelessWidget {
       animation: Listenable.merge([
         AppThemeController.instance,
         ScanBatchController.instance,
+        QuotaService.instance,
       ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
@@ -140,6 +143,8 @@ class _CenterScanFAB extends StatelessWidget {
   Widget build(BuildContext context) {
     final disabledColor =
         isDark ? const Color(0xFF38383A) : Colors.grey.shade400;
+    final isScanQuotaExhausted =
+        QuotaService.instance.isScanQuotaExhausted && !hasReceiptsToReview;
 
     VoidCallback? onTapHandler;
     if (isScanning) {
@@ -150,6 +155,13 @@ class _CenterScanFAB extends StatelessWidget {
         context.push('/verification',
             extra: ScanBatchController.instance.completedReceipts);
       };
+    } else if (isScanQuotaExhausted) {
+      onTapHandler = () {
+        AppSnackBar.show(
+          context,
+          message: QuotaService.instance.scanTooltip,
+        );
+      };
     } else {
       onTapHandler = () {
         context.push('/scanner');
@@ -158,23 +170,29 @@ class _CenterScanFAB extends StatelessWidget {
 
     final IconData fabIcon = isScanning
         ? Icons.hourglass_top_rounded
-        : (hasReceiptsToReview ? Icons.edit_rounded : Icons.camera_alt_rounded);
+        : (hasReceiptsToReview
+            ? Icons.edit_rounded
+            : (isScanQuotaExhausted
+                ? Icons.lock_clock_rounded
+                : Icons.camera_alt_rounded));
 
-    return GestureDetector(
+    final bool isDisabledState = isScanning || isScanQuotaExhausted;
+
+    Widget fabWidget = GestureDetector(
       onTap: onTapHandler,
       behavior: HitTestBehavior.opaque,
       child: Neumorphic(
         style: NeumorphicStyle(
-          depth: isScanning ? -3 : 10,
-          intensity: isScanning ? 0.4 : 0.95,
+          depth: isDisabledState ? -3 : 10,
+          intensity: isDisabledState ? 0.4 : 0.95,
           boxShape: const NeumorphicBoxShape.circle(),
-          color: isScanning ? disabledColor : accent,
+          color: isDisabledState ? disabledColor : accent,
           border: NeumorphicBorder(
             color: isDark
-                ? (isScanning
+                ? (isDisabledState
                     ? Colors.white12
                     : Colors.white.withValues(alpha: 0.5))
-                : (isScanning
+                : (isDisabledState
                     ? Colors.white24
                     : Colors.white.withValues(alpha: 0.9)),
             width: 2.5,
@@ -186,8 +204,8 @@ class _CenterScanFAB extends StatelessWidget {
           height: 58,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isScanning ? disabledColor : null,
-            gradient: isScanning
+            color: isDisabledState ? disabledColor : null,
+            gradient: isDisabledState
                 ? null
                 : LinearGradient(
                     begin: Alignment.topLeft,
@@ -197,7 +215,7 @@ class _CenterScanFAB extends StatelessWidget {
                       accent.withValues(alpha: 0.85),
                     ],
                   ),
-            boxShadow: isScanning
+            boxShadow: isDisabledState
                 ? null
                 : [
                     BoxShadow(
@@ -210,12 +228,20 @@ class _CenterScanFAB extends StatelessWidget {
           ),
           child: Icon(
             fabIcon,
-            color: isScanning ? Colors.white70 : Colors.white,
+            color: isDisabledState ? Colors.white70 : Colors.white,
             size: isScanning ? 25 : 28,
           ),
         ),
       ),
     );
+
+    if (isScanQuotaExhausted) {
+      return Tooltip(
+        message: QuotaService.instance.scanTooltip,
+        child: fabWidget,
+      );
+    }
+    return fabWidget;
   }
 }
 

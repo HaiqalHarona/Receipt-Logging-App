@@ -23,6 +23,7 @@ import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/local_image_cache_service.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../cloud/services/quota_service.dart';
 
 class UserSettingsScreen extends StatefulWidget {
   const UserSettingsScreen({super.key});
@@ -54,7 +55,21 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     _isLoading = _profile == null;
     _avatarFuture =
         LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium');
+    QuotaService.instance.addListener(_onQuotaUpdated);
     _loadProfile();
+    QuotaService.instance.refreshQuota();
+  }
+
+  @override
+  void dispose() {
+    QuotaService.instance.removeListener(_onQuotaUpdated);
+    super.dispose();
+  }
+
+  void _onQuotaUpdated() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -1243,6 +1258,22 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         ConversationRepository.instance.conversations.length;
     final totalCategories = 6 + CategoryService.instance.customCategoryCount;
 
+    // ── USER TIER RESOLUTION & STYLING ──────────────────────────────────
+    final rawTier = _profile?.tier ?? QuotaService.instance.tier;
+    final resolvedTier = rawTier.toUpperCase();
+    final Color tierColor;
+    final IconData tierIcon;
+    if (resolvedTier == 'PREMIUM') {
+      tierColor = Colors.amber.shade700;
+      tierIcon = Icons.workspace_premium_rounded;
+    } else if (resolvedTier == 'DEV') {
+      tierColor = Colors.deepPurpleAccent;
+      tierIcon = Icons.developer_mode_rounded;
+    } else {
+      tierColor = accent;
+      tierIcon = Icons.shield_rounded;
+    }
+
     // ── 7-DAY PASSWORD COOLDOWN CALCULATION ──────────────────────────────
     final activeProfile = _profile ?? AuthService.instance.cachedProfile;
     final lastChangedStr =
@@ -1476,6 +1507,49 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                   ),
                                                 ),
                                                 const SizedBox(width: 6),
+                                                // Tier Badge (Free / Premium / Dev)
+                                                Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: tierColor.withValues(
+                                                        alpha: 0.15),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            6),
+                                                    border: Border.all(
+                                                      color:
+                                                          tierColor.withValues(
+                                                              alpha: 0.4),
+                                                      width: 0.8,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        tierIcon,
+                                                        color: tierColor,
+                                                        size: 11,
+                                                      ),
+                                                      const SizedBox(width: 3),
+                                                      Text(
+                                                        resolvedTier,
+                                                        style: TextStyle(
+                                                          color: tierColor,
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          letterSpacing: 0.3,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 5),
                                                 Container(
                                                   padding: const EdgeInsets
                                                       .symmetric(
@@ -1576,6 +1650,17 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                   ),
                                 ],
                               ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // ── 1.5 DAILY QUOTAS & TIER CARD ───────────────────────
+                      _buildDailyQuotaCard(
+                        controller: controller,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        accent: accent,
+                        tierColor: tierColor,
+                        tierName: resolvedTier,
                       ),
                       const SizedBox(height: 18),
 
@@ -1738,7 +1823,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                     decoration: BoxDecoration(
                                       color: hasMobile
                                           ? accent.withValues(alpha: 0.12)
-                                          : textSecondary.withValues(alpha: 0.08),
+                                          : textSecondary.withValues(
+                                              alpha: 0.08),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(
@@ -1746,7 +1832,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       size: 18,
                                       color: hasMobile
                                           ? accent
-                                          : textSecondary.withValues(alpha: 0.5),
+                                          : textSecondary.withValues(
+                                              alpha: 0.5),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -1788,11 +1875,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       style: NeumorphicStyle(
                                         depth: -2.5,
                                         intensity: 0.8,
-                                        color: NeumorphicTheme.baseColor(context),
+                                        color:
+                                            NeumorphicTheme.baseColor(context),
                                         boxShape: NeumorphicBoxShape.roundRect(
                                             BorderRadius.circular(8)),
                                         border: NeumorphicBorder(
-                                          color: textSecondary.withValues(alpha: 0.25),
+                                          color: textSecondary.withValues(
+                                              alpha: 0.25),
                                           width: 1,
                                         ),
                                       ),
@@ -1804,7 +1893,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
-                                            color: textSecondary.withValues(alpha: 0.6),
+                                            color: textSecondary.withValues(
+                                                alpha: 0.6),
                                           ),
                                         ),
                                       ),
@@ -2457,6 +2547,219 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     );
   }
 
+  Widget _buildDailyQuotaCard({
+    required AppThemeController controller,
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color accent,
+    required Color tierColor,
+    required String tierName,
+  }) {
+    final quotaSvc = QuotaService.instance;
+    final scanUsed = quotaSvc.scanUsed;
+    final scanLimit = quotaSvc.scanLimit;
+    final isScanUnlimited = quotaSvc.isScanUnlimited;
+    final scanProgress = isScanUnlimited
+        ? 0.0
+        : (scanUsed / (scanLimit > 0 ? scanLimit : 1)).clamp(0.0, 1.0);
+
+    final chatUsed = quotaSvc.chatUsed;
+    final chatLimit = quotaSvc.chatLimit;
+    final isChatUnlimited = quotaSvc.isChatUnlimited;
+    final chatProgress = isChatUnlimited
+        ? 0.0
+        : (chatUsed / (chatLimit > 0 ? chatLimit : 1)).clamp(0.0, 1.0);
+
+    final scanLabel = isScanUnlimited
+        ? "$scanUsed / Unlimited"
+        : "$scanUsed / $scanLimit used";
+    final chatUsedStr = chatUsed >= 1000
+        ? "${(chatUsed / 1000).toStringAsFixed(chatUsed % 1000 == 0 ? 0 : 1)}k"
+        : "$chatUsed";
+    final chatLimitStr = isChatUnlimited
+        ? "Unlimited"
+        : (chatLimit >= 1000 ? "${chatLimit ~/ 1000}k" : "$chatLimit");
+    final chatLabel = isChatUnlimited
+        ? "$chatUsedStr / Unlimited"
+        : "$chatUsedStr / $chatLimitStr used";
+
+    return NeumorphicCardWidget(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: tierColor.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      tierName == 'PREMIUM'
+                          ? Icons.workspace_premium_rounded
+                          : (tierName == 'DEV'
+                              ? Icons.developer_mode_rounded
+                              : Icons.bolt_rounded),
+                      size: 18,
+                      color: tierColor,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "$tierName Plan",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
+                      ),
+                      Text(
+                        "Resets 00:00 UTC",
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: controller.currentBaseColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: textSecondary.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule_rounded,
+                        size: 12, color: textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      quotaSvc.liveResetCountdown,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Scan Quota Metric
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.camera_alt_rounded, size: 14, color: accent),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Receipt Scans",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                scanLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: quotaSvc.isScanQuotaExhausted
+                      ? Colors.redAccent
+                      : textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: isScanUnlimited ? 0.05 : scanProgress,
+              minHeight: 6,
+              backgroundColor: controller.isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                quotaSvc.isScanQuotaExhausted ? Colors.redAccent : accent,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Chat Token Quota Metric
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded,
+                      size: 14, color: Colors.tealAccent.shade400),
+                  const SizedBox(width: 6),
+                  Text(
+                    "AI Chat Tokens",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                chatLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: quotaSvc.isChatQuotaExhausted
+                      ? Colors.redAccent
+                      : textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: isChatUnlimited ? 0.05 : chatProgress,
+              minHeight: 6,
+              backgroundColor: controller.isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                quotaSvc.isChatQuotaExhausted
+                    ? Colors.redAccent
+                    : Colors.tealAccent.shade400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDivider(Color textSecondary) {
     return Divider(
       height: 1,
@@ -2765,7 +3068,9 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
 
                 // Title
                 Text(
-                  _step == 1 ? 'Verify Email Address' : 'Enter Verification Code',
+                  _step == 1
+                      ? 'Verify Email Address'
+                      : 'Enter Verification Code',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -2815,8 +3120,8 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
                           Expanded(
                             child: Text(
                               widget.email,
-                              style: TextStyle(
-                                  fontSize: 14, color: textPrimary),
+                              style:
+                                  TextStyle(fontSize: 14, color: textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -2879,8 +3184,8 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
                     child: _cooldownRemaining > 0
                         ? Text(
                             'Resend code in ${_cooldownRemaining}s',
-                            style: TextStyle(
-                                fontSize: 12, color: textSecondary),
+                            style:
+                                TextStyle(fontSize: 12, color: textSecondary),
                           )
                         : GestureDetector(
                             onTap: _isLoading ? null : _onSendCode,
@@ -2959,8 +3264,7 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
         style: NeumorphicStyle(
           depth: onTap != null ? 4 : -2,
           color: onTap != null ? accent : baseColor,
-          boxShape:
-              NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
         ),
         child: SizedBox(
           width: double.infinity,

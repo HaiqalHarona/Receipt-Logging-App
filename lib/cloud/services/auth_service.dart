@@ -9,6 +9,7 @@
 //   4. Provides linkCurrentDevice() to associate the hardware device with the user account.
 //   5. Provides clearSession() for logout.
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:isar/isar.dart';
@@ -21,6 +22,7 @@ import '../api/backend_api_client.dart';
 import '../api/api_config.dart';
 import '../models/user_models.dart';
 import 'user_preferences_service.dart';
+import 'quota_service.dart';
 import '../../services/isar_service.dart';
 import '../../services/local_image_cache_service.dart';
 import '../../data/models/receipt_isar.dart';
@@ -416,6 +418,7 @@ class AuthService extends ChangeNotifier {
 
     await _persistProfile(user);
     AppLogger.info('AuthService', 'Session saved for user: ${user.username}');
+    unawaited(QuotaService.instance.refreshQuota());
     notifyListeners();
   }
 
@@ -559,6 +562,7 @@ class AuthService extends ChangeNotifier {
       await prefs.remove(_keyCountryCode);
       await prefs.remove(_keyMobileNumber);
       AppLogger.info('AuthService', 'Session cleared (logged out)');
+      unawaited(QuotaService.instance.refreshQuota());
       notifyListeners();
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to clear session', e, st);
