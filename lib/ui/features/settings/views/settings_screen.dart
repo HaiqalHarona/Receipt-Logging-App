@@ -1139,6 +1139,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             return ClipOval(
               child: Image.file(
                 snapshot.data!,
+                key: ValueKey(
+                    'settings_avatar_${snapshot.data!.path}_${LocalImageCacheService.instance.avatarRevision}'),
                 fit: BoxFit.cover,
                 width: 40,
                 height: 40,

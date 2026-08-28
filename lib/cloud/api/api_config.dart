@@ -1,6 +1,7 @@
 /// API configuration for Receipt Logger backend (FastAPI @ port 8085).
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/auth_service.dart';
 import '../services/device_identity_service.dart';
@@ -17,10 +18,11 @@ class ApiConfig {
           ? const String.fromEnvironment('APP_NAME')
           : _env('APP_NAME', 'Receipt Logger');
 
-  /// Current environment stage (alpha, staging, beta, production). Defaults to alpha.
+  /// Current environment stage (alpha, staging, beta, production, development).
+  /// In debug mode (kDebugMode), defaults to 'development' unless explicitly set.
   static String get appEnv => const String.fromEnvironment('APP_ENV').isNotEmpty
       ? const String.fromEnvironment('APP_ENV')
-      : _env('APP_ENV', 'alpha');
+      : _env('APP_ENV', kDebugMode ? 'development' : 'alpha');
 
   /// Semantic version string (MAJOR.MINOR.PATCH), defaults to 1.0.1.
   static String get appVersion =>
@@ -62,7 +64,7 @@ class ApiConfig {
 
     // Default Tailscale host fallback for alpha / staging
     if (isStaging) {
-      return 'http://100.98.101.54:9090/staging_manifest.json';
+      return 'http://100.119.110.55:9090/staging_manifest.json';
     }
 
     return '';
@@ -73,7 +75,9 @@ class ApiConfig {
   static bool get isStaging =>
       appEnv.toLowerCase() == 'staging' ||
       appEnv.toLowerCase() == 'alpha' ||
-      appEnv.toLowerCase() == 'beta';
+      appEnv.toLowerCase() == 'beta' ||
+      appEnv.toLowerCase() == 'development' ||
+      appEnv.toLowerCase() == 'dev';
   static bool get isProduction =>
       appEnv.toLowerCase() == 'production' ||
       appEnv.toLowerCase() == 'prod' ||
@@ -84,15 +88,17 @@ class ApiConfig {
       appEnv.toLowerCase() == 'development' || appEnv.toLowerCase() == 'dev';
 
   /// Base URL for backend read dynamically from environment or .env.
-  /// Defaults to Tailscale server 100.98.101.54:8085 for staging/alpha, localhost:8085 for local dev.
+  /// Defaults to localhost:8085 for development/debug, and Tailscale server for staging/alpha.
   static String get baseUrl =>
       const String.fromEnvironment('API_BASE_URL').isNotEmpty
           ? const String.fromEnvironment('API_BASE_URL')
           : _env(
               'API_BASE_URL',
-              isStaging
-                  ? 'http://100.98.101.54:8085/api/v1'
-                  : 'http://localhost:8085/api/v1',
+              isDevelopment
+                  ? 'http://localhost:8085/api/v1'
+                  : (isStaging
+                      ? 'http://100.119.110.55:8085/api/v1'
+                      : 'http://localhost:8085/api/v1'),
             );
 
   /// Supabase Project URL read dynamically from environment or .env

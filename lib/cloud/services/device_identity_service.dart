@@ -9,6 +9,7 @@
 //    Stored locally on device and sent in X-Device-Token for API requests.
 // 3. Registers device with backend via `POST /api/v1/devices/register` on boot.
 
+import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -39,7 +40,7 @@ class DeviceIdentityService {
   /// Initializes device identity:
   /// 1. Reads `deviceId` and `deviceToken` from SharedPreferences or `.env` fixed configuration.
   /// 2. Generates and saves them ONCE if missing.
-  /// 3. Registers or refreshes the device with the backend (POST /api/v1/devices/register).
+  /// 3. Registers or refreshes the device with the backend (POST /api/v1/devices/register) asynchronously.
   Future<void> init(BackendApiClient apiClient) async {
     if (_isInitialized) return;
 
@@ -80,22 +81,26 @@ class DeviceIdentityService {
         }
       }
 
-      // Register or refresh device identity with the backend
-      try {
-        await apiClient.registerDevice(
-          deviceId: _deviceId!,
-          deviceToken: _deviceToken!,
-        );
-        AppLogger.info(
-            'DeviceIdentity', 'Device registered with backend successfully');
-      } catch (e) {
-        AppLogger.warning(
-            'DeviceIdentity', 'Backend device registration deferred', e);
-      }
-
       _isInitialized = true;
+
+      // Register or refresh device identity with the backend asynchronously (non-blocking)
+      unawaited(_registerDeviceAsync(apiClient));
     } catch (e, st) {
       AppLogger.error('DeviceIdentity', 'Initialization error', e, st);
+    }
+  }
+
+  Future<void> _registerDeviceAsync(BackendApiClient apiClient) async {
+    try {
+      await apiClient.registerDevice(
+        deviceId: _deviceId!,
+        deviceToken: _deviceToken!,
+      );
+      AppLogger.info(
+          'DeviceIdentity', 'Device registered with backend successfully');
+    } catch (e) {
+      AppLogger.warning(
+          'DeviceIdentity', 'Backend device registration deferred', e);
     }
   }
 

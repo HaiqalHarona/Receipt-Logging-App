@@ -11,6 +11,7 @@ import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
 import '../../../../services/scan_batch_controller.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../cloud/services/quota_service.dart';
 
 /// Vision Receipt Scanner Screen
 /// Supports single scan vs. bulk mode (capped at 10 receipts max),
@@ -122,6 +123,11 @@ class _ScannerScreenState extends State<ScannerScreen>
       return;
     }
 
+    if (QuotaService.instance.isScanQuotaExhausted) {
+      AppSnackBar.show(context, message: QuotaService.instance.scanTooltip);
+      return;
+    }
+
     if (_isBulkMode && _queuedImages.length >= 10) {
       _showToast("Maximum of 10 receipts reached for bulk scan.");
       return;
@@ -146,6 +152,11 @@ class _ScannerScreenState extends State<ScannerScreen>
 
   Future<void> _pickFromGallery() async {
     if (_isSubmitting) return;
+
+    if (QuotaService.instance.isScanQuotaExhausted) {
+      AppSnackBar.show(context, message: QuotaService.instance.scanTooltip);
+      return;
+    }
 
     try {
       if (_isBulkMode) {
@@ -739,6 +750,85 @@ class _ScannerBottomControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isScanQuotaExhausted = QuotaService.instance.isScanQuotaExhausted;
+
+    Widget galleryButton = _buildSideButton(
+      icon: Icons.photo_library_rounded,
+      label: isBulkMode ? "Import" : "Gallery",
+      onTap: isProcessing
+          ? () {}
+          : (isScanQuotaExhausted
+              ? () => AppSnackBar.show(context,
+                  message: QuotaService.instance.scanTooltip)
+              : onPickGallery),
+    );
+
+    if (isScanQuotaExhausted) {
+      galleryButton = Tooltip(
+        message: QuotaService.instance.scanTooltip,
+        child: galleryButton,
+      );
+    }
+
+    Widget captureButton = GestureDetector(
+      onTap: isProcessing
+          ? null
+          : (isScanQuotaExhausted
+              ? () => AppSnackBar.show(context,
+                  message: QuotaService.instance.scanTooltip)
+              : onCapture),
+      child: Neumorphic(
+        style: NeumorphicStyle(
+          depth: (isScanQuotaExhausted || isProcessing) ? -2 : 8,
+          intensity: 0.9,
+          boxShape: const NeumorphicBoxShape.circle(),
+          color: controller.currentBaseColor,
+          border: NeumorphicBorder(
+            color: isScanQuotaExhausted
+                ? Colors.white12
+                : accent.withValues(alpha: 0.4),
+            width: 2.0,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Container(
+            width: 66,
+            height: 66,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: (queuedCount >= 10 || isProcessing || isScanQuotaExhausted)
+                  ? Colors.grey
+                  : accent,
+              boxShadow: (isScanQuotaExhausted || isProcessing)
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ],
+            ),
+            child: Icon(
+              isScanQuotaExhausted
+                  ? Icons.lock_clock_rounded
+                  : Icons.camera_alt_rounded,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (isScanQuotaExhausted) {
+      captureButton = Tooltip(
+        message: QuotaService.instance.scanTooltip,
+        child: captureButton,
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(
         left: 32,
@@ -749,51 +839,8 @@ class _ScannerBottomControls extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildSideButton(
-            icon: Icons.photo_library_rounded,
-            label: isBulkMode ? "Import" : "Gallery",
-            onTap: isProcessing ? () {} : onPickGallery,
-          ),
-          GestureDetector(
-            onTap: isProcessing ? null : onCapture,
-            child: Neumorphic(
-              style: NeumorphicStyle(
-                depth: 8,
-                intensity: 0.9,
-                boxShape: const NeumorphicBoxShape.circle(),
-                color: controller.currentBaseColor,
-                border: NeumorphicBorder(
-                  color: accent.withValues(alpha: 0.4),
-                  width: 2.0,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Container(
-                  width: 66,
-                  height: 66,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: (queuedCount >= 10 || isProcessing)
-                        ? Colors.grey
-                        : accent,
-                    boxShadow: [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_rounded,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          galleryButton,
+          captureButton,
           if (isBulkMode && queuedCount > 0)
             GestureDetector(
               onTap: isProcessing ? null : onProcessQueue,
