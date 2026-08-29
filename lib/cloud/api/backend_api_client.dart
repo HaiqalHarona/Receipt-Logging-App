@@ -52,7 +52,9 @@ import '../models/device_models.dart';
 import '../models/user_models.dart';
 import '../models/receipt_models.dart';
 import '../models/chat_models.dart';
+import '../models/quota_models.dart';
 import '../services/auth_service.dart';
+import '../services/device_identity_service.dart';
 
 /// Thin exception wrapper for backend-reported errors.
 class ApiException implements Exception {
@@ -507,6 +509,30 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Fetches caller's daily scan and chat quota metrics from GET /user/quota.
+  Future<QuotaStatusDto?> fetchQuotaStatus() async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/quota');
+    final isUser = AuthService.instance.isLoggedIn;
+    final headers = ApiConfig.buildScanHeaders(
+      requestType: isUser ? 'user' : 'guest',
+      deviceName: DeviceIdentityService.instance.deviceId,
+      deviceToken: DeviceIdentityService.instance.deviceToken,
+    );
+
+    try {
+      final response = await _sendRequest('GET', uri, headers: headers);
+      if (response.statusCode == 200) {
+        return QuotaStatusDto.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      }
+      return null;
+    } catch (e, st) {
+      AppLogger.error('HTTP', 'fetchQuotaStatus error', e, st);
+      return null;
+    }
+  }
+
   /// Fetches authenticated user's avatar image binary from GET /user/me/avatar.
   /// Supports size: 'small' (128x128), 'medium' (256x256), 'large' (512x512).
   Future<Uint8List?> fetchUserAvatar({
@@ -514,11 +540,15 @@ class BackendApiClient {
     String? userToken,
     String size = 'medium',
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/user/me/avatar?size=$size');
+    final t = DateTime.now().millisecondsSinceEpoch;
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}/user/me/avatar?size=$size&_t=$t');
     final headers = ApiConfig.buildUserHeaders(
       username: username,
       userToken: userToken,
     );
+    headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    headers['Pragma'] = 'no-cache';
 
     try {
       final response = await _sendRequest('GET', uri, headers: headers);

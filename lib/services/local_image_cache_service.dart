@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:path_provider/path_provider.dart';
 import '../cloud/api/backend_api_client.dart';
 import '../cloud/services/auth_service.dart';
@@ -17,6 +18,11 @@ class LocalImageCacheService extends ChangeNotifier {
   Directory? _cacheBaseDir;
   final Map<String, Future<File?>> _inFlightAvatarFetches = {};
   final Map<String, Future<File?>> _inFlightReceiptFetches = {};
+
+  int _avatarRevision = 0;
+
+  /// Monotonically increasing revision counter bumped whenever avatars are updated.
+  int get avatarRevision => _avatarRevision;
 
   Future<Directory> _getBaseDir() async {
     if (_cacheBaseDir != null) return _cacheBaseDir!;
@@ -93,6 +99,10 @@ class LocalImageCacheService extends ChangeNotifier {
 
     if (bytes != null && bytes.isNotEmpty) {
       await file.writeAsBytes(bytes, flush: true);
+      try {
+        await FileImage(file).evict();
+      } catch (_) {}
+      _avatarRevision++;
       AppLogger.info(
           'LocalCache', 'Saved avatar ($size) to session cache: ${file.path}');
       notifyListeners();
@@ -201,8 +211,24 @@ class LocalImageCacheService extends ChangeNotifier {
 
     final file = File('${avatarDir.path}/$size.jpg');
     await file.writeAsBytes(bytes, flush: true);
+    try {
+      await FileImage(file).evict();
+    } catch (_) {}
+    _avatarRevision++;
     AppLogger.info(
         'LocalCache', 'Updated local session avatar ($size) at ${file.path}');
+    notifyListeners();
+  }
+
+  /// Clears Flutter memory image caches and forces all avatar widgets to re-render.
+  Future<void> evictAvatarCache() async {
+    try {
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    } catch (_) {}
+    _avatarRevision++;
+    AppLogger.info(
+        'LocalCache', 'Evicted avatar memory caches (rev=$_avatarRevision)');
     notifyListeners();
   }
 

@@ -1,13 +1,13 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../../cloud/api/api_config.dart';
 
 /// Centralized Application Configuration & API Endpoints
 class AppConfig {
   AppConfig._();
 
   // ── DEPLOYED DOMAIN NAME OR IP ADDRESS ─────────────────────────────────────
-  /// Dynamic base URL read from .env file
-  static String get baseUrl =>
-      dotenv.get('API_BASE_URL', fallback: 'http://100.98.101.54:8085/api/v1');
+  /// Dynamic base URL read from ApiConfig
+  static String get baseUrl => ApiConfig.baseUrl;
 
   // ── SUPABASE CONFIGURATION (IF APPLICABLE) ─────────────────────────────────
   /// Deployed Supabase URL read from .env

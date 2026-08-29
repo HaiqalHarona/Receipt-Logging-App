@@ -15,6 +15,7 @@ import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/chat_message.dart';
 import '../../../../domain/models/conversation.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../cloud/services/quota_service.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 
@@ -486,6 +487,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty || _isGenerating) return;
 
+    if (QuotaService.instance.isChatQuotaExhausted) {
+      AppSnackBar.show(
+        context,
+        message: QuotaService.instance.chatTooltip,
+      );
+      return;
+    }
+
     _messageController.clear();
     final now = DateTime.now();
 
@@ -608,7 +617,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: AppThemeController.instance,
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        QuotaService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -802,15 +814,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   // ── Bottom Message Input Bar (WhatsApp-style) ──
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-                    child: Row(
-                      children: [
-                        // Neumorphic Input Pill
-                        Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        final isChatQuotaExhausted =
+                            QuotaService.instance.isChatQuotaExhausted;
+
+                        Widget inputPill = Expanded(
                           child: Neumorphic(
                             style: NeumorphicStyle(
                               depth: -3,
                               intensity: 0.8,
-                              color: baseColor,
+                              color: isChatQuotaExhausted
+                                  ? baseColor.withValues(alpha: 0.5)
+                                  : baseColor,
                               boxShape: NeumorphicBoxShape.roundRect(
                                   BorderRadius.circular(24)),
                             ),
@@ -830,15 +846,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                 Expanded(
                                   child: TextField(
                                     controller: _messageController,
-                                    enabled: !_isGenerating,
+                                    enabled:
+                                        !_isGenerating && !isChatQuotaExhausted,
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: textPrimary,
+                                      color: isChatQuotaExhausted
+                                          ? textSecondary.withValues(alpha: 0.6)
+                                          : textPrimary,
                                     ),
                                     decoration: InputDecoration(
                                       hintText: _isGenerating
                                           ? "AI is responding..."
-                                          : "Ask about your spending...",
+                                          : (isChatQuotaExhausted
+                                              ? "Daily token quota reached. Resets at 00:00 UTC"
+                                              : "Ask about your spending..."),
                                       hintStyle: TextStyle(
                                         fontSize: 13.5,
                                         color: textSecondary.withValues(
@@ -856,30 +877,62 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               ],
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
+                        );
 
-                        // Circular Send Button
-                        NeumorphicButton(
-                          onPressed: _isGenerating ? null : _handleSendMessage,
+                        if (isChatQuotaExhausted) {
+                          inputPill = Expanded(
+                            child: Tooltip(
+                              message: QuotaService.instance.chatTooltip,
+                              child: inputPill,
+                            ),
+                          );
+                        }
+
+                        final bool isSendDisabled =
+                            _isGenerating || isChatQuotaExhausted;
+                        Widget sendButton = NeumorphicButton(
+                          onPressed: _isGenerating
+                              ? null
+                              : (isChatQuotaExhausted
+                                  ? () => AppSnackBar.show(context,
+                                      message:
+                                          QuotaService.instance.chatTooltip)
+                                  : _handleSendMessage),
                           style: NeumorphicStyle(
-                            depth: _isGenerating ? -2 : 3,
+                            depth: isSendDisabled ? -2 : 3,
                             intensity: 0.85,
-                            color: _isGenerating
+                            color: isSendDisabled
                                 ? baseColor.withValues(alpha: 0.6)
                                 : accent,
                             boxShape: const NeumorphicBoxShape.circle(),
                           ),
                           padding: const EdgeInsets.all(12),
                           child: Icon(
-                            Icons.send_rounded,
-                            color: _isGenerating
+                            isChatQuotaExhausted
+                                ? Icons.lock_clock_rounded
+                                : Icons.send_rounded,
+                            color: isSendDisabled
                                 ? textSecondary.withValues(alpha: 0.5)
                                 : Colors.white,
                             size: 18,
                           ),
-                        ),
-                      ],
+                        );
+
+                        if (isChatQuotaExhausted) {
+                          sendButton = Tooltip(
+                            message: QuotaService.instance.chatTooltip,
+                            child: sendButton,
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            inputPill,
+                            const SizedBox(width: 10),
+                            sendButton,
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],

@@ -23,6 +23,7 @@ import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/local_image_cache_service.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../cloud/services/quota_service.dart';
 
 class UserSettingsScreen extends StatefulWidget {
   const UserSettingsScreen({super.key});
@@ -54,7 +55,32 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     _isLoading = _profile == null;
     _avatarFuture =
         LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium');
+    QuotaService.instance.addListener(_onQuotaUpdated);
+    LocalImageCacheService.instance.addListener(_onAvatarUpdated);
     _loadProfile();
+    QuotaService.instance.refreshQuota();
+  }
+
+  @override
+  void dispose() {
+    QuotaService.instance.removeListener(_onQuotaUpdated);
+    LocalImageCacheService.instance.removeListener(_onAvatarUpdated);
+    super.dispose();
+  }
+
+  void _onQuotaUpdated() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onAvatarUpdated() {
+    if (mounted) {
+      setState(() {
+        _avatarFuture =
+            LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium');
+      });
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -103,20 +129,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         if (success) {
           setState(() {
             _avatarFuture = LocalImageCacheService.instance
-                .getOrFetchAvatar(size: 'medium', forceRefresh: true);
+                .getOrFetchAvatar(size: 'medium', forceRefresh: false);
+            _profile = AuthService.instance.cachedProfile;
+            _isUploadingAvatar = false;
           });
-          await _avatarFuture;
-          PaintingBinding.instance.imageCache.clear();
-          PaintingBinding.instance.imageCache.clearLiveImages();
-          final updatedProfile =
-              await AuthService.instance.getOrFetchProfile(force: true);
-          if (mounted) {
-            setState(() {
-              _profile = updatedProfile ?? AuthService.instance.cachedProfile;
-            });
-            AppSnackBar.show(context, message: "Avatar updated successfully!");
-          }
+          AppSnackBar.show(context, message: "Avatar updated successfully!");
         } else {
+          setState(() => _isUploadingAvatar = false);
           AppSnackBar.show(
             context,
             message: "Failed to upload avatar. Please try again.",
@@ -1243,6 +1262,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         ConversationRepository.instance.conversations.length;
     final totalCategories = 6 + CategoryService.instance.customCategoryCount;
 
+    // ── USER TIER RESOLUTION & STYLING ──────────────────────────────────
+    final rawTier = _profile?.tier ?? QuotaService.instance.tier;
+    final resolvedTier = rawTier.toUpperCase();
+    final Color tierColor;
+    if (resolvedTier == 'PREMIUM') {
+      tierColor = Colors.amber.shade700;
+    } else if (resolvedTier == 'DEV') {
+      tierColor = Colors.deepPurpleAccent;
+    } else {
+      tierColor = accent;
+    }
+
     // ── 7-DAY PASSWORD COOLDOWN CALCULATION ──────────────────────────────
     final activeProfile = _profile ?? AuthService.instance.cachedProfile;
     final lastChangedStr =
@@ -1459,23 +1490,42 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
+                                            // Top Row: Badges aligned to top right
                                             Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.end,
                                               children: [
-                                                Flexible(
+                                                // Tier Badge (Free / Premium / Dev)
+                                                Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 2.5),
+                                                  decoration: BoxDecoration(
+                                                    color: tierColor.withValues(
+                                                        alpha: 0.15),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            6),
+                                                    border: Border.all(
+                                                      color:
+                                                          tierColor.withValues(
+                                                              alpha: 0.4),
+                                                      width: 0.8,
+                                                    ),
+                                                  ),
                                                   child: Text(
-                                                    username,
+                                                    resolvedTier,
                                                     style: TextStyle(
-                                                      fontSize: 20,
+                                                      color: tierColor,
+                                                      fontSize: 10,
                                                       fontWeight:
                                                           FontWeight.bold,
-                                                      color: textPrimary,
+                                                      letterSpacing: 0.4,
                                                     ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
-                                                const SizedBox(width: 6),
+                                                const SizedBox(width: 5),
                                                 Container(
                                                   padding: const EdgeInsets
                                                       .symmetric(
@@ -1514,7 +1564,19 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 4),
+                                            const SizedBox(height: 2),
+                                            // Username (Full Width)
+                                            Text(
+                                              username,
+                                              style: TextStyle(
+                                                fontSize: 19,
+                                                fontWeight: FontWeight.bold,
+                                                color: textPrimary,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
                                             Text(
                                               joinedDate,
                                               style: TextStyle(
@@ -1576,6 +1638,19 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                   ),
                                 ],
                               ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // ── 1.5 PLAN & USAGE ──────────────────────────────────
+                      _buildSectionHeader("PLAN & USAGE", textSecondary),
+                      const SizedBox(height: 8),
+                      _buildDailyQuotaCard(
+                        controller: controller,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        accent: accent,
+                        tierColor: tierColor,
+                        tierName: resolvedTier,
                       ),
                       const SizedBox(height: 18),
 
@@ -1738,7 +1813,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                     decoration: BoxDecoration(
                                       color: hasMobile
                                           ? accent.withValues(alpha: 0.12)
-                                          : textSecondary.withValues(alpha: 0.08),
+                                          : textSecondary.withValues(
+                                              alpha: 0.08),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(
@@ -1746,7 +1822,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       size: 18,
                                       color: hasMobile
                                           ? accent
-                                          : textSecondary.withValues(alpha: 0.5),
+                                          : textSecondary.withValues(
+                                              alpha: 0.5),
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -1788,11 +1865,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       style: NeumorphicStyle(
                                         depth: -2.5,
                                         intensity: 0.8,
-                                        color: NeumorphicTheme.baseColor(context),
+                                        color:
+                                            NeumorphicTheme.baseColor(context),
                                         boxShape: NeumorphicBoxShape.roundRect(
                                             BorderRadius.circular(8)),
                                         border: NeumorphicBorder(
-                                          color: textSecondary.withValues(alpha: 0.25),
+                                          color: textSecondary.withValues(
+                                              alpha: 0.25),
                                           width: 1,
                                         ),
                                       ),
@@ -1804,7 +1883,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
-                                            color: textSecondary.withValues(alpha: 0.6),
+                                            color: textSecondary.withValues(
+                                                alpha: 0.6),
                                           ),
                                         ),
                                       ),
@@ -2457,6 +2537,627 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     );
   }
 
+  Widget _buildDailyQuotaCard({
+    required AppThemeController controller,
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color accent,
+    required Color tierColor,
+    required String tierName,
+  }) {
+    final quotaSvc = QuotaService.instance;
+    final isDev = tierName.toUpperCase() == 'DEV';
+    final scanUsed = quotaSvc.scanUsed;
+    final scanLimit = quotaSvc.scanLimit;
+    final isScanUnlimited = quotaSvc.isScanUnlimited || isDev;
+    final scanProgress = isScanUnlimited
+        ? 1.0
+        : (scanUsed / (scanLimit > 0 ? scanLimit : 1)).clamp(0.0, 1.0);
+
+    final chatUsed = quotaSvc.chatUsed;
+    final chatLimit = quotaSvc.chatLimit;
+    final isChatUnlimited = quotaSvc.isChatUnlimited || isDev;
+    final chatProgress = isChatUnlimited
+        ? 1.0
+        : (chatUsed / (chatLimit > 0 ? chatLimit : 1)).clamp(0.0, 1.0);
+
+    final scanLabel = isScanUnlimited
+        ? "$scanUsed / Unlimited"
+        : "$scanUsed / $scanLimit used";
+    final chatUsedStr = chatUsed >= 1000
+        ? "${(chatUsed / 1000).toStringAsFixed(chatUsed % 1000 == 0 ? 0 : 1)}k"
+        : "$chatUsed";
+    final chatLimitStr = isChatUnlimited
+        ? "Unlimited"
+        : (chatLimit >= 1000 ? "${chatLimit ~/ 1000}k" : "$chatLimit");
+    final chatLabel = isChatUnlimited
+        ? "$chatUsedStr / Unlimited"
+        : "$chatUsedStr / $chatLimitStr used";
+
+    final amberColor = Colors.amber.shade500;
+
+    return NeumorphicCardWidget(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row: [Tier Icon + (Tier Name & Countdown) & Subtext] and [Upgrade Button]
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    // Deepened Indented Tier Icon
+                    Container(
+                      margin: const EdgeInsets.only(left: 10),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: tierColor.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        tierName == 'PREMIUM'
+                            ? Icons.workspace_premium_rounded
+                            : (tierName == 'DEV'
+                                ? Icons.developer_mode_rounded
+                                : Icons.bolt_rounded),
+                        size: 18,
+                        color: tierColor,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                tierName,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Countdown pill component directly beside Tier Name
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: controller.currentBaseColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color:
+                                        textSecondary.withValues(alpha: 0.15),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.schedule_rounded,
+                                        size: 11, color: textSecondary),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      quotaSvc.liveResetCountdown,
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Resets 00:00 UTC",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (tierName == 'FREE') ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _showPremiumUpgradeBottomSheet(
+                    context,
+                    controller,
+                    accent,
+                    textPrimary,
+                    textSecondary,
+                  ),
+                  child: Neumorphic(
+                    style: NeumorphicStyle(
+                      depth: 3,
+                      intensity: 0.9,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(10),
+                      ),
+                      color: controller.currentBaseColor,
+                      border: NeumorphicBorder(
+                        color: amberColor.withValues(alpha: 0.6),
+                        width: 1.2,
+                      ),
+                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.keyboard_double_arrow_up_rounded,
+                          size: 15,
+                          color: amberColor,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          "Upgrade",
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: amberColor,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Scan Quota Metric (Deepened Indentation)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.camera_alt_rounded, size: 14, color: accent),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Receipt Scans",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  scanLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: quotaSvc.isScanQuotaExhausted
+                        ? Colors.redAccent
+                        : textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: isScanUnlimited ? 1.0 : scanProgress,
+                minHeight: 6,
+                backgroundColor: controller.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.06),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  quotaSvc.isScanQuotaExhausted
+                      ? Colors.redAccent
+                      : (isScanUnlimited ? Colors.deepPurpleAccent : accent),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Chat Token Quota Metric (Deepened Indentation)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome_rounded,
+                        size: 14, color: Colors.tealAccent.shade400),
+                    const SizedBox(width: 6),
+                    Text(
+                      "AI Chat Tokens",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  chatLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: quotaSvc.isChatQuotaExhausted
+                        ? Colors.redAccent
+                        : textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: isChatUnlimited ? 1.0 : chatProgress,
+                minHeight: 6,
+                backgroundColor: controller.isDarkMode
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.06),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  quotaSvc.isChatQuotaExhausted
+                      ? Colors.redAccent
+                      : (isChatUnlimited
+                          ? Colors.deepPurpleAccent
+                          : Colors.tealAccent.shade400),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPremiumUpgradeBottomSheet(
+    BuildContext context,
+    AppThemeController controller,
+    Color accent,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    AppLogger.info('UI', 'User opened Premium Upgrade bottom sheet');
+    final amberColor = Colors.amber.shade500;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: NeumorphicTheme.baseColor(ctx),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: textSecondary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Top Header Badge & Title
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: amberColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: amberColor.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.workspace_premium_rounded,
+                        color: amberColor,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                "Upgrade to Premium",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: amberColor.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  "TIER",
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: amberColor,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Supercharge your receipt workflow and unlock advanced AI.",
+                            style:
+                                TextStyle(fontSize: 12.5, color: textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Benefits Container
+                Container(
+                  decoration: BoxDecoration(
+                    color: controller.currentBaseColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: textSecondary.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _buildPaywallBenefitRow(
+                        icon: Icons.camera_alt_rounded,
+                        iconColor: accent,
+                        title: "50 Daily Receipt Scans",
+                        description:
+                            "5x higher daily scan allowance (50/day vs 10/day on Free) for high-volume receipt extraction.",
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                      ),
+                      const Divider(height: 24, thickness: 0.7),
+                      _buildPaywallBenefitRow(
+                        icon: Icons.auto_awesome_rounded,
+                        iconColor: Colors.tealAccent.shade400,
+                        title: "50,000 AI Chat Tokens",
+                        description:
+                            "5x AI token capacity for deep financial querying, item breakdowns, and spending trends.",
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                      ),
+                      const Divider(height: 24, thickness: 0.7),
+                      _buildPaywallBenefitRow(
+                        icon: Icons.bolt_rounded,
+                        iconColor: amberColor,
+                        title: "Priority Vision OCR Processing",
+                        description:
+                            "High-priority server queue for instant receipt digitisation and category parsing.",
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                      ),
+                      const Divider(height: 24, thickness: 0.7),
+                      _buildPaywallBenefitRow(
+                        icon: Icons.file_download_outlined,
+                        iconColor: Colors.blueAccent.shade400,
+                        title: "Advanced Financial Exports",
+                        description:
+                            "Unlimited multi-format CSV and PDF exports with full receipt item breakdowns.",
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Pricing Card & Purchase CTA
+                NeumorphicCardWidget(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "PREMIUM SUBSCRIPTION",
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: textSecondary,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                "\$4.99",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              Text(
+                                " / month",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          AppSnackBar.show(
+                            context,
+                            message:
+                                "In-app purchases launching soon! Stay tuned.",
+                          );
+                        },
+                        child: Neumorphic(
+                          style: NeumorphicStyle(
+                            depth: 4,
+                            intensity: 0.9,
+                            boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(12),
+                            ),
+                            color: amberColor.withValues(alpha: 0.15),
+                            border: NeumorphicBorder(
+                              color: amberColor,
+                              width: 1.5,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.keyboard_double_arrow_up_rounded,
+                                size: 16,
+                                color: amberColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "Upgrade",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: amberColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: Text(
+                    "Cancel anytime. Terms of Service & Privacy Policy apply.",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: textSecondary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPaywallBenefitRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String description,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: iconColor),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: textPrimary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: textSecondary.withValues(alpha: 0.85),
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDivider(Color textSecondary) {
     return Divider(
       height: 1,
@@ -2561,6 +3262,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             return ClipOval(
               child: Image.file(
                 snapshot.data!,
+                key: ValueKey(
+                    'user_settings_avatar_${snapshot.data!.path}_${LocalImageCacheService.instance.avatarRevision}'),
                 fit: BoxFit.cover,
                 width: 60,
                 height: 60,
@@ -2765,7 +3468,9 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
 
                 // Title
                 Text(
-                  _step == 1 ? 'Verify Email Address' : 'Enter Verification Code',
+                  _step == 1
+                      ? 'Verify Email Address'
+                      : 'Enter Verification Code',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -2815,8 +3520,8 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
                           Expanded(
                             child: Text(
                               widget.email,
-                              style: TextStyle(
-                                  fontSize: 14, color: textPrimary),
+                              style:
+                                  TextStyle(fontSize: 14, color: textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -2879,8 +3584,8 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
                     child: _cooldownRemaining > 0
                         ? Text(
                             'Resend code in ${_cooldownRemaining}s',
-                            style: TextStyle(
-                                fontSize: 12, color: textSecondary),
+                            style:
+                                TextStyle(fontSize: 12, color: textSecondary),
                           )
                         : GestureDetector(
                             onTap: _isLoading ? null : _onSendCode,
@@ -2959,8 +3664,7 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
         style: NeumorphicStyle(
           depth: onTap != null ? 4 : -2,
           color: onTap != null ? accent : baseColor,
-          boxShape:
-              NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
         ),
         child: SizedBox(
           width: double.infinity,

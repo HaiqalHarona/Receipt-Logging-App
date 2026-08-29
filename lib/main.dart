@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -20,6 +21,7 @@ import 'services/app_logger_service.dart';
 import 'services/crypto_service.dart';
 import 'services/sync_coordinator.dart';
 import 'services/onboarding_service.dart';
+import 'cloud/services/quota_service.dart';
 import 'cloud/api/api_config.dart';
 
 void main() async {
@@ -47,11 +49,14 @@ void main() async {
   await AuthService.instance.init();
   await ReceiptRepository.instance.init();
   await ConversationRepository.instance.init();
-  await CloudSyncService.instance.syncOnLogin();
-  await SyncCoordinator.instance.init();
   await CurrencyService.instance.init();
   await OnboardingService.instance.init();
   await AppThemeController.instance.loadPersistedTheme();
+
+  // Non-blocking background synchronization & quota checks
+  unawaited(CloudSyncService.instance.syncOnLogin());
+  unawaited(SyncCoordinator.instance.init());
+  QuotaService.instance.init();
 
   // Catch unhandled Flutter framework errors
   FlutterError.onError = (FlutterErrorDetails details) {
