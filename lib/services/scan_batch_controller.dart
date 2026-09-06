@@ -77,10 +77,30 @@ class ScanBatchController extends ChangeNotifier {
 
     _completedReceipts = [];
     _activeImages = List.from(images);
-    _activeImageMap = {
-      for (final xf in images)
-        (xf.name.isNotEmpty ? xf.name : xf.path.split('/').last): xf.path,
-    };
+    _activeImageMap = {};
+    for (final xf in images) {
+      final name = xf.name;
+      final path = xf.path;
+      final nameBase = _extractBasename(name);
+      final pathBase = _extractBasename(path);
+
+      if (name.isNotEmpty) {
+        _activeImageMap[name] = path;
+        _activeImageMap[name.toLowerCase()] = path;
+      }
+      if (nameBase.isNotEmpty) {
+        _activeImageMap[nameBase] = path;
+        _activeImageMap[nameBase.toLowerCase()] = path;
+      }
+      if (path.isNotEmpty) {
+        _activeImageMap[path] = path;
+        _activeImageMap[path.toLowerCase()] = path;
+      }
+      if (pathBase.isNotEmpty) {
+        _activeImageMap[pathBase] = path;
+        _activeImageMap[pathBase.toLowerCase()] = path;
+      }
+    }
 
     // ── Resolve identity credentials ─────────────────────────────────────
     final isUser = AuthService.instance.isLoggedIn &&
@@ -96,7 +116,10 @@ class ScanBatchController extends ChangeNotifier {
     try {
       imageFiles = await Future.wait(images.map((xf) async {
         final bytes = await File(xf.path).readAsBytes();
-        final filename = xf.name.isNotEmpty ? xf.name : xf.path.split('/').last;
+        var filename = _extractBasename(xf.name.isNotEmpty ? xf.name : xf.path);
+        if (filename.isEmpty) {
+          filename = 'receipt_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        }
         return (bytes: bytes as List<int>, filename: filename);
       }));
     } catch (e) {
@@ -105,21 +128,62 @@ class ScanBatchController extends ChangeNotifier {
       return;
     }
 
-    // ── POST /scan/parse-many ────────────────────────────────────────────
-    BulkJobCreateResponseDto batchResponse;
-    try {
-      batchResponse = await _api.parseManyReceiptImages(
-        imageFiles: imageFiles,
-        requestType: requestType,
-        deviceName: deviceName,
-        deviceToken: deviceToken,
-        username: username,
-      );
-      QuotaService.instance.recordLocalScanIncrement(imageFiles.length);
-      unawaited(QuotaService.instance.refreshQuota());
-    } catch (e) {
-      AppLogger.error('ScanBatch', 'POST /scan/parse-many failed', e);
-      final msg = e is ApiException ? e.message : e.toString();
+    // ── POST /scan/parse-many (with hidden one-time auto-retry) ───────────
+    BulkJobCreateResponseDto? batchResponse;
+    const maxAttempts = 2;
+    Object? lastError;
+
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        batchResponse = await _api.parseManyReceiptImages(
+          imageFiles: imageFiles,
+          requestType: requestType,
+          deviceName: deviceName,
+          deviceToken: deviceToken,
+          username: username,
+        );
+        QuotaService.instance.recordLocalScanIncrement(imageFiles.length);
+        unawaited(QuotaService.instance.refreshQuota());
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+        final isRetryable = _isRetryableError(e);
+        if (!isRetryable || attempt >= maxAttempts) {
+          break;
+        }
+        AppLogger.warning(
+          'ScanBatch',
+          'Scan attempt $attempt failed ($e). Performing hidden auto-retry without showing error snackbar...',
+        );
+        // If 401 or token expired, attempt token refresh before retrying
+        if (e is ApiException && e.statusCode == 401) {
+          final currentRefreshToken = AuthService.instance.refreshToken;
+          if (currentRefreshToken != null && currentRefreshToken.isNotEmpty) {
+            try {
+              final newTokens = await _api.refreshToken(currentRefreshToken);
+              if (newTokens != null) {
+                await AuthService.instance.updateJwtTokens(
+                  accessToken: newTokens.accessToken,
+                  refreshToken: newTokens.refreshToken,
+                );
+              }
+            } catch (refErr) {
+              AppLogger.warning(
+                  'ScanBatch', 'Silent token refresh failed: $refErr');
+            }
+          }
+        }
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+    }
+
+    if (batchResponse == null) {
+      AppLogger.error(
+          'ScanBatch', 'POST /scan/parse-many failed after retry', lastError);
+      final msg = lastError is ApiException
+          ? lastError.message
+          : (lastError?.toString() ?? 'Scan failed.');
       unawaited(QuotaService.instance.refreshQuota());
       _showError(msg, images);
       return;
@@ -241,7 +305,14 @@ class ScanBatchController extends ChangeNotifier {
         final json = jsonDecode(data) as Map<String, dynamic>;
         final dto = BulkBatchStatusResponseDto.fromJson(json);
         final receipts = dto.completedJobsList
-            .map((job) => _jobToReceipt(job, _activeImageMap))
+            .asMap()
+            .entries
+            .map((entry) => _jobToReceipt(
+                  entry.value,
+                  _activeImageMap,
+                  _activeImages,
+                  entry.key,
+                ))
             .toList();
         final failedJobs = dto.failedJobsList;
 
@@ -352,11 +423,38 @@ class ScanBatchController extends ChangeNotifier {
     _activeBatchId = null;
     _isTerminalEventReceived = false;
     _completedReceipts = [];
+    _activeImages = [];
+    _activeImageMap = {};
     ScanProgressSnackBar.dismiss();
     notifyListeners();
   }
 
-  // ── Error Snack ───────────────────────────────────────────────────────────
+  // ── Error & Helpers ───────────────────────────────────────────────────────
+
+  static String _extractBasename(String pathOrName) {
+    if (pathOrName.isEmpty) return '';
+    final lastSlash = pathOrName.lastIndexOf('/');
+    final lastBackslash = pathOrName.lastIndexOf('\\');
+    final cut = lastSlash > lastBackslash ? lastSlash : lastBackslash;
+    return cut >= 0 ? pathOrName.substring(cut + 1) : pathOrName;
+  }
+
+  bool _isRetryableError(Object e) {
+    if (e is RateLimitException) return false;
+    if (e is ApiException) {
+      if (e.statusCode == 429 || e.statusCode == 400) return false;
+      final lowerMsg = e.message.toLowerCase();
+      if (lowerMsg.contains('quota') ||
+          lowerMsg.contains('rate limit') ||
+          lowerMsg.contains('exceeds maximum allowed size')) {
+        return false;
+      }
+      return true;
+    }
+    final str = e.toString().toLowerCase();
+    if (str.contains('quota') || str.contains('429')) return false;
+    return true;
+  }
 
   static const String _kFriendlyErrorMessage =
       'Oops, something went wrong! Please try again later.';
@@ -406,7 +504,11 @@ class ScanBatchController extends ChangeNotifier {
   // ── Job → Domain mapper ───────────────────────────────────────────────────
 
   Receipt _jobToReceipt(
-      BulkJobStatusDto job, Map<String, String> imagePathMap) {
+    BulkJobStatusDto job,
+    Map<String, String> imagePathMap,
+    List<XFile> orderedImages,
+    int jobIndex,
+  ) {
     final dto = job.data!;
     final isGuest = !AuthService.instance.isLoggedIn;
     final id = isGuest
@@ -424,7 +526,32 @@ class ScanBatchController extends ChangeNotifier {
       return parts.join(' — ');
     }).toList();
 
-    final imagePath = job.filename != null ? imagePathMap[job.filename] : null;
+    // Pass 1: exact filename match or basename match in active image map
+    String? imagePath;
+    if (job.filename != null && job.filename!.isNotEmpty) {
+      final raw = job.filename!;
+      final base = _extractBasename(raw);
+      imagePath = imagePathMap[raw] ??
+          imagePathMap[raw.toLowerCase()] ??
+          imagePathMap[base] ??
+          imagePathMap[base.toLowerCase()];
+    }
+
+    // Pass 2: fallback to active images by index or single item
+    if (imagePath == null ||
+        imagePath.isEmpty ||
+        !File(imagePath).existsSync()) {
+      if (orderedImages.length == 1) {
+        imagePath = orderedImages.first.path;
+      } else if (jobIndex >= 0 && jobIndex < orderedImages.length) {
+        imagePath = orderedImages[jobIndex].path;
+      }
+    }
+
+    AppLogger.info(
+      'ScanBatch',
+      'Mapped job ${job.jobId} (filename=${job.filename}) to imagePath=$imagePath (guest=$isGuest)',
+    );
 
     return Receipt(
       id: id,

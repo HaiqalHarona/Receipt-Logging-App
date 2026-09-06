@@ -260,7 +260,10 @@ class ReceiptRepository extends ChangeNotifier {
         await guestImagesDir.create(recursive: true);
       }
 
-      final ext = tempImagePath.split('.').last;
+      final rawExt = tempImagePath.contains('.')
+          ? tempImagePath.split('.').last.split('?').first
+          : 'jpg';
+      final ext = rawExt.isNotEmpty ? rawExt : 'jpg';
       final permFile = File('${guestImagesDir.path}/$receiptId.$ext');
 
       // If already stored at destination, keep it

@@ -755,6 +755,26 @@ class BackendApiClient {
     String? username,
     String? userToken,
   }) async {
+    return _parseManyReceiptImagesInternal(
+      imageFiles: imageFiles,
+      requestType: requestType,
+      deviceName: deviceName,
+      deviceToken: deviceToken,
+      username: username,
+      userToken: userToken,
+      isRetry: false,
+    );
+  }
+
+  Future<BulkJobCreateResponseDto> _parseManyReceiptImagesInternal({
+    required List<({List<int> bytes, String filename})> imageFiles,
+    required String requestType,
+    String? deviceName,
+    String? deviceToken,
+    String? username,
+    String? userToken,
+    required bool isRetry,
+  }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/scan/parse-many');
     final request = http.MultipartRequest('POST', uri);
 
@@ -792,6 +812,31 @@ class BackendApiClient {
       stopwatch.stop();
       AppLogger.info('HTTP',
           '<-- ${response.statusCode} POST $path (${stopwatch.elapsedMilliseconds}ms)');
+
+      // Handle 401 Unauthorized with transparent token refresh (mirrors _sendRequest)
+      if (response.statusCode == 401 && !isRetry) {
+        final currentRefreshToken = AuthService.instance.refreshToken;
+        if (currentRefreshToken != null && currentRefreshToken.isNotEmpty) {
+          AppLogger.info(
+              'HTTP', '401 on parse-many, attempting JWT token refresh...');
+          final newTokens = await refreshToken(currentRefreshToken);
+          if (newTokens != null) {
+            await AuthService.instance.updateJwtTokens(
+              accessToken: newTokens.accessToken,
+              refreshToken: newTokens.refreshToken,
+            );
+            return _parseManyReceiptImagesInternal(
+              imageFiles: imageFiles,
+              requestType: requestType,
+              deviceName: deviceName,
+              deviceToken: deviceToken,
+              username: username,
+              userToken: userToken,
+              isRetry: true,
+            );
+          }
+        }
+      }
 
       _assertStatus(response, 202);
       return BulkJobCreateResponseDto.fromJson(
