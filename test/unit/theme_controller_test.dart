@@ -54,6 +54,21 @@ void main() {
       expect(controller.currentPreset.name, equals('Arctic White'));
     });
 
+    test('selectDarkPreset and selectLightPreset update independent preset indices', () {
+      final controller = AppThemeController.instance;
+
+      controller.setThemeMode(ThemeMode.dark);
+      controller.selectDarkPreset(2);
+      controller.selectLightPreset(1);
+
+      expect(controller.selectedDarkPresetIndex, equals(2));
+      expect(controller.selectedLightPresetIndex, equals(1));
+      expect(controller.selectedPresetIndex, equals(2));
+
+      controller.setThemeMode(ThemeMode.light);
+      expect(controller.selectedPresetIndex, equals(1));
+    });
+
     test('Custom depth and font scale setters clamp within valid ranges', () {
       final controller = AppThemeController.instance;
 

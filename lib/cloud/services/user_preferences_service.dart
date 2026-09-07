@@ -114,25 +114,23 @@ class UserPreferencesService {
       // 3. Presets & Custom Accents
       final darkIdx = preferences['dark_preset_idx'] as int?;
       if (darkIdx != null) {
-        theme.selectPreset(darkIdx);
+        theme.selectDarkPreset(darkIdx);
       }
       final lightIdx = preferences['light_preset_idx'] as int?;
       if (lightIdx != null) {
-        theme.selectPreset(lightIdx);
+        theme.selectLightPreset(lightIdx);
       }
 
-      final darkAccent = preferences['dark_accent_color'] as int?;
-      if (darkAccent != null) {
-        theme.setCustomDarkAccentColor(Color(darkAccent));
-      } else {
-        theme.setCustomDarkAccentColor(null);
+      if (preferences.containsKey('dark_accent_color')) {
+        final darkAccent = preferences['dark_accent_color'] as int?;
+        theme.setCustomDarkAccentColor(
+            darkAccent != null ? Color(darkAccent) : null);
       }
 
-      final lightAccent = preferences['light_accent_color'] as int?;
-      if (lightAccent != null) {
-        theme.setCustomLightAccentColor(Color(lightAccent));
-      } else {
-        theme.setCustomLightAccentColor(null);
+      if (preferences.containsKey('light_accent_color')) {
+        final lightAccent = preferences['light_accent_color'] as int?;
+        theme.setCustomLightAccentColor(
+            lightAccent != null ? Color(lightAccent) : null);
       }
 
       // 4. Depth & Font Scale

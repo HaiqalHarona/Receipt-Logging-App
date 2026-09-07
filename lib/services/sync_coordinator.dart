@@ -78,6 +78,12 @@ class SyncCoordinator extends ChangeNotifier {
   bool get isProcessing => _isProcessing;
   bool get isOnline => _isOnline;
 
+  @visibleForTesting
+  void setOnlineForTesting(bool online) {
+    _isOnline = online;
+    notifyListeners();
+  }
+
   Future<void> init() async {
     await _loadOutbox();
 
