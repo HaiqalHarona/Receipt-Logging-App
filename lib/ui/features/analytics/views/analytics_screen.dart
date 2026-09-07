@@ -239,9 +239,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                   Icon(
                                     catIcon,
                                     size: 14,
-                                    color: isSelected
-                                        ? catColor
-                                        : textSecondary,
+                                    color:
+                                        isSelected ? catColor : textSecondary,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
@@ -251,9 +250,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                       fontWeight: isSelected
                                           ? FontWeight.w700
                                           : FontWeight.w500,
-                                      color: isSelected
-                                          ? catColor
-                                          : textPrimary,
+                                      color:
+                                          isSelected ? catColor : textPrimary,
                                     ),
                                   ),
                                   if (!isAll && isSelected) ...[
@@ -312,8 +310,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                               NeumorphicBoxShape.roundRect(
                                                   BorderRadius.circular(9)),
                                           border: NeumorphicBorder(
-                                            color: accent
-                                                .withValues(alpha: 0.35),
+                                            color:
+                                                accent.withValues(alpha: 0.35),
                                             width: 1.0,
                                           ),
                                         ),
@@ -447,8 +445,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 6, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: textSecondary
-                                              .withValues(alpha: 0.12),
+                                          color: textSecondary.withValues(
+                                              alpha: 0.12),
                                           borderRadius:
                                               BorderRadius.circular(6),
                                         ),
@@ -554,8 +552,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(
                                   child: Text(
@@ -594,16 +591,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               final pct = overview.totalSpent > 0
                                   ? (amt / overview.totalSpent)
                                   : 0.0;
-                              final color =
-                                  CategoryUtils.getCategoryColor(cat);
+                              final color = CategoryUtils.getCategoryColor(cat);
                               final formatted =
                                   CurrencyService.instance.format(amt);
 
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       mainAxisAlignment:
@@ -650,13 +645,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                     ),
                                     const SizedBox(height: 6),
                                     ClipRRect(
-                                      borderRadius:
-                                          BorderRadius.circular(4),
+                                      borderRadius: BorderRadius.circular(4),
                                       child: LinearProgressIndicator(
                                         value: pct.clamp(0.0, 1.0),
                                         minHeight: 6,
-                                        backgroundColor: color
-                                            .withValues(alpha: 0.15),
+                                        backgroundColor:
+                                            color.withValues(alpha: 0.15),
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
                                                 color),
@@ -711,8 +705,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: matchingReceipts.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 10),
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final receipt = matchingReceipts[index];
                           final formattedPrice = CurrencyService.instance
@@ -722,8 +715,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                           return ReceiptListItemWidget(
                             receipt: receipt,
                             formattedPrice: formattedPrice,
-                            onTap: () => context.push('/receipt-detail',
-                                extra: receipt),
+                            onTap: () =>
+                                context.push('/receipt-detail', extra: receipt),
                             textPrimary: textPrimary,
                             textSecondary: textSecondary,
                             accent: accent,
@@ -741,8 +734,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildTrendPill(double percent, String comparisonLabel, Color accent,
-      bool isDarkMode) {
+  Widget _buildTrendPill(
+      double percent, String comparisonLabel, Color accent, bool isDarkMode) {
     final isIncrease = percent > 0;
     final isZero = percent == 0;
     final pillColor = isZero

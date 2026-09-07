@@ -1559,9 +1559,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                     boxShape:
                                                         const NeumorphicBoxShape
                                                             .circle(),
-                                                    color:
-                                                        NeumorphicTheme.baseColor(
-                                                            context),
+                                                    color: NeumorphicTheme
+                                                        .baseColor(context),
                                                     border: NeumorphicBorder(
                                                       color: !_isOnline
                                                           ? textSecondary
@@ -1914,8 +1913,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.bold,
-                                              color: textSecondary
-                                                  .withValues(alpha: 0.45),
+                                              color: textSecondary.withValues(
+                                                  alpha: 0.45),
                                             ),
                                           ),
                                         ),
@@ -2113,7 +2112,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                   (isPasswordCooldownActive ||
                                                           !_isOnline)
                                                       ? textSecondary
-                                                          .withValues(alpha: 0.5)
+                                                          .withValues(
+                                                              alpha: 0.5)
                                                       : textPrimary,
                                             ),
                                           ),
@@ -2376,8 +2376,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                             ? Icons.cloud_off_outlined
                                             : Icons.cloud_upload_outlined,
                                         color: !_isOnline
-                                            ? textSecondary
-                                                .withValues(alpha: 0.4)
+                                            ? textSecondary.withValues(
+                                                alpha: 0.4)
                                             : accent,
                                         size: 20,
                                       ),
@@ -2421,8 +2421,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                           fontSize: 13,
                                           fontWeight: FontWeight.bold,
                                           color: !_isOnline
-                                              ? textSecondary
-                                                  .withValues(alpha: 0.4)
+                                              ? textSecondary.withValues(
+                                                  alpha: 0.4)
                                               : accent,
                                         ),
                                       ),
@@ -2766,7 +2766,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                 MainAxisAlignment.center,
                                             children: [
                                               Icon(Icons.logout_rounded,
-                                                  color: Colors.white, size: 18),
+                                                  color: Colors.white,
+                                                  size: 18),
                                               SizedBox(width: 8),
                                               Text(
                                                 "Log Out",
@@ -3635,7 +3636,8 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
     if (_isLoading || _cooldownRemaining > 0) return;
     if (!SyncCoordinator.instance.isOnline) {
       setState(() {
-        _errorMessage = "Internet connection required to send verification code.";
+        _errorMessage =
+            "Internet connection required to send verification code.";
         _isLoading = false;
       });
       return;

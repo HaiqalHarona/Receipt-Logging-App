@@ -825,7 +825,7 @@ class BackendApiClient {
               accessToken: newTokens.accessToken,
               refreshToken: newTokens.refreshToken,
             );
-            return _parseManyReceiptImagesInternal(
+            return await _parseManyReceiptImagesInternal(
               imageFiles: imageFiles,
               requestType: requestType,
               deviceName: deviceName,

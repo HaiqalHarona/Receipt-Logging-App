@@ -1,4 +1,4 @@
-﻿// File: lib/ui/core/widgets/spending_line_graph.dart
+// File: lib/ui/core/widgets/spending_line_graph.dart
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -76,7 +76,9 @@ class _SpendingLineGraphState extends State<SpendingLineGraph> {
     double minDistance = double.infinity;
 
     for (int i = 0; i < n; i++) {
-      final x = n > 1 ? plotLeft + (i / (n - 1)) * plotWidth : plotLeft + plotWidth / 2;
+      final x = n > 1
+          ? plotLeft + (i / (n - 1)) * plotWidth
+          : plotLeft + plotWidth / 2;
       final y = plotBottom - (points[i].amount / yRange) * plotHeight;
       final dx = touchPos.dx - x;
       final dy = touchPos.dy - y;
@@ -209,7 +211,9 @@ class SpendingLineGraphPainter extends CustomPainter {
     final n = points.length;
     final offsets = <Offset>[];
     for (int i = 0; i < n; i++) {
-      final x = n > 1 ? plotLeft + (i / (n - 1)) * plotWidth : plotLeft + plotWidth / 2;
+      final x = n > 1
+          ? plotLeft + (i / (n - 1)) * plotWidth
+          : plotLeft + plotWidth / 2;
       final y = plotBottom - (points[i].amount / yRange) * plotHeight;
       offsets.add(Offset(x, y));
     }

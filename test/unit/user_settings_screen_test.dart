@@ -378,8 +378,7 @@ void main() {
           findsOneWidget);
 
       // Password Reset button renders with offline tooltip
-      expect(
-          find.byTooltip('Password reset requires an internet connection'),
+      expect(find.byTooltip('Password reset requires an internet connection'),
           findsOneWidget);
 
       // Log Out button renders with offline tooltip
