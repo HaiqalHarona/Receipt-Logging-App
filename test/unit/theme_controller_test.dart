@@ -54,7 +54,9 @@ void main() {
       expect(controller.currentPreset.name, equals('Arctic White'));
     });
 
-    test('selectDarkPreset and selectLightPreset update independent preset indices', () {
+    test(
+        'selectDarkPreset and selectLightPreset update independent preset indices',
+        () {
       final controller = AppThemeController.instance;
 
       controller.setThemeMode(ThemeMode.dark);

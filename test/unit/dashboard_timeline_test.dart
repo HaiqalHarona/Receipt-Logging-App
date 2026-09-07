@@ -22,13 +22,15 @@ void main() {
     });
 
     test('oneWeek filter returns exactly 7 daily data points', () {
-      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.oneWeek);
+      final points =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.oneWeek);
       expect(points.length, equals(7));
       expect(points.first.label, matches(r'^\d{2}/\d{2}$'));
     });
 
     test('fourWeeks filter returns exactly 4 weekly data points', () {
-      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.fourWeeks);
+      final points =
+          viewModel.getMonthlySpendingHistory(TimelineFilter.fourWeeks);
       expect(points.length, equals(4));
       expect(points.last.label, equals('This Wk'));
     });
@@ -98,7 +100,9 @@ void main() {
       }
     });
 
-    test('calculateTimeframeOverview generates valid metrics for 4w and categories', () {
+    test(
+        'calculateTimeframeOverview generates valid metrics for 4w and categories',
+        () {
       final overview = viewModel.calculateTimeframeOverview(
         filter: TimelineFilter.fourWeeks,
         category: 'All',
@@ -126,13 +130,18 @@ void main() {
       expect(receipts, isA<List>());
     });
 
-    test('getTimeframeCategories returns "All" and scopes categories to timeframe', () {
-      final categories = viewModel.getTimeframeCategories(TimelineFilter.fourWeeks);
+    test(
+        'getTimeframeCategories returns "All" and scopes categories to timeframe',
+        () {
+      final categories =
+          viewModel.getTimeframeCategories(TimelineFilter.fourWeeks);
       expect(categories, isNotEmpty);
       expect(categories.first, equals('All'));
     });
 
-    test('calculateTimeframeOverview supports Set of categories for multi-select', () {
+    test(
+        'calculateTimeframeOverview supports Set of categories for multi-select',
+        () {
       final overview = viewModel.calculateTimeframeOverview(
         filter: TimelineFilter.fourWeeks,
         categories: {'Groceries', 'Dining'},
@@ -141,7 +150,9 @@ void main() {
       expect(overview.selectedCategories, containsAll(['groceries', 'dining']));
     });
 
-    test('getMonthlySpendingHistory caches and returns points for multi-category selection', () {
+    test(
+        'getMonthlySpendingHistory caches and returns points for multi-category selection',
+        () {
       final points = viewModel.getMonthlySpendingHistory(
         TimelineFilter.fourWeeks,
         {'Groceries', 'Dining'},
