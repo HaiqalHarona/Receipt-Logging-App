@@ -42,6 +42,8 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
 
   int _targetIndexForTimeline(TimelineFilter filter) {
     switch (filter) {
+      case TimelineFilter.oneWeek:
+      case TimelineFilter.fourWeeks:
       case TimelineFilter.thisMonth:
         return 0;
       case TimelineFilter.threeMonths:

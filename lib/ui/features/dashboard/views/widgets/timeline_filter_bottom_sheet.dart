@@ -17,6 +17,14 @@ class TimelineFilterBottomSheet extends StatelessWidget {
 
   static const List<_TimelineOption> _options = [
     _TimelineOption(
+        filter: TimelineFilter.oneWeek,
+        label: '1w',
+        subtitle: 'Past 7 Days (Daily breakdown)'),
+    _TimelineOption(
+        filter: TimelineFilter.fourWeeks,
+        label: '4w',
+        subtitle: 'Past 4 Weeks (Weekly breakdown)'),
+    _TimelineOption(
         filter: TimelineFilter.thisMonth,
         label: '1m',
         subtitle: 'This Month (Daily breakdown)'),

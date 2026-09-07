@@ -168,7 +168,8 @@ class ReceiptListItemWidget extends StatelessWidget {
           }
         }
 
-        return ClipRect(
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -238,11 +239,11 @@ class ReceiptListItemWidget extends StatelessWidget {
 
   double _tagTotalWidth(String tag) {
     const style = TextStyle(fontSize: 10, fontWeight: FontWeight.bold);
-    return _measureTextWidth(tag, style) + 16.0;
+    return _measureTextWidth(tag, style) + 20.0;
   }
 
   double _badgeTotalWidth(int count) {
     const style = TextStyle(fontSize: 9, fontWeight: FontWeight.bold);
-    return _measureTextWidth('+$count', style) + 14.0;
+    return _measureTextWidth('+$count', style) + 16.0;
   }
 }

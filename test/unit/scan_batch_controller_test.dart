@@ -14,7 +14,7 @@ void main() {
     test(
         'Image filename mapper preserves image path even when backend returns basename',
         () {
-      final controller = ScanBatchController.instance;
+      expect(ScanBatchController.instance, isNotNull);
 
       // Simulate a guest scan with an image
       final tempFile =

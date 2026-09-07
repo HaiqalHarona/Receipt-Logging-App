@@ -23,6 +23,7 @@ import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/local_image_cache_service.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../services/sync_coordinator.dart';
 import '../../../../cloud/services/quota_service.dart';
 
 class UserSettingsScreen extends StatefulWidget {
@@ -57,6 +58,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium');
     QuotaService.instance.addListener(_onQuotaUpdated);
     LocalImageCacheService.instance.addListener(_onAvatarUpdated);
+    SyncCoordinator.instance.addListener(_onSyncCoordinatorUpdated);
     _loadProfile();
     QuotaService.instance.refreshQuota();
   }
@@ -65,8 +67,17 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   void dispose() {
     QuotaService.instance.removeListener(_onQuotaUpdated);
     LocalImageCacheService.instance.removeListener(_onAvatarUpdated);
+    SyncCoordinator.instance.removeListener(_onSyncCoordinatorUpdated);
     super.dispose();
   }
+
+  void _onSyncCoordinatorUpdated() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  bool get _isOnline => SyncCoordinator.instance.isOnline;
 
   void _onQuotaUpdated() {
     if (mounted) {
@@ -94,11 +105,22 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   Future<void> _pickAndUploadAvatar(ImageSource source) async {
+    if (!_isOnline) {
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: "Avatar upload requires an active internet connection.",
+          isError: true,
+        );
+      }
+      return;
+    }
     try {
       final pickedFile = await _imagePicker.pickImage(
         source: source,
         maxWidth: 2048,
         maxHeight: 2048,
+        imageQuality: 85,
       );
       if (pickedFile == null) return;
 
@@ -129,11 +151,19 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         if (success) {
           setState(() {
             _avatarFuture = LocalImageCacheService.instance
-                .getOrFetchAvatar(size: 'medium', forceRefresh: false);
-            _profile = AuthService.instance.cachedProfile;
-            _isUploadingAvatar = false;
+                .getOrFetchAvatar(size: 'medium', forceRefresh: true);
           });
-          AppSnackBar.show(context, message: "Avatar updated successfully!");
+          await _avatarFuture;
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
+          final updatedProfile =
+              await AuthService.instance.getOrFetchProfile(force: true);
+          if (mounted) {
+            setState(() {
+              _profile = updatedProfile ?? AuthService.instance.cachedProfile;
+            });
+            AppSnackBar.show(context, message: "Avatar updated successfully!");
+          }
         } else {
           setState(() => _isUploadingAvatar = false);
           AppSnackBar.show(
@@ -161,6 +191,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
   Future<void> _showAvatarPickerBottomSheet(BuildContext context, Color accent,
       Color textPrimary, Color textSecondary) async {
+    if (!_isOnline) {
+      AppSnackBar.show(
+        context,
+        message: "Avatar upload requires an active internet connection.",
+        isError: true,
+      );
+      return;
+    }
     AppLogger.info('UI', 'User opened Avatar Picker bottom sheet');
     await showModalBottomSheet(
       context: context,
@@ -280,6 +318,16 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
   Future<void> _onManualSync() async {
     if (_isManualSyncing) return;
+    if (!_isOnline) {
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: "Data sync requires an active internet connection.",
+          isError: true,
+        );
+      }
+      return;
+    }
     setState(() => _isManualSyncing = true);
     AppLogger.info(
         'UI', 'User triggered manual cloud sync from UserSettingsScreen');
@@ -363,6 +411,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     required Color textPrimary,
     required Color textSecondary,
   }) async {
+    if (!_isOnline) {
+      AppSnackBar.show(
+        context,
+        message: "Email verification requires an active internet connection.",
+        isError: true,
+      );
+      return;
+    }
     AppLogger.info('UI', 'User opened Email Verification modal');
 
     final controller = AppThemeController.instance;
@@ -625,6 +681,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     Color textPrimary,
     Color textSecondary,
   ) {
+    if (!_isOnline) {
+      AppSnackBar.show(
+        context,
+        message: "Password reset requires an active internet connection.",
+        isError: true,
+      );
+      return;
+    }
     final oldPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
@@ -923,9 +987,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       width: double.infinity,
                       height: 48,
                       child: NeumorphicButtonWidget(
-                        onPressed: isSubmitting
+                        onPressed: (isSubmitting ||
+                                !SyncCoordinator.instance.isOnline)
                             ? null
                             : () async {
+                                if (!SyncCoordinator.instance.isOnline) {
+                                  setModalState(() => errorMsg =
+                                      "Password reset requires an active internet connection.");
+                                  return;
+                                }
                                 final oldP = oldPasswordController.text;
                                 final newP = newPasswordController.text;
                                 final confP = confirmPasswordController.text;
@@ -1064,6 +1134,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   Future<void> _onLogout() async {
     AppLogger.info('UI', 'User tapped Log Out');
     if (_isLoggingOut) return;
+    if (!_isOnline) {
+      AppSnackBar.show(
+        context,
+        message:
+            "Log out requires an active internet connection to safeguard your local data.",
+        isError: true,
+      );
+      return;
+    }
 
     final controller = AppThemeController.instance;
     final textPrimary = controller.textColor;
@@ -1329,31 +1408,43 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       ),
                     ),
                     // Quick Sync Icon Badge
-                    GestureDetector(
-                      onTap: _isManualSyncing ? null : _onManualSync,
-                      child: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          intensity: 0.85,
-                          boxShape: const NeumorphicBoxShape.circle(),
-                          color: controller.currentBaseColor,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(9),
-                          child: _isManualSyncing
-                              ? SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: accent,
+                    Tooltip(
+                      message: !_isOnline
+                          ? "Sync requires an internet connection"
+                          : "Sync all data",
+                      triggerMode: TooltipTriggerMode.tap,
+                      child: GestureDetector(
+                        onTap: (!_isOnline || _isManualSyncing)
+                            ? null
+                            : _onManualSync,
+                        child: Neumorphic(
+                          style: NeumorphicStyle(
+                            depth: !_isOnline ? -2 : 3,
+                            intensity: 0.85,
+                            boxShape: const NeumorphicBoxShape.circle(),
+                            color: controller.currentBaseColor,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(9),
+                            child: _isManualSyncing
+                                ? SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: accent,
+                                    ),
+                                  )
+                                : Icon(
+                                    !_isOnline
+                                        ? Icons.sync_disabled_rounded
+                                        : Icons.sync_rounded,
+                                    size: 18,
+                                    color: !_isOnline
+                                        ? textSecondary.withValues(alpha: 0.4)
+                                        : accent,
                                   ),
-                                )
-                              : Icon(
-                                  Icons.sync_rounded,
-                                  size: 18,
-                                  color: accent,
-                                ),
+                          ),
                         ),
                       ),
                     ),
@@ -1387,58 +1478,17 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                   Row(
                                     children: [
                                       // Avatar Circle with Ring and '+' Badge
-                                      Stack(
-                                        clipBehavior: Clip.none,
-                                        children: [
-                                          GestureDetector(
-                                            onTap: _isUploadingAvatar
-                                                ? null
-                                                : () =>
-                                                    _showAvatarPickerBottomSheet(
-                                                      context,
-                                                      accent,
-                                                      textPrimary,
-                                                      textSecondary,
-                                                    ),
-                                            child: Neumorphic(
-                                              style: NeumorphicStyle(
-                                                depth: 5,
-                                                boxShape:
-                                                    const NeumorphicBoxShape
-                                                        .circle(),
-                                                color: accent.withValues(
-                                                    alpha: 0.15),
-                                                border: NeumorphicBorder(
-                                                  color: accent.withValues(
-                                                      alpha: 0.4),
-                                                  width: 1.5,
-                                                ),
-                                              ),
-                                              child: SizedBox(
-                                                width: 60,
-                                                height: 60,
-                                                child: _isUploadingAvatar
-                                                    ? Center(
-                                                        child: SizedBox(
-                                                          width: 22,
-                                                          height: 22,
-                                                          child:
-                                                              CircularProgressIndicator(
-                                                            strokeWidth: 2.5,
-                                                            color: accent,
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : _buildAvatarContent(
-                                                        username, accent),
-                                              ),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            bottom: -2,
-                                            right: -2,
-                                            child: GestureDetector(
-                                              onTap: _isUploadingAvatar
+                                      Tooltip(
+                                        message: !_isOnline
+                                            ? "Avatar upload requires an internet connection"
+                                            : "Change avatar photo",
+                                        triggerMode: TooltipTriggerMode.tap,
+                                        child: Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            GestureDetector(
+                                              onTap: (!_isOnline ||
+                                                      _isUploadingAvatar)
                                                   ? null
                                                   : () =>
                                                       _showAvatarPickerBottomSheet(
@@ -1449,39 +1499,111 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                                       ),
                                               child: Neumorphic(
                                                 style: NeumorphicStyle(
-                                                  depth: 3,
+                                                  depth: !_isOnline ? 1 : 5,
                                                   boxShape:
                                                       const NeumorphicBoxShape
                                                           .circle(),
-                                                  color:
-                                                      NeumorphicTheme.baseColor(
-                                                          context),
+                                                  color: !_isOnline
+                                                      ? textSecondary
+                                                          .withValues(
+                                                              alpha: 0.08)
+                                                      : accent.withValues(
+                                                          alpha: 0.15),
                                                   border: NeumorphicBorder(
-                                                    color: accent.withValues(
-                                                        alpha: 0.5),
+                                                    color: !_isOnline
+                                                        ? textSecondary
+                                                            .withValues(
+                                                                alpha: 0.2)
+                                                        : accent.withValues(
+                                                            alpha: 0.4),
                                                     width: 1.5,
                                                   ),
                                                 ),
-                                                child: Container(
-                                                  width: 22,
-                                                  height: 22,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: accent.withValues(
-                                                        alpha: 0.2),
+                                                child: SizedBox(
+                                                  width: 60,
+                                                  height: 60,
+                                                  child: _isUploadingAvatar
+                                                      ? Center(
+                                                          child: SizedBox(
+                                                            width: 22,
+                                                            height: 22,
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                              strokeWidth: 2.5,
+                                                              color: accent,
+                                                            ),
+                                                          ),
+                                                        )
+                                                      : _buildAvatarContent(
+                                                          username, accent),
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              bottom: -2,
+                                              right: -2,
+                                              child: GestureDetector(
+                                                onTap: (!_isOnline ||
+                                                        _isUploadingAvatar)
+                                                    ? null
+                                                    : () =>
+                                                        _showAvatarPickerBottomSheet(
+                                                          context,
+                                                          accent,
+                                                          textPrimary,
+                                                          textSecondary,
+                                                        ),
+                                                child: Neumorphic(
+                                                  style: NeumorphicStyle(
+                                                    depth: !_isOnline ? 0 : 3,
+                                                    boxShape:
+                                                        const NeumorphicBoxShape
+                                                            .circle(),
+                                                    color:
+                                                        NeumorphicTheme.baseColor(
+                                                            context),
+                                                    border: NeumorphicBorder(
+                                                      color: !_isOnline
+                                                          ? textSecondary
+                                                              .withValues(
+                                                                  alpha: 0.3)
+                                                          : accent.withValues(
+                                                              alpha: 0.5),
+                                                      width: 1.5,
+                                                    ),
                                                   ),
-                                                  child: Center(
-                                                    child: Icon(
-                                                      Icons.add_rounded,
-                                                      size: 15,
-                                                      color: accent,
+                                                  child: Container(
+                                                    width: 22,
+                                                    height: 22,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: !_isOnline
+                                                          ? textSecondary
+                                                              .withValues(
+                                                                  alpha: 0.1)
+                                                          : accent.withValues(
+                                                              alpha: 0.2),
+                                                    ),
+                                                    child: Center(
+                                                      child: Icon(
+                                                        !_isOnline
+                                                            ? Icons
+                                                                .wifi_off_rounded
+                                                            : Icons.add_rounded,
+                                                        size: 14,
+                                                        color: !_isOnline
+                                                            ? textSecondary
+                                                                .withValues(
+                                                                    alpha: 0.5)
+                                                            : accent,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                       const SizedBox(width: 16),
                                       // User Info & Badges
@@ -1764,6 +1886,41 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                         ),
                                       ],
                                     )
+                                  else if (!_isOnline)
+                                    Tooltip(
+                                      message:
+                                          "Email verification requires an internet connection",
+                                      triggerMode: TooltipTriggerMode.tap,
+                                      child: Neumorphic(
+                                        style: NeumorphicStyle(
+                                          depth: -2,
+                                          intensity: 0.6,
+                                          color: NeumorphicTheme.baseColor(
+                                              context),
+                                          boxShape:
+                                              NeumorphicBoxShape.roundRect(
+                                                  BorderRadius.circular(8)),
+                                          border: NeumorphicBorder(
+                                            color: textSecondary.withValues(
+                                                alpha: 0.25),
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 5),
+                                          child: Text(
+                                            "Verify",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: textSecondary
+                                                  .withValues(alpha: 0.45),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    )
                                   else
                                     GestureDetector(
                                       onTap: () =>
@@ -1897,7 +2054,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
                             // Reset Password Row
                             InkWell(
-                              onTap: isPasswordCooldownActive
+                              onTap: (isPasswordCooldownActive || !_isOnline)
                                   ? null
                                   : () => _showChangePasswordBottomSheet(
                                         context,
@@ -1913,7 +2070,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: isPasswordCooldownActive
+                                        color: (isPasswordCooldownActive ||
+                                                !_isOnline)
                                             ? textSecondary.withValues(
                                                 alpha: 0.08)
                                             : accent.withValues(alpha: 0.12),
@@ -1922,7 +2080,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                       child: Icon(
                                         Icons.lock_reset_rounded,
                                         size: 18,
-                                        color: isPasswordCooldownActive
+                                        color: (isPasswordCooldownActive ||
+                                                !_isOnline)
                                             ? textSecondary.withValues(
                                                 alpha: 0.5)
                                             : accent,
@@ -1950,16 +2109,65 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                                               fontSize: 13,
                                               fontWeight: FontWeight.bold,
                                               letterSpacing: 2,
-                                              color: isPasswordCooldownActive
-                                                  ? textSecondary.withValues(
-                                                      alpha: 0.5)
-                                                  : textPrimary,
+                                              color:
+                                                  (isPasswordCooldownActive ||
+                                                          !_isOnline)
+                                                      ? textSecondary
+                                                          .withValues(alpha: 0.5)
+                                                      : textPrimary,
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    if (isPasswordCooldownActive)
+                                    if (!_isOnline)
+                                      Tooltip(
+                                        message:
+                                            "Password reset requires an internet connection",
+                                        triggerMode: TooltipTriggerMode.tap,
+                                        child: Neumorphic(
+                                          style: NeumorphicStyle(
+                                            depth: -2.5,
+                                            intensity: 0.8,
+                                            color: NeumorphicTheme.baseColor(
+                                                context),
+                                            boxShape:
+                                                NeumorphicBoxShape.roundRect(
+                                                    BorderRadius.circular(8)),
+                                            border: NeumorphicBorder(
+                                              color: textSecondary.withValues(
+                                                  alpha: 0.25),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 5),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.wifi_off_rounded,
+                                                  size: 12,
+                                                  color: textSecondary
+                                                      .withValues(alpha: 0.6),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  "Reset",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: textSecondary
+                                                        .withValues(alpha: 0.6),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else if (isPasswordCooldownActive)
                                       Tooltip(
                                         message: cooldownMessage,
                                         triggerMode: TooltipTriggerMode.tap,
@@ -2147,51 +2355,79 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                         child: Column(
                           children: [
                             // Sync Now Action Row
-                            InkWell(
-                              onTap: _isManualSyncing ? null : _onManualSync,
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(18)),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.cloud_upload_outlined,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Sync All Data Now",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "Force push local receipts & pull updates",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
+                            Tooltip(
+                              message: !_isOnline
+                                  ? "Sync requires an internet connection"
+                                  : "Force push local receipts & pull updates",
+                              triggerMode: TooltipTriggerMode.tap,
+                              child: InkWell(
+                                onTap: (!_isOnline || _isManualSyncing)
+                                    ? null
+                                    : _onManualSync,
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(18)),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 14),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        !_isOnline
+                                            ? Icons.cloud_off_outlined
+                                            : Icons.cloud_upload_outlined,
+                                        color: !_isOnline
+                                            ? textSecondary
+                                                .withValues(alpha: 0.4)
+                                            : accent,
+                                        size: 20,
                                       ),
-                                    ),
-                                    Text(
-                                      _isManualSyncing ? "Syncing..." : "Sync",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: accent,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              "Sync All Data Now",
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: !_isOnline
+                                                    ? textSecondary.withValues(
+                                                        alpha: 0.6)
+                                                    : textPrimary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              !_isOnline
+                                                  ? "Connect to internet to synchronize data"
+                                                  : "Force push local receipts & pull updates",
+                                              style: TextStyle(
+                                                fontSize: 11.5,
+                                                color: textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      Text(
+                                        !_isOnline
+                                            ? "Offline"
+                                            : (_isManualSyncing
+                                                ? "Syncing..."
+                                                : "Sync"),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: !_isOnline
+                                              ? textSecondary
+                                                  .withValues(alpha: 0.4)
+                                              : accent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -2470,43 +2706,81 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 48,
-                              child: NeumorphicButtonWidget(
-                                color: Colors.red.shade700,
-                                borderRadius: 12,
-                                onPressed: _isLoggingOut ? null : _onLogout,
-                                child: Center(
-                                  child: _isLoggingOut
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(Icons.logout_rounded,
-                                                color: Colors.white, size: 18),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              "Log Out",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                            if (!_isOnline)
+                              Tooltip(
+                                message:
+                                    "Log out requires an internet connection to safeguard your local data",
+                                triggerMode: TooltipTriggerMode.tap,
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  height: 48,
+                                  child: NeumorphicButtonWidget(
+                                    color: Colors.grey.shade700,
+                                    borderRadius: 12,
+                                    onPressed: null,
+                                    child: Center(
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.wifi_off_rounded,
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.6),
+                                              size: 18),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "Log Out",
+                                            style: TextStyle(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.6),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: NeumorphicButtonWidget(
+                                  color: Colors.red.shade700,
+                                  borderRadius: 12,
+                                  onPressed: _isLoggingOut ? null : _onLogout,
+                                  child: Center(
+                                    child: _isLoggingOut
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.logout_rounded,
+                                                  color: Colors.white, size: 18),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                "Log Out",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -3359,6 +3633,13 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
 
   Future<void> _onSendCode() async {
     if (_isLoading || _cooldownRemaining > 0) return;
+    if (!SyncCoordinator.instance.isOnline) {
+      setState(() {
+        _errorMessage = "Internet connection required to send verification code.";
+        _isLoading = false;
+      });
+      return;
+    }
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -3398,6 +3679,13 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
   Future<void> _onVerifyCode() async {
     final otp = _otpController.text.trim();
     if (otp.length != 6 || _isLoading) return;
+    if (!SyncCoordinator.instance.isOnline) {
+      setState(() {
+        _errorMessage = "Internet connection required to verify code.";
+        _isLoading = false;
+      });
+      return;
+    }
     setState(() {
       _isLoading = true;
       _errorMessage = null;
