@@ -17,8 +17,20 @@ void main() {
       viewModel.dispose();
     });
 
-    test('Default timeline filter is TimelineFilter.thisMonth', () {
-      expect(viewModel.selectedTimeline, equals(TimelineFilter.thisMonth));
+    test('Default timeline filter is TimelineFilter.oneWeek', () {
+      expect(viewModel.selectedTimeline, equals(TimelineFilter.oneWeek));
+    });
+
+    test('oneWeek filter returns exactly 7 daily data points', () {
+      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.oneWeek);
+      expect(points.length, equals(7));
+      expect(points.first.label, matches(r'^\d{2}/\d{2}$'));
+    });
+
+    test('fourWeeks filter returns exactly 4 weekly data points', () {
+      final points = viewModel.getMonthlySpendingHistory(TimelineFilter.fourWeeks);
+      expect(points.length, equals(4));
+      expect(points.last.label, equals('This Wk'));
     });
 
     test('thisMonth filter returns daily points up to current day in month',
@@ -29,6 +41,9 @@ void main() {
     });
 
     test('Timeline filter switching updates selectedTimeline state', () {
+      viewModel.setTimeline(TimelineFilter.fourWeeks);
+      expect(viewModel.selectedTimeline, equals(TimelineFilter.fourWeeks));
+
       viewModel.setTimeline(TimelineFilter.threeMonths);
       expect(viewModel.selectedTimeline, equals(TimelineFilter.threeMonths));
 
@@ -81,6 +96,63 @@ void main() {
       for (final p in points) {
         expect(p.amount, greaterThanOrEqualTo(0.0));
       }
+    });
+
+    test('calculateTimeframeOverview generates valid metrics for 4w and categories', () {
+      final overview = viewModel.calculateTimeframeOverview(
+        filter: TimelineFilter.fourWeeks,
+        category: 'All',
+      );
+
+      expect(overview.filter, equals(TimelineFilter.fourWeeks));
+      expect(overview.totalSpent, greaterThanOrEqualTo(0.0));
+      expect(overview.transactionCount, greaterThanOrEqualTo(0));
+      expect(overview.averageTransaction, greaterThanOrEqualTo(0.0));
+      expect(overview.dailyAverage, greaterThanOrEqualTo(0.0));
+      expect(overview.formattedTotal, isNotEmpty);
+      expect(overview.comparisonLabel, equals('vs previous 4 weeks'));
+    });
+
+    test('availableCategories includes "All" as first entry', () {
+      final categories = viewModel.availableCategories;
+      expect(categories, isNotEmpty);
+      expect(categories.first, equals('All'));
+    });
+
+    test('getFilteredReceipts returns list sorted newest first', () {
+      final receipts = viewModel.getFilteredReceipts(
+        filter: TimelineFilter.allTime,
+      );
+      expect(receipts, isA<List>());
+    });
+
+    test('getTimeframeCategories returns "All" and scopes categories to timeframe', () {
+      final categories = viewModel.getTimeframeCategories(TimelineFilter.fourWeeks);
+      expect(categories, isNotEmpty);
+      expect(categories.first, equals('All'));
+    });
+
+    test('calculateTimeframeOverview supports Set of categories for multi-select', () {
+      final overview = viewModel.calculateTimeframeOverview(
+        filter: TimelineFilter.fourWeeks,
+        categories: {'Groceries', 'Dining'},
+      );
+      expect(overview.totalSpent, greaterThanOrEqualTo(0.0));
+      expect(overview.selectedCategories, containsAll(['groceries', 'dining']));
+    });
+
+    test('getMonthlySpendingHistory caches and returns points for multi-category selection', () {
+      final points = viewModel.getMonthlySpendingHistory(
+        TimelineFilter.fourWeeks,
+        {'Groceries', 'Dining'},
+      );
+      expect(points.length, equals(4));
+
+      final cached = viewModel.getMonthlySpendingHistory(
+        TimelineFilter.fourWeeks,
+        {'Groceries', 'Dining'},
+      );
+      expect(identical(points, cached), isTrue);
     });
   });
 }

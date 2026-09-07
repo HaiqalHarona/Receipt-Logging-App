@@ -311,7 +311,7 @@ class AuthService extends ChangeNotifier {
       );
 
       _cachedProfile = updated;
-      await _persistProfile(updated);
+      await _persistProfile(updated, syncPreferences: false);
       AppLogger.info('AuthService',
           'Custom categories synced to backend and cache: ${customCategories.length} categories');
       notifyListeners();
@@ -440,7 +440,8 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> _persistProfile(UserRecordDto user) async {
+  Future<void> _persistProfile(UserRecordDto user,
+      {bool syncPreferences = true}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyUserId, user.id);
@@ -464,15 +465,17 @@ class AuthService extends ChangeNotifier {
         await prefs.remove(_keyAvatarImagePath);
       }
 
-      // Sync custom categories from cloud into CategoryService (Cloud Priority: overwrite local with user's exact cloud list)
-      await CategoryService.instance.syncFromCloud(
-        user.customCategories.map((c) => CustomCategory.fromDto(c)).toList(),
-      );
+      if (syncPreferences) {
+        // Sync custom categories from cloud into CategoryService (Cloud Priority: overwrite local with user's exact cloud list)
+        await CategoryService.instance.syncFromCloud(
+          user.customCategories.map((c) => CustomCategory.fromDto(c)).toList(),
+        );
 
-      // Restore user preferences (currency, theme, presets) from cloud
-      if (user.preferences.isNotEmpty) {
-        await UserPreferencesService.instance
-            .applyCloudPreferences(user.preferences);
+        // Restore user preferences (currency, theme, presets) from cloud
+        if (user.preferences.isNotEmpty) {
+          await UserPreferencesService.instance
+              .applyCloudPreferences(user.preferences);
+        }
       }
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to persist profile', e, st);

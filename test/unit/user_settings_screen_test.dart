@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reciept_logging/ui/features/settings/views/user_settings_screen.dart';
 import 'package:reciept_logging/cloud/services/auth_service.dart';
 import 'package:reciept_logging/cloud/models/user_models.dart';
+import 'package:reciept_logging/services/sync_coordinator.dart';
 import 'package:reciept_logging/ui/core/theme/app_theme.dart';
 
 void main() {
@@ -343,6 +344,59 @@ void main() {
       for (final indicator in indicators) {
         expect(indicator.value, equals(1.0));
       }
+    });
+
+    testWidgets(
+        'When offline, Verify, Reset, and Log Out buttons display disabled states and tooltips',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      SyncCoordinator.instance.setOnlineForTesting(false);
+      addTearDown(() => SyncCoordinator.instance.setOnlineForTesting(true));
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-offline-1',
+          username: 'OfflineUser',
+          email: 'offline@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          emailVerifiedAt: null,
+        ),
+        userToken: 'mock-token-xyz',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verify button renders with offline tooltip
+      expect(
+          find.byTooltip('Email verification requires an internet connection'),
+          findsOneWidget);
+
+      // Password Reset button renders with offline tooltip
+      expect(
+          find.byTooltip('Password reset requires an internet connection'),
+          findsOneWidget);
+
+      // Log Out button renders with offline tooltip
+      expect(
+          find.byTooltip(
+              'Log out requires an internet connection to safeguard your local data'),
+          findsOneWidget);
+
+      // Tapping Verify button does not open bottom sheet
+      await tester.tap(find.text('Verify'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Verify Email Address'), findsNothing);
+
+      // Tapping Reset button does not open bottom sheet
+      await tester.tap(find.text('Reset'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Change Account Password'), findsNothing);
     });
   });
 }

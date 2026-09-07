@@ -424,6 +424,20 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
+  void selectDarkPreset(int index) {
+    _selectedDarkPresetIndex = index.clamp(0, darkPresets.length - 1);
+    _customDarkAccentColor = null;
+    _persist();
+    notifyListeners();
+  }
+
+  void selectLightPreset(int index) {
+    _selectedLightPresetIndex = index.clamp(0, lightPresets.length - 1);
+    _customLightAccentColor = null;
+    _persist();
+    notifyListeners();
+  }
+
   void updateCustomAccentColor(Color color) {
     if (isDarkMode) {
       _customDarkAccentColor = color;

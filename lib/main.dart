@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ui/core/router/app_router.dart';
@@ -26,6 +27,10 @@ import 'cloud/api/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   await AppLogger.init();
 
   // Load .env if present in development assets or ignore gracefully when using --dart-define
