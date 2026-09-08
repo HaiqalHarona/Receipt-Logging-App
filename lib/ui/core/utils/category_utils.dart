@@ -35,6 +35,8 @@ class CategoryUtils {
     if (clean.contains('shop')) return const Color(0xFF8B5CF6); // Purple
     if (clean.contains('electron') || clean.contains('tech'))
       return const Color(0xFF06B6D4); // Cyan
+    if (clean.contains('uncategoris') || clean.contains('uncategoriz'))
+      return const Color(0xFF94A3B8); // Slate / Muted Gray
     return const Color(0xFF64748B); // Slate Gray
   }
 
@@ -54,6 +56,8 @@ class CategoryUtils {
     if (clean.contains('shop')) return Icons.shopping_bag_rounded;
     if (clean.contains('electron') || clean.contains('tech'))
       return Icons.devices_rounded;
+    if (clean.contains('uncategoris') || clean.contains('uncategoriz'))
+      return Icons.help_outline_rounded;
     return Icons.receipt_long_rounded;
   }
 }

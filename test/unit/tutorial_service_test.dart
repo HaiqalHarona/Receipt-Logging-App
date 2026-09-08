@@ -261,7 +261,7 @@ void main() {
       final has25PercentOpacityCard = containers.any((c) {
         final dec = c.decoration;
         if (dec is BoxDecoration && dec.color != null) {
-          return (dec.color!.a - 0.95).abs() < 0.05;
+          return (dec.color!.a - 0.25).abs() < 0.05;
         }
         return false;
       });

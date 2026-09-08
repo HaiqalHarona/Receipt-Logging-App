@@ -1,6 +1,7 @@
 // File: lib/ui/core/widgets/spending_line_graph.dart
 
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../features/dashboard/view_models/dashboard_view_model.dart';
 
@@ -49,7 +50,7 @@ class _SpendingLineGraphState extends State<SpendingLineGraph> {
   @override
   void didUpdateWidget(covariant SpendingLineGraph oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.points != widget.points) {
+    if (!listEquals(oldWidget.points, widget.points)) {
       _selectedIndex = null;
     }
   }
@@ -219,17 +220,14 @@ class SpendingLineGraphPainter extends CustomPainter {
     }
 
     // ── X-axis date / month labels ────────────────────────────────────────
-    final labelStyle = TextStyle(
-      color: axisLabelColor.withAlpha(190),
-      fontSize: 8.5,
-      fontWeight: FontWeight.w500,
-    );
+    if (n <= 8) {
+      final labelStyle = TextStyle(
+        color: axisLabelColor.withAlpha(190),
+        fontSize: 8.5,
+        fontWeight: FontWeight.w500,
+      );
 
-    // Filter label density if too many points (e.g. thisMonth has up to 31 points)
-    final labelInterval = n > 14 ? (n / 7).ceil() : 1;
-
-    for (int i = 0; i < n; i++) {
-      if (i % labelInterval == 0 || i == n - 1) {
+      for (int i = 0; i < n; i++) {
         final o = offsets[i];
         final label = points[i].label;
         final tp = TextPainter(
@@ -238,6 +236,26 @@ class SpendingLineGraphPainter extends CustomPainter {
         )..layout();
         tp.paint(canvas, Offset(o.dx - (tp.width / 2), plotBottom + 5));
       }
+    } else {
+      final omittedStyle = TextStyle(
+        color: axisLabelColor.withAlpha(190),
+        fontSize: 8.5,
+        fontStyle: FontStyle.italic,
+        fontWeight: FontWeight.w500,
+      );
+      final tp = TextPainter(
+        text: TextSpan(
+          text: 'Dates Omitted - Click On Points For Details',
+          style: omittedStyle,
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final centerX = plotLeft + (plotWidth / 2);
+      final maxAvailableX = size.width - tp.width;
+      final x = maxAvailableX > 0
+          ? (centerX - (tp.width / 2)).clamp(0.0, maxAvailableX)
+          : centerX - (tp.width / 2);
+      tp.paint(canvas, Offset(x, plotBottom + 5));
     }
 
     if (offsets.length < 2) {
@@ -250,27 +268,10 @@ class SpendingLineGraphPainter extends CustomPainter {
       return;
     }
 
-    // ── Smooth cubic Bézier line path ─────────────────────────────────────
+    // ── Straight spending line path ───────────────────────────────────────
     final linePath = Path()..moveTo(offsets.first.dx, offsets.first.dy);
-    for (int i = 0; i < offsets.length - 1; i++) {
-      final current = offsets[i];
-      final next = offsets[i + 1];
-      final control1 = Offset(
-        current.dx + (next.dx - current.dx) / 2,
-        current.dy,
-      );
-      final control2 = Offset(
-        current.dx + (next.dx - current.dx) / 2,
-        next.dy,
-      );
-      linePath.cubicTo(
-        control1.dx,
-        control1.dy,
-        control2.dx,
-        control2.dy,
-        next.dx,
-        next.dy,
-      );
+    for (int i = 1; i < offsets.length; i++) {
+      linePath.lineTo(offsets[i].dx, offsets[i].dy);
     }
 
     // ── Fill area beneath the line ────────────────────────────────────────
@@ -294,12 +295,13 @@ class SpendingLineGraphPainter extends CustomPainter {
 
     canvas.drawPath(fillPath, fillPaint);
 
-    // Draw the curved spending line
+    // Draw the straight spending line
     final linePaint = Paint()
       ..color = accentColor
       ..strokeWidth = 2.2
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
 
     canvas.drawPath(linePath, linePaint);
 
@@ -412,11 +414,5 @@ class SpendingLineGraphPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(SpendingLineGraphPainter old) =>
-      old.points != points ||
-      old.accentColor != accentColor ||
-      old.currencySymbol != currencySymbol ||
-      old.axisLabelColor != axisLabelColor ||
-      old.textPrimary != textPrimary ||
-      old.selectedIndex != selectedIndex;
+  bool shouldRepaint(SpendingLineGraphPainter old) => true;
 }

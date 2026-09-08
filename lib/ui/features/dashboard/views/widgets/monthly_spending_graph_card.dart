@@ -1,4 +1,4 @@
-﻿// File: lib/ui/features/dashboard/views/widgets/monthly_spending_graph_card.dart
+// File: lib/ui/features/dashboard/views/widgets/monthly_spending_graph_card.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
@@ -235,6 +235,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
 
             // ── Line Graph with Touch Tooltip Support ────────────────────────
             SpendingLineGraph(
+              key: ValueKey(
+                  'dashboard_graph_${activeTimeline.name}_${points.length}'),
               points: points,
               accentColor: widget.accent,
               textPrimary: widget.textPrimary,

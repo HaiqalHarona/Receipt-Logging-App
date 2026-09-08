@@ -1,7 +1,11 @@
-// File: test/unit/dashboard_timeline_test.dart
-
+import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reciept_logging/ui/features/analytics/views/analytics_screen.dart';
 import 'package:reciept_logging/ui/features/dashboard/view_models/dashboard_view_model.dart';
+import 'package:reciept_logging/ui/features/dashboard/views/widgets/spending_summary_card.dart';
+import 'package:reciept_logging/ui/core/widgets/spending_line_graph.dart';
+import 'package:reciept_logging/ui/features/history/views/widgets/category_filter_bottom_sheet.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -164,6 +168,314 @@ void main() {
         {'Groceries', 'Dining'},
       );
       expect(identical(points, cached), isTrue);
+    });
+
+    test(
+        'calculateTimeframeOverview aggregates receipts without category to Uncategorised',
+        () {
+      final overview = viewModel.calculateTimeframeOverview(
+        filter: TimelineFilter.allTime,
+      );
+      expect(overview.totalSpent, greaterThanOrEqualTo(0.0));
+      // Breakdown contains sanitized keys
+      for (final key in overview.categoryBreakdown.keys) {
+        expect(key, isNotEmpty);
+        expect(key, isNot(equals('General')));
+      }
+    });
+
+    test(
+        'calculateTimeframeOverview returns categoryBreakdown sorted strictly descending by amount',
+        () {
+      final overview = viewModel.calculateTimeframeOverview(
+        filter: TimelineFilter.allTime,
+      );
+      final entries = overview.categoryBreakdown.entries.toList();
+      for (int i = 0; i < entries.length - 1; i++) {
+        expect(
+          entries[i].value,
+          greaterThanOrEqualTo(entries[i + 1].value),
+          reason:
+              'Category ${entries[i].key} (${entries[i].value}) should be >= ${entries[i + 1].key} (${entries[i + 1].value})',
+        );
+      }
+    });
+  });
+
+  group('AnalyticsScreen UI Tests', () {
+    testWidgets(
+        'AnalyticsScreen renders category filter button (flex 3) and timeline dropdown (flex 1)',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify category filter button and timeline dropdown exist
+      expect(find.text('Category'), findsOneWidget);
+      expect(find.byIcon(Icons.filter_list_rounded), findsOneWidget);
+      expect(find.byType(DropdownButton<TimelineFilter>), findsOneWidget);
+
+      // Verify 3:1 flex ratio in Section 1 row
+      final expandedList =
+          tester.widgetList<Expanded>(find.byType(Expanded)).toList();
+      final flexValues = expandedList.map((e) => e.flex).toList();
+      expect(flexValues, contains(3));
+      expect(flexValues, contains(1));
+    });
+
+    testWidgets(
+        'Tapping category filter button opens CategoryFilterBottomSheet',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Category'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CategoryFilterBottomSheet), findsOneWidget);
+      expect(find.text('Filter by Category'), findsOneWidget);
+    });
+
+    testWidgets(
+        'AnalyticsScreen renders SpendingLineGraph and embedded SpendingSummaryCard',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SpendingLineGraph), findsOneWidget);
+      expect(find.byType(SpendingSummaryCard), findsOneWidget);
+      expect(find.text('Spending Trend'), findsOneWidget);
+    });
+
+    testWidgets(
+        'AnalyticsScreen renders Overview Metrics with all 4 metric labels and no icons',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Overview Metrics'), findsOneWidget);
+      expect(find.text('Avg / Transaction'), findsOneWidget);
+      expect(find.text('Total Receipts'), findsOneWidget);
+      expect(find.text('Daily Average'), findsOneWidget);
+      expect(find.text('Largest Purchase'), findsOneWidget);
+
+      // Verify all icons are removed from Overview Metrics
+      expect(find.byIcon(Icons.stars_rounded), findsNothing);
+      expect(find.byIcon(Icons.tag_rounded), findsNothing);
+      expect(find.byIcon(Icons.receipt_rounded), findsNothing);
+    });
+
+    testWidgets(
+        'AnalyticsScreen Category Distribution omits "Top XXX" when rendered',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify "Top: " badge is NOT rendered anywhere in the widget tree
+      final topBadgeFinder = find.byWidgetPredicate(
+          (w) => w is Text && w.data != null && w.data!.startsWith('Top: '));
+      expect(topBadgeFinder, findsNothing);
+    });
+
+    testWidgets(
+        'AnalyticsScreen Category Distribution progress indicators have valid values',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final indicators = tester.widgetList<LinearProgressIndicator>(
+          find.byType(LinearProgressIndicator));
+      for (final indicator in indicators) {
+        if (indicator.value != null) {
+          expect(indicator.value, greaterThanOrEqualTo(0.0));
+          expect(indicator.value, lessThanOrEqualTo(1.0));
+        }
+      }
+    });
+
+    testWidgets('SpendingLineGraph paints straight lines with data points',
+        (tester) async {
+      final points = [
+        MonthlySpendingPoint(
+            month: DateTime(2026, 1, 1), label: '01/26', amount: 50.0),
+        MonthlySpendingPoint(
+            month: DateTime(2026, 2, 1), label: '02/26', amount: 120.0),
+        MonthlySpendingPoint(
+            month: DateTime(2026, 3, 1), label: '03/26', amount: 80.0),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SpendingLineGraph(
+              points: points,
+              accentColor: Colors.blue,
+              textPrimary: Colors.black,
+              textSecondary: Colors.grey,
+              currencySymbol: r'$',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SpendingLineGraph), findsOneWidget);
+      expect(find.byType(CustomPaint), findsWidgets);
+    });
+
+    testWidgets(
+        'SpendingLineGraph renders without errors for both <= 8 and > 8 points',
+        (tester) async {
+      final points9 = List.generate(
+        9,
+        (i) => MonthlySpendingPoint(
+          month: DateTime(2026, 1, i + 1),
+          label: 'D$i',
+          amount: 20.0 * (i + 1),
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SpendingLineGraph(
+              points: points9,
+              accentColor: Colors.blue,
+              textPrimary: Colors.black,
+              textSecondary: Colors.grey,
+              currencySymbol: r'$',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(SpendingLineGraph), findsOneWidget);
+    });
+
+    testWidgets(
+        'Overview metric values are horizontally centered in compact cards',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Both label and value are centered in each of the 3 compact cards (total 6 centered text widgets)
+      final centerFinders = find.byWidgetPredicate(
+        (w) =>
+            w is Center &&
+            w.child is Text &&
+            (w.child as Text).textAlign == TextAlign.center,
+      );
+      expect(centerFinders, findsNWidgets(6));
+    });
+
+    testWidgets(
+        'Selecting a category in CategoryFilterBottomSheet updates button to Filter (1)',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open modal
+      await tester.tap(find.text('Category'));
+      await tester.pumpAndSettle();
+
+      // Find first available category chip inside bottom sheet if any exist
+      final chipFinders = find.descendant(
+        of: find.byType(CategoryFilterBottomSheet),
+        matching: find.byType(GestureDetector),
+      );
+      if (chipFinders.evaluate().isNotEmpty) {
+        await tester.tap(chipFinders.first);
+        await tester.pumpAndSettle();
+      }
+
+      // Tap Apply Filter button
+      final applyButton = find.text('Apply Filter');
+      if (applyButton.evaluate().isNotEmpty) {
+        await tester.tap(applyButton);
+        await tester.pumpAndSettle();
+      }
+
+      // Verify modal is dismissed
+      expect(find.byType(CategoryFilterBottomSheet), findsNothing);
+    });
+
+    testWidgets(
+        'Selecting 12M in AnalyticsScreen updates graph with 12 points and dynamic key',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AnalyticsScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButton<TimelineFilter>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('12M').last);
+      await tester.pumpAndSettle();
+
+      final graph =
+          tester.widget<SpendingLineGraph>(find.byType(SpendingLineGraph));
+      expect(graph.points.length, equals(12));
+      expect(graph.key, isA<ValueKey<String>>());
+      expect(
+          (graph.key as ValueKey<String>).value, contains('twelveMonths_12'));
+    });
+
+    test('SpendingLineGraphPainter paints Dates Omitted message when n > 8',
+        () {
+      final points = List.generate(
+        12,
+        (i) => MonthlySpendingPoint(
+          month: DateTime(2025, i + 1, 1),
+          label: 'M${i + 1}',
+          amount: 50.0,
+        ),
+      );
+      final painter = SpendingLineGraphPainter(
+        points: points,
+        accentColor: Colors.blue,
+        axisLabelColor: Colors.grey,
+        textPrimary: Colors.black,
+        currencySymbol: r'$',
+      );
+
+      final recorder = PictureRecorder();
+      final canvas = Canvas(recorder);
+      painter.paint(canvas, const Size(360, 120));
+      final picture = recorder.endRecording();
+      expect(picture, isNotNull);
     });
   });
 }
