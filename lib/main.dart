@@ -22,6 +22,7 @@ import 'services/app_logger_service.dart';
 import 'services/crypto_service.dart';
 import 'services/sync_coordinator.dart';
 import 'services/onboarding_service.dart';
+import 'services/tutorial_service.dart';
 import 'cloud/services/quota_service.dart';
 import 'cloud/api/api_config.dart';
 
@@ -56,6 +57,7 @@ void main() async {
   await ConversationRepository.instance.init();
   await CurrencyService.instance.init();
   await OnboardingService.instance.init();
+  await TutorialService.instance.init();
   await AppThemeController.instance.loadPersistedTheme();
 
   // Non-blocking background synchronization & quota checks

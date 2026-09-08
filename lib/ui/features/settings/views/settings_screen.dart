@@ -16,6 +16,7 @@ import '../../../../services/app_logger_service.dart';
 import '../../../../services/currency_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/local_image_cache_service.dart';
+import '../../../../services/tutorial_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -581,6 +582,56 @@ class _SettingsScreenState extends State<SettingsScreen>
                     const SizedBox(height: 8),
                     _buildSectionContainer(
                       children: [
+                        // Replay Tutorial Guide Row
+                        InkWell(
+                          onTap: () async {
+                            await TutorialService.instance.resetForTesting();
+                            TutorialService.instance.startTutorial();
+                            if (context.mounted) {
+                              context.go('/dashboard');
+                            }
+                          },
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Replay Tutorial",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Walkthrough of adding a receipt",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.school_outlined,
+                                  color: accent,
+                                  size: 22,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildDivider(textSecondary),
                         // Submit Feedback Row
                         InkWell(
                           onTap: () => _showFeedbackBottomSheet(
@@ -589,7 +640,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                             textPrimary,
                             textSecondary,
                           ),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: const BorderRadius.vertical(
+                              bottom: Radius.circular(18)),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 14),

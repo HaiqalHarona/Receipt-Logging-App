@@ -1,6 +1,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../services/scan_batch_controller.dart';
+import '../../../../services/tutorial_service.dart';
 import '../../../../cloud/services/quota_service.dart';
 import '../theme/theme_controller.dart';
 import 'scan_progress_snack_bar.dart';
@@ -8,10 +9,12 @@ import 'app_snack_bar.dart';
 
 class AppBottomNavBar extends StatelessWidget {
   final String currentPath;
+  final GlobalKey? fabKey;
 
   const AppBottomNavBar({
     super.key,
     required this.currentPath,
+    this.fabKey,
   });
 
   @override
@@ -113,6 +116,7 @@ class AppBottomNavBar extends StatelessWidget {
                     isDark: isDark,
                     isScanning: isScanning,
                     hasReceiptsToReview: hasReceiptsToReview,
+                    fabKey: fabKey,
                   ),
                 ),
               ],
@@ -130,6 +134,7 @@ class _CenterScanFAB extends StatelessWidget {
   final bool isDark;
   final bool isScanning;
   final bool hasReceiptsToReview;
+  final GlobalKey? fabKey;
 
   const _CenterScanFAB({
     required this.accent,
@@ -137,6 +142,7 @@ class _CenterScanFAB extends StatelessWidget {
     required this.isDark,
     required this.isScanning,
     required this.hasReceiptsToReview,
+    this.fabKey,
   });
 
   @override
@@ -151,6 +157,9 @@ class _CenterScanFAB extends StatelessWidget {
       onTapHandler = null;
     } else if (hasReceiptsToReview) {
       onTapHandler = () {
+        if (TutorialService.instance.currentStep == 1) {
+          TutorialService.instance.setStep(3);
+        }
         ScanProgressSnackBar.dismiss();
         context.push('/verification',
             extra: ScanBatchController.instance.completedReceipts);
@@ -164,6 +173,9 @@ class _CenterScanFAB extends StatelessWidget {
       };
     } else {
       onTapHandler = () {
+        if (TutorialService.instance.currentStep == 1) {
+          TutorialService.instance.advanceStep();
+        }
         context.push('/scanner');
       };
     }
@@ -179,6 +191,7 @@ class _CenterScanFAB extends StatelessWidget {
     final bool isDisabledState = isScanning || isScanQuotaExhausted;
 
     Widget fabWidget = GestureDetector(
+      key: fabKey,
       onTap: onTapHandler,
       behavior: HitTestBehavior.opaque,
       child: Neumorphic(

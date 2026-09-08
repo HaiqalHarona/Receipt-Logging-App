@@ -15,6 +15,7 @@ import '../domain/models/receipt.dart';
 import '../ui/core/router/app_router.dart';
 import '../ui/core/widgets/scan_progress_snack_bar.dart';
 import 'app_logger_service.dart';
+import 'tutorial_service.dart';
 
 /// Singleton controller that manages one active scan batch at a time.
 ///
@@ -338,6 +339,9 @@ class ScanBatchController extends ChangeNotifier {
         } else if (failedJobs.isNotEmpty) {
           // Partial success: some completed, some failed
           _completedReceipts = receipts;
+          if (TutorialService.instance.isActive) {
+            TutorialService.instance.setStep(3);
+          }
           notifyListeners();
           final failedNames =
               failedJobs.map((j) => j.filename ?? 'receipt').join(', ');
@@ -354,6 +358,9 @@ class ScanBatchController extends ChangeNotifier {
         } else {
           // Full success: all jobs completed
           _completedReceipts = receipts;
+          if (TutorialService.instance.isActive) {
+            TutorialService.instance.setStep(3);
+          }
           notifyListeners();
           ScanProgressSnackBar.showComplete(
             message:
@@ -495,6 +502,9 @@ class ScanBatchController extends ChangeNotifier {
       unawaited(QuotaService.instance.refreshQuota());
     }
     final friendlyMessage = _sanitizeErrorMessage(message);
+    if (TutorialService.instance.isActive) {
+      TutorialService.instance.notifyScanFailed(friendlyMessage);
+    }
     ScanProgressSnackBar.showError(
       message: friendlyMessage,
       onRetry: retryImages != null ? () => startBatchScan(retryImages) : null,
