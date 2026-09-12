@@ -19,8 +19,10 @@ void main() {
       viewModel.dispose();
     });
 
-    test('getSpendingSummary returns valid data for all 6 periods', () {
+    test('getSpendingSummary returns valid data for all 8 periods', () {
       final periods = [
+        SpendingSummaryPeriod.oneWeek,
+        SpendingSummaryPeriod.fourWeeks,
         SpendingSummaryPeriod.oneMonth,
         SpendingSummaryPeriod.threeMonths,
         SpendingSummaryPeriod.sixMonths,
@@ -50,7 +52,15 @@ void main() {
       expect(identical(firstFetch, secondFetch), isTrue);
     });
 
-    test('Period titles format correctly for all 6 slides', () {
+    test('Period titles format correctly for all 8 slides', () {
+      expect(
+        viewModel.getSpendingSummary(SpendingSummaryPeriod.oneWeek).title,
+        equals('TOTAL SPENT THIS WEEK'),
+      );
+      expect(
+        viewModel.getSpendingSummary(SpendingSummaryPeriod.fourWeeks).title,
+        equals('TOTAL SPENT PAST 4 WEEKS'),
+      );
       expect(
         viewModel.getSpendingSummary(SpendingSummaryPeriod.oneMonth).title,
         equals('TOTAL SPENT THIS MONTH'),
@@ -78,8 +88,16 @@ void main() {
     });
 
     test(
-        'Comparison labels and percentage changes populate for periods 1M-YTD and omit for allTime',
+        'Comparison labels and percentage changes populate for periods 1W-YTD and omit for allTime',
         () {
+      final w1 = viewModel.getSpendingSummary(SpendingSummaryPeriod.oneWeek);
+      expect(w1.comparisonLabel, equals('vs previous 7 days'));
+      expect(w1.percentageChange, isNotNull);
+
+      final w4 = viewModel.getSpendingSummary(SpendingSummaryPeriod.fourWeeks);
+      expect(w4.comparisonLabel, equals('vs previous 4 weeks'));
+      expect(w4.percentageChange, isNotNull);
+
       final m1 = viewModel.getSpendingSummary(SpendingSummaryPeriod.oneMonth);
       expect(m1.comparisonLabel, equals('compared to last month'));
       expect(m1.percentageChange, isNotNull);

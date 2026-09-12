@@ -25,6 +25,7 @@ import '../../../../domain/models/conversation.dart';
 import '../../../cloud/services/auth_service.dart';
 import '../../../../services/scan_batch_controller.dart';
 import '../../../../services/onboarding_service.dart';
+import '../../../../services/tutorial_service.dart';
 import '../../../../services/legal_document_service.dart';
 
 Page<dynamic> _buildInstantPage(
@@ -45,6 +46,7 @@ final GoRouter appRouter = GoRouter(
     AuthService.instance,
     ScanBatchController.instance,
     OnboardingService.instance,
+    TutorialService.instance,
   ]),
   initialLocation: '/dashboard',
   redirect: (BuildContext context, GoRouterState state) {

@@ -22,6 +22,8 @@ import 'services/app_logger_service.dart';
 import 'services/crypto_service.dart';
 import 'services/sync_coordinator.dart';
 import 'services/onboarding_service.dart';
+import 'services/tutorial_service.dart';
+import 'services/spending_notification_service.dart';
 import 'cloud/services/quota_service.dart';
 import 'cloud/api/api_config.dart';
 
@@ -56,12 +58,18 @@ void main() async {
   await ConversationRepository.instance.init();
   await CurrencyService.instance.init();
   await OnboardingService.instance.init();
+  await TutorialService.instance.init();
   await AppThemeController.instance.loadPersistedTheme();
 
   // Non-blocking background synchronization & quota checks
   unawaited(CloudSyncService.instance.syncOnLogin());
   unawaited(SyncCoordinator.instance.init());
   QuotaService.instance.init();
+  // Await notification service init so the native timezone MethodChannel is
+  // registered by the time _configureLocalTimezone() is called. Previously
+  // unawaited() caused a race where the channel wasn't ready yet, causing
+  // tz.local to silently fall back to UTC and alarms to fire at the wrong time.
+  await SpendingNotificationService.instance.init();
 
   // Catch unhandled Flutter framework errors
   FlutterError.onError = (FlutterErrorDetails details) {

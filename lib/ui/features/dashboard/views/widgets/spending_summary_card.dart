@@ -27,14 +27,16 @@ class SpendingSummaryCard extends StatefulWidget {
 }
 
 class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
-  static const int _periodCount = 6;
+  static const int _periodCount = 8;
   static const List<SpendingSummaryPeriod> _periods = [
-    SpendingSummaryPeriod.oneMonth, // 0: 1m
-    SpendingSummaryPeriod.threeMonths, // 1: 3m
-    SpendingSummaryPeriod.sixMonths, // 2: 6m
-    SpendingSummaryPeriod.twelveMonths, // 3: 12m
-    SpendingSummaryPeriod.ytd, // 4: YTD
-    SpendingSummaryPeriod.allTime, // 5: All
+    SpendingSummaryPeriod.oneWeek, // 0: 1w
+    SpendingSummaryPeriod.fourWeeks, // 1: 4w
+    SpendingSummaryPeriod.oneMonth, // 2: 1m
+    SpendingSummaryPeriod.threeMonths, // 3: 3m
+    SpendingSummaryPeriod.sixMonths, // 4: 6m
+    SpendingSummaryPeriod.twelveMonths, // 5: 12m
+    SpendingSummaryPeriod.ytd, // 6: YTD
+    SpendingSummaryPeriod.allTime, // 7: All
   ];
 
   late final PageController _pageController;
@@ -43,19 +45,21 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
   int _targetIndexForTimeline(TimelineFilter filter) {
     switch (filter) {
       case TimelineFilter.oneWeek:
-      case TimelineFilter.fourWeeks:
-      case TimelineFilter.thisMonth:
         return 0;
-      case TimelineFilter.threeMonths:
+      case TimelineFilter.fourWeeks:
         return 1;
-      case TimelineFilter.sixMonths:
+      case TimelineFilter.thisMonth:
         return 2;
-      case TimelineFilter.twelveMonths:
+      case TimelineFilter.threeMonths:
         return 3;
-      case TimelineFilter.ytd:
+      case TimelineFilter.sixMonths:
         return 4;
-      case TimelineFilter.allTime:
+      case TimelineFilter.twelveMonths:
         return 5;
+      case TimelineFilter.ytd:
+        return 6;
+      case TimelineFilter.allTime:
+        return 7;
     }
   }
 

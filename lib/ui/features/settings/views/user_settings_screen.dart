@@ -372,8 +372,12 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
           if (!kIsWeb && Platform.isIOS) {
             try {
-              await Share.shareXFiles([XFile(path)],
-                  text: 'SancFund Database Backup');
+              await SharePlus.instance.share(
+                ShareParams(
+                  files: [XFile(path)],
+                  subject: 'SancFund Database Backup',
+                ),
+              );
             } catch (_) {}
           } else if (!kIsWeb && Platform.isAndroid) {
             try {

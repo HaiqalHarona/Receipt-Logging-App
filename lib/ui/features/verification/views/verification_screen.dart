@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/coach_mark_overlay.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/scan_batch_controller.dart';
+import '../../../../services/tutorial_service.dart';
 import '../view_models/verification_view_model.dart';
 import 'widgets/verification_card_widget.dart';
 
@@ -22,10 +24,14 @@ class VerificationScreen extends StatefulWidget {
 
 class _VerificationScreenState extends State<VerificationScreen> {
   final VerificationViewModel _viewModel = VerificationViewModel();
+  final GlobalKey _saveButtonKey = GlobalKey();
+  final ScrollController _scrollController = ScrollController();
   bool _isInitialized = false;
+  bool _hasAutoScrolledForTutorial = false;
 
   @override
   void dispose() {
+    _scrollController.dispose();
     ScanBatchController.instance.clearCompletedReceipts();
     _viewModel.dispose();
     super.dispose();
@@ -64,6 +70,38 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
       _viewModel.setReceipts(initialList);
       _isInitialized = true;
+      _scheduleTutorialAutoScroll();
+    }
+  }
+
+  void _scheduleTutorialAutoScroll() {
+    if (_hasAutoScrolledForTutorial) return;
+    if (TutorialService.instance.currentStep == 3) {
+      _hasAutoScrolledForTutorial = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_scrollController.hasClients &&
+            _scrollController.position.maxScrollExtent > 0) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          // If layout needs an additional frame to measure all children
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (!mounted) return;
+            if (_scrollController.hasClients &&
+                _scrollController.position.maxScrollExtent > 0) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutCubic,
+              );
+            }
+          });
+        }
+      });
     }
   }
 
@@ -71,11 +109,16 @@ class _VerificationScreenState extends State<VerificationScreen> {
     if (_viewModel.receipts.isEmpty) return;
     _viewModel.saveAllReceipts(() {
       if (!mounted) return;
+      final wasTutorial = TutorialService.instance.currentStep == 3;
+      if (wasTutorial) {
+        TutorialService.instance.dismissTutorial();
+      }
       ScanBatchController.instance.clearCompletedReceipts();
       AppSnackBar.show(
         context,
-        message:
-            "Successfully saved ${_viewModel.receipts.length} receipt${_viewModel.receipts.length > 1 ? 's' : ''}!",
+        message: wasTutorial
+            ? "You're all set! Receipt saved successfully."
+            : "Successfully saved ${_viewModel.receipts.length} receipt${_viewModel.receipts.length > 1 ? 's' : ''}!",
       );
       context.go('/dashboard');
     });
@@ -84,7 +127,11 @@ class _VerificationScreenState extends State<VerificationScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([AppThemeController.instance, _viewModel]),
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        _viewModel,
+        TutorialService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -94,123 +141,145 @@ class _VerificationScreenState extends State<VerificationScreen> {
         final currentReceipt = _viewModel.currentReceipt;
         final totalCount = _viewModel.receipts.length;
         final currentIndex = _viewModel.currentIndex;
+        final isTutorialStep3 = TutorialService.instance.currentStep == 3;
 
         return NeumorphicBackground(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: Center(
-                child: NeumorphicIconBadge(
-                  icon: Icons.arrow_back_ios_new_rounded,
-                  iconSize: 18,
-                  onTap: () => context.pop(),
+          child: Stack(
+            children: [
+              Scaffold(
+                backgroundColor: Colors.transparent,
+                appBar: AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  leading: Center(
+                    child: NeumorphicIconBadge(
+                      icon: Icons.arrow_back_ios_new_rounded,
+                      iconSize: 18,
+                      onTap: () => context.pop(),
+                    ),
+                  ),
+                  title: Text(
+                    totalCount > 1
+                        ? "Review Receipt (${currentIndex + 1} of $totalCount)"
+                        : "Review Receipt",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textPrimary,
+                    ),
+                  ),
+                  centerTitle: true,
                 ),
-              ),
-              title: Text(
-                totalCount > 1
-                    ? "Review Receipt (${currentIndex + 1} of $totalCount)"
-                    : "Review Receipt",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: textPrimary,
-                ),
-              ),
-              centerTitle: true,
-            ),
-            body: SafeArea(
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: Column(
-                  children: [
-                    if (totalCount > 1)
-                      _VerificationCarouselHeader(
-                        currentIndex: currentIndex,
-                        totalCount: totalCount,
-                        accent: accent,
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                        onPrevious: _viewModel.previousReceipt,
-                        onNext: _viewModel.nextReceipt,
-                      ),
-                    if (totalCount == 0)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 48),
-                        child: Center(
-                          child: Text(
-                            "No receipt data received.\nPlease scan a receipt or select an image to verify.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: textSecondary,
+                body: SafeArea(
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 16),
+                    child: Column(
+                      children: [
+                        if (totalCount > 1)
+                          _VerificationCarouselHeader(
+                            currentIndex: currentIndex,
+                            totalCount: totalCount,
+                            accent: accent,
+                            textPrimary: textPrimary,
+                            textSecondary: textSecondary,
+                            onPrevious: _viewModel.previousReceipt,
+                            onNext: _viewModel.nextReceipt,
+                          ),
+                        if (totalCount == 0)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 48),
+                            child: Center(
+                              child: Text(
+                                "No receipt data received.\nPlease scan a receipt or select an image to verify.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: textSecondary,
+                                ),
+                              ),
+                            ),
+                          )
+                        else ...[
+                          // Editable Receipt Card
+                          VerificationCardWidget(
+                            key: ValueKey(currentReceipt!.id),
+                            receipt: currentReceipt,
+                            onChanged: (updated) {
+                              _viewModel.updateReceipt(updated);
+                            },
+                            textPrimary: textPrimary,
+                            textSecondary: textSecondary,
+                            accent: accent,
+                          ),
+                          const SizedBox(height: 32),
+
+                          // Save Button
+                          SizedBox(
+                            key: _saveButtonKey,
+                            width: double.infinity,
+                            height: 52,
+                            child: NeumorphicButtonWidget(
+                              onPressed: _viewModel.isSaving ? null : _saveAll,
+                              child: Center(
+                                child: _viewModel.isSaving
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        totalCount > 1
+                                            ? "Save All $totalCount Receipts"
+                                            : "Save Receipt",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        Center(
+                          child: TextButton(
+                            onPressed: () => context.pop(),
+                            child: Text(
+                              "Rescan / Take Another",
+                              style: TextStyle(
+                                color: textSecondary,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                         ),
-                      )
-                    else ...[
-                      // Editable Receipt Card
-                      VerificationCardWidget(
-                        key: ValueKey(currentReceipt!.id),
-                        receipt: currentReceipt,
-                        onChanged: (updated) {
-                          _viewModel.updateReceipt(updated);
-                        },
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                        accent: accent,
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Save Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: NeumorphicButtonWidget(
-                          onPressed: _viewModel.isSaving ? null : _saveAll,
-                          child: Center(
-                            child: _viewModel.isSaving
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Text(
-                                    totalCount > 1
-                                        ? "Save All $totalCount Receipts"
-                                        : "Save Receipt",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    Center(
-                      child: TextButton(
-                        onPressed: () => context.pop(),
-                        child: Text(
-                          "Rescan / Take Another",
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+
+              // Step 3 Tutorial Coach Mark Overlay pointing at Save button
+              if (isTutorialStep3 && totalCount > 0)
+                CoachMarkOverlay(
+                  targetKey: _saveButtonKey,
+                  isCircle: false,
+                  cornerRadius: 16.0,
+                  holePadding: 4.0,
+                  stepIndicator: 'Step 3 of 3: Save',
+                  title: 'Save Your Receipt',
+                  subtitle:
+                      'Review the extracted details above. When everything looks accurate, tap Save to record the transaction.',
+                  onSkip: () => TutorialService.instance.dismissTutorial(),
+                  onTargetTap: _saveAll,
+                ),
+            ],
           ),
         );
       },

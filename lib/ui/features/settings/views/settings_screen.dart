@@ -16,6 +16,8 @@ import '../../../../services/app_logger_service.dart';
 import '../../../../services/currency_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/local_image_cache_service.dart';
+import '../../../../services/spending_notification_service.dart';
+import '../../../../services/tutorial_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -148,6 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         CurrencyService.instance,
         AuthService.instance,
         LocalImageCacheService.instance,
+        SpendingNotificationService.instance,
       ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
@@ -576,11 +579,73 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 24),
 
+                    // ── SECTION: NOTIFICATIONS ──────────────────────────────
+                    _buildSectionHeader("NOTIFICATIONS", textSecondary),
+                    const SizedBox(height: 8),
+                    _buildNotificationsSection(
+                      context,
+                      accent,
+                      textPrimary,
+                      textSecondary,
+                      isLoggedIn,
+                    ),
+                    const SizedBox(height: 24),
+
                     // ── SECTION 3: SUPPORT & FEEDBACK ────────────────────
                     _buildSectionHeader("SUPPORT & FEEDBACK", textSecondary),
                     const SizedBox(height: 8),
                     _buildSectionContainer(
                       children: [
+                        // Replay Tutorial Guide Row
+                        InkWell(
+                          onTap: () async {
+                            await TutorialService.instance.resetForTesting();
+                            TutorialService.instance.startTutorial();
+                            if (context.mounted) {
+                              context.go('/dashboard');
+                            }
+                          },
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Replay Tutorial",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Walkthrough of adding a receipt",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.school_outlined,
+                                  color: accent,
+                                  size: 22,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildDivider(textSecondary),
                         // Submit Feedback Row
                         InkWell(
                           onTap: () => _showFeedbackBottomSheet(
@@ -589,7 +654,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                             textPrimary,
                             textSecondary,
                           ),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: const BorderRadius.vertical(
+                              bottom: Radius.circular(18)),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 14),
@@ -970,6 +1036,773 @@ class _SettingsScreenState extends State<SettingsScreen>
       indent: 16,
       endIndent: 16,
       color: textSecondary.withValues(alpha: 0.15),
+    );
+  }
+
+  Widget _buildNotificationsSection(
+    BuildContext context,
+    Color accent,
+    Color textPrimary,
+    Color textSecondary,
+    bool isLoggedIn,
+  ) {
+    final svc = SpendingNotificationService.instance;
+
+    return _buildSectionContainer(
+      children: [
+        // ── Master Toggle ──────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Spending Notifications",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Weekly & monthly spending summaries",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                key: const Key('master_notification_switch'),
+                value: svc.notificationsEnabled,
+                activeThumbColor: accent,
+                onChanged: (val) async {
+                  await svc.setNotificationsEnabled(val);
+                },
+              ),
+            ],
+          ),
+        ),
+
+        // ── Per-Schedule Configurations ────────────────────────────
+        if (svc.notificationsEnabled) ...[
+          _buildDivider(textSecondary),
+
+          // Weekly Summary Row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Weekly Summary",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Spending overview from past 7 days",
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  key: const Key('weekly_notification_switch'),
+                  value: svc.weeklySpendingEnabled,
+                  activeThumbColor: accent,
+                  onChanged: (val) async {
+                    await svc.setWeeklySpendingEnabled(val);
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          if (svc.weeklySpendingEnabled) ...[
+            InkWell(
+              key: const Key('weekly_schedule_row'),
+              onTap: () => _showWeeklyScheduleBottomSheet(
+                context,
+                accent,
+                textPrimary,
+                textSecondary,
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, color: accent, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Every ${svc.weeklyDayName} at ${SpendingNotificationService.formatTimeOfDay(svc.weeklyTime)}",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: textSecondary, size: 18),
+                  ],
+                ),
+              ),
+            ),
+            _buildTestNotificationRow(
+              key: const Key('test_weekly_notification_btn'),
+              label: "Send Test Weekly Notification",
+              onTap: () async {
+                await svc.triggerTestWeeklyNotification();
+                if (context.mounted) {
+                  AppSnackBar.show(
+                    context,
+                    message: "Test weekly spending notification sent.",
+                  );
+                }
+              },
+              accent: accent,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
+          ],
+
+          _buildDivider(textSecondary),
+
+          // Monthly Summary Row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Monthly Summary",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Spending overview from past 30 days",
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  key: const Key('monthly_notification_switch'),
+                  value: svc.monthlySpendingEnabled,
+                  activeThumbColor: accent,
+                  onChanged: (val) async {
+                    await svc.setMonthlySpendingEnabled(val);
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          if (svc.monthlySpendingEnabled) ...[
+            InkWell(
+              key: const Key('monthly_schedule_row'),
+              onTap: () => _showMonthlyScheduleBottomSheet(
+                context,
+                accent,
+                textPrimary,
+                textSecondary,
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_month_rounded, color: accent, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "On the ${svc.monthlyDayName} at ${SpendingNotificationService.formatTimeOfDay(svc.monthlyTime)}",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        color: textSecondary, size: 18),
+                  ],
+                ),
+              ),
+            ),
+            _buildTestNotificationRow(
+              key: const Key('test_monthly_notification_btn'),
+              label: "Send Test Monthly Notification",
+              onTap: () async {
+                await svc.triggerTestMonthlyNotification();
+                if (context.mounted) {
+                  AppSnackBar.show(
+                    context,
+                    message: "Test monthly spending notification sent.",
+                  );
+                }
+              },
+              accent: accent,
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTestNotificationRow({
+    Key? key,
+    required String label,
+    required VoidCallback onTap,
+    required Color accent,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
+    return InkWell(
+      key: key,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Icon(Icons.notifications_active_outlined,
+                color: accent.withValues(alpha: 0.8), size: 15),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: accent,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.send_rounded,
+              color: accent.withValues(alpha: 0.7),
+              size: 14,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showWeeklyScheduleBottomSheet(
+    BuildContext context,
+    Color accent,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final svc = SpendingNotificationService.instance;
+    int selectedDay = svc.weeklyDay;
+    TimeOfDay selectedTime = svc.weeklyTime;
+
+    final days = [
+      {'day': DateTime.monday, 'label': 'Mon'},
+      {'day': DateTime.tuesday, 'label': 'Tue'},
+      {'day': DateTime.wednesday, 'label': 'Wed'},
+      {'day': DateTime.thursday, 'label': 'Thu'},
+      {'day': DateTime.friday, 'label': 'Fri'},
+      {'day': DateTime.saturday, 'label': 'Sat'},
+      {'day': DateTime.sunday, 'label': 'Sun'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (bottomSheetContext, setModalState) {
+            final baseColor = NeumorphicTheme.baseColor(ctx);
+            return SafeArea(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: textSecondary.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.schedule_rounded,
+                              color: accent,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Weekly Spending Schedule",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Choose day of week and delivery time",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        "DAY OF WEEK",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: textSecondary.withValues(alpha: 0.8),
+                          letterSpacing: 0.9,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: days.map((d) {
+                            final dayValue = d['day'] as int;
+                            final label = d['label'] as String;
+                            final isSelected = selectedDay == dayValue;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                key: Key('weekly_day_chip_$label'),
+                                label: Text(label),
+                                selected: isSelected,
+                                selectedColor: accent,
+                                backgroundColor: baseColor,
+                                labelStyle: TextStyle(
+                                  color:
+                                      isSelected ? Colors.white : textPrimary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  fontSize: 13,
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setModalState(() => selectedDay = dayValue);
+                                  }
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        "DELIVERY TIME",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: textSecondary.withValues(alpha: 0.8),
+                          letterSpacing: 0.9,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      InkWell(
+                        key: const Key('weekly_time_picker_btn'),
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: ctx,
+                            initialTime: selectedTime,
+                          );
+                          if (picked != null) {
+                            setModalState(() => selectedTime = picked);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: accent.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.access_time_rounded,
+                                  color: accent, size: 20),
+                              const SizedBox(width: 12),
+                              Text(
+                                SpendingNotificationService.formatTimeOfDay(
+                                    selectedTime),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                "Change",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: accent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          key: const Key('save_weekly_schedule_btn'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            await svc.setWeeklyDay(selectedDay);
+                            await svc.setWeeklyTime(selectedTime);
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                            if (context.mounted) {
+                              AppSnackBar.show(
+                                context,
+                                message:
+                                    "Weekly schedule updated to ${SpendingNotificationService.dayOfWeekName(selectedDay)} at ${SpendingNotificationService.formatTimeOfDay(selectedTime)}.",
+                              );
+                            }
+                          },
+                          child: const Text(
+                            "Save Schedule",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showMonthlyScheduleBottomSheet(
+    BuildContext context,
+    Color accent,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final svc = SpendingNotificationService.instance;
+    int selectedDay = svc.monthlyDay;
+    TimeOfDay selectedTime = svc.monthlyTime;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (bottomSheetContext, setModalState) {
+            final baseColor = NeumorphicTheme.baseColor(ctx);
+            return SafeArea(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: textSecondary.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.calendar_month_rounded,
+                              color: accent,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Monthly Spending Schedule",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Choose day of month (1st–31st) and delivery time",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        "DAY OF MONTH",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: textSecondary.withValues(alpha: 0.8),
+                          letterSpacing: 0.9,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: List.generate(31, (index) {
+                            final dayValue = index + 1;
+                            final isSelected = selectedDay == dayValue;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ChoiceChip(
+                                key: Key('monthly_day_chip_$dayValue'),
+                                label: Text("$dayValue"),
+                                selected: isSelected,
+                                selectedColor: accent,
+                                backgroundColor: baseColor,
+                                labelStyle: TextStyle(
+                                  color:
+                                      isSelected ? Colors.white : textPrimary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  fontSize: 12,
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setModalState(() => selectedDay = dayValue);
+                                  }
+                                },
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        "DELIVERY TIME",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: textSecondary.withValues(alpha: 0.8),
+                          letterSpacing: 0.9,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      InkWell(
+                        key: const Key('monthly_time_picker_btn'),
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: ctx,
+                            initialTime: selectedTime,
+                          );
+                          if (picked != null) {
+                            setModalState(() => selectedTime = picked);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: accent.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.access_time_rounded,
+                                  color: accent, size: 20),
+                              const SizedBox(width: 12),
+                              Text(
+                                SpendingNotificationService.formatTimeOfDay(
+                                    selectedTime),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                "Change",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: accent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          key: const Key('save_monthly_schedule_btn'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            await svc.setMonthlyDay(selectedDay);
+                            await svc.setMonthlyTime(selectedTime);
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                            if (context.mounted) {
+                              AppSnackBar.show(
+                                context,
+                                message:
+                                    "Monthly schedule updated to ${SpendingNotificationService.dayOfMonthName(selectedDay)} at ${SpendingNotificationService.formatTimeOfDay(selectedTime)}.",
+                              );
+                            }
+                          },
+                          child: const Text(
+                            "Save Schedule",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1781,8 +2614,12 @@ class _SettingsScreenState extends State<SettingsScreen>
         // Share or open based on platform
         if (!kIsWeb && Platform.isIOS) {
           try {
-            await Share.shareXFiles([XFile(path)],
-                text: 'SancFund Database Backup');
+            await SharePlus.instance.share(
+              ShareParams(
+                files: [XFile(path)],
+                subject: 'SancFund Database Backup',
+              ),
+            );
           } catch (_) {}
         } else if (!kIsWeb && Platform.isAndroid) {
           try {

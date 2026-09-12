@@ -10,8 +10,10 @@ import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
 import '../../../../services/scan_batch_controller.dart';
+import '../../../../services/tutorial_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/services/quota_service.dart';
+import '../../../core/widgets/coach_mark_overlay.dart';
 
 /// Vision Receipt Scanner Screen
 /// Supports single scan vs. bulk mode (capped at 10 receipts max),
@@ -142,6 +144,9 @@ class _ScannerScreenState extends State<ScannerScreen>
           _queuedImages.add(photo);
         });
       } else {
+        if (TutorialService.instance.currentStep == 2) {
+          TutorialService.instance.advanceStep();
+        }
         await ScanBatchController.instance.startBatchScan([photo]);
       }
     } catch (e) {
@@ -185,6 +190,9 @@ class _ScannerScreenState extends State<ScannerScreen>
         if (image != null) {
           AppLogger.info(
               'UI', 'Single image picked from gallery: ${image.path}');
+          if (TutorialService.instance.currentStep == 2) {
+            TutorialService.instance.advanceStep();
+          }
           await ScanBatchController.instance.startBatchScan([image]);
         }
       }
@@ -212,6 +220,9 @@ class _ScannerScreenState extends State<ScannerScreen>
         'Submitting ${_queuedImages.length} image(s) to async batch scan pipeline');
 
     try {
+      if (TutorialService.instance.currentStep == 2) {
+        TutorialService.instance.advanceStep();
+      }
       await ScanBatchController.instance.startBatchScan(_queuedImages);
     } finally {
       if (mounted) {
@@ -269,7 +280,10 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: AppThemeController.instance,
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        TutorialService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -343,6 +357,30 @@ class _ScannerScreenState extends State<ScannerScreen>
                       ),
                     ],
                   ),
+
+                  // Step 2 Tutorial Overlay (Top Full-Width Header + Guidance Card)
+                  if (TutorialService.instance.currentStep == 2) ...[
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: TutorialTopHeader(
+                          stepIndicator: 'Step 2 of 3: Capture',
+                          onSkip: () =>
+                              TutorialService.instance.dismissTutorial(),
+                        ),
+                      ),
+                    ),
+                    const Positioned(
+                      top: 68,
+                      left: 16,
+                      right: 16,
+                      child: _TutorialScannerHintCard(),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1000,5 +1038,74 @@ class _ScannerBracketsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ScannerBracketsPainter oldDelegate) {
     return oldDelegate.color != color;
+  }
+}
+
+/// Floating guidance hint card shown during Step 2 of the first-start tutorial.
+class _TutorialScannerHintCard extends StatelessWidget {
+  const _TutorialScannerHintCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        final controller = AppThemeController.instance;
+        final baseColor = controller.currentBaseColor;
+        final textPrimary = controller.textColor;
+        final textSecondary = controller.secondaryTextColor;
+        final accent = controller.accentColor;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: baseColor.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.5),
+              width: 1.2,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.camera_alt_rounded, color: accent, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Point camera at receipt',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Line up your receipt in the frame and tap the capture button below.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

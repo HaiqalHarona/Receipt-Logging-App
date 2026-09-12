@@ -235,6 +235,8 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
 
             // ── Line Graph with Touch Tooltip Support ────────────────────────
             SpendingLineGraph(
+              key: ValueKey(
+                  'dashboard_graph_${activeTimeline.name}_${points.length}'),
               points: points,
               accentColor: widget.accent,
               textPrimary: widget.textPrimary,

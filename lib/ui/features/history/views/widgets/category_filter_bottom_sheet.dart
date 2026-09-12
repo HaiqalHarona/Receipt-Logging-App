@@ -2,6 +2,7 @@
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../core/theme/theme_controller.dart';
+import '../../../../core/utils/category_utils.dart';
 
 /// Modal bottom sheet for multi-select category filtering on HistoryScreen.
 class CategoryFilterBottomSheet extends StatefulWidget {
@@ -126,6 +127,9 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
               runSpacing: 12,
               children: widget.availableCategories.map((cat) {
                 final isSelected = _selected.contains(cat);
+                final catColor = CategoryUtils.getCategoryColor(cat);
+                final catIcon = CategoryUtils.getCategoryIcon(cat);
+
                 return GestureDetector(
                   onTap: () => _toggleCategory(cat),
                   child: AnimatedContainer(
@@ -144,11 +148,9 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isSelected
-                                ? Icons.check_circle_rounded
-                                : Icons.add_circle_outline_rounded,
-                            size: 16,
-                            color: isSelected ? Colors.white : textSecondary,
+                            catIcon,
+                            size: 15,
+                            color: isSelected ? Colors.white : catColor,
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -161,6 +163,14 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
                               color: isSelected ? Colors.white : textPrimary,
                             ),
                           ),
+                          if (isSelected) ...[
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.check_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ],
                         ],
                       ),
                     ),

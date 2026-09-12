@@ -68,8 +68,10 @@ class TimeframeSpendingOverview {
   });
 }
 
-/// Period options for the Spending Summary Carousel (6 elements).
+/// Period options for the Spending Summary Carousel.
 enum SpendingSummaryPeriod {
+  oneWeek, // 1w
+  fourWeeks, // 4w
   oneMonth, // 1m
   threeMonths, // 3m
   sixMonths, // 6m
@@ -269,6 +271,24 @@ class DashboardViewModel extends ChangeNotifier {
       bool includePrev = false;
 
       switch (period) {
+        case SpendingSummaryPeriod.oneWeek:
+          final currentLimit = now.subtract(const Duration(days: 7));
+          final prevStart = now.subtract(const Duration(days: 14));
+          includeCurrent =
+              !parsed.isBefore(currentLimit) && !parsed.isAfter(now);
+          includePrev =
+              !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
+          break;
+
+        case SpendingSummaryPeriod.fourWeeks:
+          final currentLimit = now.subtract(const Duration(days: 28));
+          final prevStart = now.subtract(const Duration(days: 56));
+          includeCurrent =
+              !parsed.isBefore(currentLimit) && !parsed.isAfter(now);
+          includePrev =
+              !parsed.isBefore(prevStart) && parsed.isBefore(currentLimit);
+          break;
+
         case SpendingSummaryPeriod.oneMonth:
           includeCurrent = parsed.year == now.year && parsed.month == now.month;
           final prevMonth = DateTime(now.year, now.month - 1, 1);
@@ -325,6 +345,14 @@ class DashboardViewModel extends ChangeNotifier {
     String? comparisonLabel;
 
     switch (period) {
+      case SpendingSummaryPeriod.oneWeek:
+        title = "TOTAL SPENT THIS WEEK";
+        comparisonLabel = "vs previous 7 days";
+        break;
+      case SpendingSummaryPeriod.fourWeeks:
+        title = "TOTAL SPENT PAST 4 WEEKS";
+        comparisonLabel = "vs previous 4 weeks";
+        break;
       case SpendingSummaryPeriod.oneMonth:
         title = "TOTAL SPENT THIS MONTH";
         comparisonLabel = "compared to last month";
@@ -423,15 +451,25 @@ class DashboardViewModel extends ChangeNotifier {
       final tokens = r.category
           .split(',')
           .map((c) => CategoryUtils.sanitize(c).trim().toLowerCase())
-          .where((c) => c.isNotEmpty);
+          .where((c) => c.isNotEmpty)
+          .toList();
+      final isUncategorised = tokens.isEmpty ||
+          tokens.contains('uncategorised') ||
+          tokens.contains('uncategorized') ||
+          tokens.contains('general');
+      if (isUncategorised &&
+          (cleanSet.contains('uncategorised') ||
+              cleanSet.contains('uncategorized'))) {
+        return true;
+      }
       return tokens.any((t) => cleanSet.contains(t));
     }
 
-    // ── 1. One Week (1w): Past 7 Days Daily Breakdown ──────────────────────
+    // ── 1. One Week (1w): Past 7 Days Daily Breakdown (Includes 7 days ago to today -> 8 points) ──
     if (filter == TimelineFilter.oneWeek) {
       final List<DateTime> days = [];
       final today = DateTime(now.year, now.month, now.day);
-      for (int i = 6; i >= 0; i--) {
+      for (int i = 7; i >= 0; i--) {
         days.add(today.subtract(Duration(days: i)));
       }
 
@@ -651,11 +689,12 @@ class DashboardViewModel extends ChangeNotifier {
 
     switch (filter) {
       case TimelineFilter.oneWeek:
-        currentStart = now.subtract(const Duration(days: 7));
-        prevStart = now.subtract(const Duration(days: 14));
+        final today = DateTime(now.year, now.month, now.day);
+        currentStart = today.subtract(const Duration(days: 7));
+        prevStart = today.subtract(const Duration(days: 15));
         prevEnd = currentStart;
         comparisonLabel = 'vs previous 7 days';
-        daysCount = 7;
+        daysCount = 8;
         break;
       case TimelineFilter.fourWeeks:
         currentStart = now.subtract(const Duration(days: 28));
@@ -757,14 +796,17 @@ class DashboardViewModel extends ChangeNotifier {
           .map((c) => CategoryUtils.sanitize(c).trim())
           .where((c) => c.isNotEmpty)
           .toList();
-      final primaryCat = rTokens.isNotEmpty
-          ? rTokens.first
-          : (receipt.category.trim().isNotEmpty
-              ? CategoryUtils.sanitize(receipt.category).trim()
-              : 'General');
+      final primaryCat = rTokens.isNotEmpty ? rTokens.first : 'Uncategorised';
       final lowerTokens = rTokens.map((t) => t.toLowerCase()).toSet();
-      final matchesCat =
-          cleanSet.isEmpty || lowerTokens.any((t) => cleanSet.contains(t));
+      final isUncategorised = rTokens.isEmpty ||
+          lowerTokens.contains('uncategorised') ||
+          lowerTokens.contains('uncategorized') ||
+          lowerTokens.contains('general');
+      final matchesCat = cleanSet.isEmpty ||
+          lowerTokens.any((t) => cleanSet.contains(t)) ||
+          (isUncategorised &&
+              (cleanSet.contains('uncategorised') ||
+                  cleanSet.contains('uncategorized')));
 
       // Current window
       if (!parsed.isBefore(currentStart) && !parsed.isAfter(currentEnd)) {
@@ -811,9 +853,11 @@ class DashboardViewModel extends ChangeNotifier {
 
     String? topCatName;
     double topCatPercent = 0.0;
+    Map<String, double> sortedCategoryBreakdown = categoryBreakdown;
     if (categoryBreakdown.isNotEmpty) {
       final sortedEntries = categoryBreakdown.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
+      sortedCategoryBreakdown = Map.fromEntries(sortedEntries);
       final topEntry = sortedEntries.first;
       topCatName = topEntry.key;
       topCatPercent =
@@ -846,7 +890,7 @@ class DashboardViewModel extends ChangeNotifier {
       previousPeriodTotal: prevStart != null ? prevTotal : null,
       percentageChange: percentageChange,
       comparisonLabel: comparisonLabel,
-      categoryBreakdown: categoryBreakdown,
+      categoryBreakdown: sortedCategoryBreakdown,
       topCategoryName: topCatName,
       topCategoryPercent: topCatPercent,
     );
@@ -857,16 +901,25 @@ class DashboardViewModel extends ChangeNotifier {
   List<String> getTimeframeCategories(TimelineFilter filter) {
     final window = _getTimeframeWindow(filter);
     final set = <String>{};
+    bool hasUncategorised = false;
 
     for (final r in _repository.receipts) {
       final parsed = _parseDateString(r.date);
       if (parsed == null) continue;
       if (parsed.isBefore(window.start) || parsed.isAfter(window.end)) continue;
 
-      if (r.category.isNotEmpty) {
-        for (final token in r.category.split(',')) {
-          final clean = CategoryUtils.sanitize(token).trim();
-          if (clean.isNotEmpty) {
+      if (r.category.trim().isEmpty) {
+        hasUncategorised = true;
+      } else {
+        final tokens = r.category
+            .split(',')
+            .map((token) => CategoryUtils.sanitize(token).trim())
+            .where((clean) => clean.isNotEmpty)
+            .toList();
+        if (tokens.isEmpty) {
+          hasUncategorised = true;
+        } else {
+          for (final clean in tokens) {
             set.add(clean);
           }
         }
@@ -874,6 +927,9 @@ class DashboardViewModel extends ChangeNotifier {
     }
 
     final sorted = set.toList()..sort();
+    if (hasUncategorised) {
+      sorted.add('Uncategorised');
+    }
     return ['All', ...sorted];
   }
 
@@ -919,9 +975,18 @@ class DashboardViewModel extends ChangeNotifier {
       final rTokens = r.category
           .split(',')
           .map((c) => CategoryUtils.sanitize(c).trim().toLowerCase())
-          .where((c) => c.isNotEmpty);
-      if (cleanSet.isNotEmpty && !rTokens.any((t) => cleanSet.contains(t))) {
-        continue;
+          .where((c) => c.isNotEmpty)
+          .toList();
+      final isUncategorised = rTokens.isEmpty ||
+          rTokens.contains('uncategorised') ||
+          rTokens.contains('uncategorized') ||
+          rTokens.contains('general');
+      if (cleanSet.isNotEmpty) {
+        final matches = rTokens.any((t) => cleanSet.contains(t)) ||
+            (isUncategorised &&
+                (cleanSet.contains('uncategorised') ||
+                    cleanSet.contains('uncategorized')));
+        if (!matches) continue;
       }
       result.add(r);
     }
