@@ -465,11 +465,11 @@ class DashboardViewModel extends ChangeNotifier {
       return tokens.any((t) => cleanSet.contains(t));
     }
 
-    // ── 1. One Week (1w): Past 7 Days Daily Breakdown ──────────────────────
+    // ── 1. One Week (1w): Past 7 Days Daily Breakdown (Includes 7 days ago to today -> 8 points) ──
     if (filter == TimelineFilter.oneWeek) {
       final List<DateTime> days = [];
       final today = DateTime(now.year, now.month, now.day);
-      for (int i = 6; i >= 0; i--) {
+      for (int i = 7; i >= 0; i--) {
         days.add(today.subtract(Duration(days: i)));
       }
 
@@ -689,11 +689,12 @@ class DashboardViewModel extends ChangeNotifier {
 
     switch (filter) {
       case TimelineFilter.oneWeek:
-        currentStart = now.subtract(const Duration(days: 7));
-        prevStart = now.subtract(const Duration(days: 14));
+        final today = DateTime(now.year, now.month, now.day);
+        currentStart = today.subtract(const Duration(days: 7));
+        prevStart = today.subtract(const Duration(days: 15));
         prevEnd = currentStart;
         comparisonLabel = 'vs previous 7 days';
-        daysCount = 7;
+        daysCount = 8;
         break;
       case TimelineFilter.fourWeeks:
         currentStart = now.subtract(const Duration(days: 28));

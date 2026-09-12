@@ -25,11 +25,20 @@ void main() {
       expect(viewModel.selectedTimeline, equals(TimelineFilter.oneWeek));
     });
 
-    test('oneWeek filter returns exactly 7 daily data points', () {
+    test('oneWeek filter returns exactly 8 daily data points including 7 days ago', () {
       final points =
           viewModel.getMonthlySpendingHistory(TimelineFilter.oneWeek);
-      expect(points.length, equals(7));
+      expect(points.length, equals(8));
       expect(points.first.label, matches(r'^\d{2}/\d{2}$'));
+      final now = DateTime.now();
+      final expectedFirst = now.subtract(const Duration(days: 7));
+      final ddFirst = expectedFirst.day.toString().padLeft(2, '0');
+      final mmFirst = expectedFirst.month.toString().padLeft(2, '0');
+      expect(points.first.label, equals('$ddFirst/$mmFirst'));
+
+      final ddToday = now.day.toString().padLeft(2, '0');
+      final mmToday = now.month.toString().padLeft(2, '0');
+      expect(points.last.label, equals('$ddToday/$mmToday'));
     });
 
     test('fourWeeks filter returns exactly 4 weekly data points', () {
