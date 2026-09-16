@@ -306,7 +306,7 @@ void main() {
       expect(find.text('50,000 AI Chat Tokens'), findsOneWidget);
       expect(find.text('Priority Vision OCR Processing'), findsOneWidget);
       expect(find.text('Advanced Financial Exports'), findsOneWidget);
-      expect(find.text('\$4.99'), findsOneWidget);
+      expect(find.text('\$5.99'), findsOneWidget);
     });
 
     testWidgets(

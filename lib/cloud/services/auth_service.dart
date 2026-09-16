@@ -31,6 +31,8 @@ import '../../data/models/chat_message_isar.dart';
 import '../../data/repositories/receipt_repository.dart';
 import '../../data/repositories/conversation_repository.dart';
 import '../../data/repositories/chat_message_repository.dart';
+import 'subscription_service.dart';
+import '../../services/subscription_notification_service.dart';
 
 class AuthService extends ChangeNotifier {
   AuthService._();
@@ -131,6 +133,8 @@ class AuthService extends ChangeNotifier {
 
       AppLogger.info('AuthService',
           'Session loaded: userId=$_userId, username=$_username, hasJwt=${_accessToken != null}');
+      unawaited(SubscriptionService.instance.initialize(_userId));
+      unawaited(SubscriptionNotificationService.instance.initialize());
       notifyListeners();
     } catch (e, st) {
       AppLogger.error('AuthService', 'Failed to load session', e, st);
@@ -419,6 +423,15 @@ class AuthService extends ChangeNotifier {
 
     await _persistProfile(user);
     AppLogger.info('AuthService', 'Session saved for user: ${user.username}');
+    unawaited(SubscriptionService.instance.logIn(user.id));
+    final trialStartStr = user.preferences['trial_start_at'] as String?;
+    if (trialStartStr != null && trialStartStr.isNotEmpty) {
+      final trialStart = DateTime.tryParse(trialStartStr);
+      if (trialStart != null) {
+        unawaited(SubscriptionNotificationService.instance
+            .scheduleTrialExpiryNotification(trialStart));
+      }
+    }
     unawaited(QuotaService.instance.refreshQuota());
     notifyListeners();
   }
@@ -566,6 +579,7 @@ class AuthService extends ChangeNotifier {
       await prefs.remove(_keyCountryCode);
       await prefs.remove(_keyMobileNumber);
       AppLogger.info('AuthService', 'Session cleared (logged out)');
+      unawaited(SubscriptionService.instance.logOut());
       unawaited(QuotaService.instance.refreshQuota());
       notifyListeners();
     } catch (e, st) {

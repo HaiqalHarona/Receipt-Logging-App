@@ -53,6 +53,7 @@ import '../models/user_models.dart';
 import '../models/receipt_models.dart';
 import '../models/chat_models.dart';
 import '../models/quota_models.dart';
+import '../models/subscription_models.dart';
 import '../services/auth_service.dart';
 import '../services/device_identity_service.dart';
 
@@ -358,6 +359,7 @@ class BackendApiClient {
     required String username,
     required String email,
     required String password,
+    Map<String, dynamic>? preferences,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/create');
 
@@ -369,6 +371,7 @@ class BackendApiClient {
         'username': username,
         'email': email,
         'password': password,
+        if (preferences != null) 'preferences': preferences,
       }),
     );
 
@@ -1660,6 +1663,77 @@ class BackendApiClient {
 
     _assertStatus(response, 200);
     return UserRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  // ── SUBSCRIPTIONS & ECONOMIC MODEL ──────────────────────────────────────────
+
+  /// GET /api/v1/user/me/stats
+  /// Fetches total receipts, estimated time saved (16.5s/scan), trial and discount offer status.
+  Future<UserStatsDto> getUserStats() async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/me/stats');
+    final headers = ApiConfig.buildUserHeaders(
+      accessToken: AuthService.instance.accessToken,
+    );
+    final response = await _sendRequest('GET', uri, headers: headers);
+    _assertStatus(response, 200);
+    return UserStatsDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// GET /api/v1/subscriptions/status
+  /// Fetches active tier, remaining trial days, and 7-day discount offer window.
+  Future<SubscriptionStatusDto> getSubscriptionStatus() async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/subscriptions/status');
+    final headers = ApiConfig.buildUserHeaders(
+      accessToken: AuthService.instance.accessToken,
+    );
+    final response = await _sendRequest('GET', uri, headers: headers);
+    _assertStatus(response, 200);
+    return SubscriptionStatusDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// POST /api/v1/subscriptions/sync
+  /// Syncs RevenueCat entitlement status with backend.
+  Future<SubscriptionStatusDto> syncSubscription({
+    required bool isPremium,
+    String? productIdentifier,
+    String? originalPurchaseDate,
+    String? expirationDate,
+    String entitlementId = 'premium',
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/subscriptions/sync');
+    final headers = ApiConfig.buildUserHeaders(
+      accessToken: AuthService.instance.accessToken,
+    );
+
+    final body = jsonEncode({
+      'is_premium': isPremium,
+      if (productIdentifier != null) 'product_identifier': productIdentifier,
+      if (originalPurchaseDate != null)
+        'original_purchase_date': originalPurchaseDate,
+      if (expirationDate != null) 'expiration_date': expirationDate,
+      'entitlement_id': entitlementId,
+    });
+
+    final response =
+        await _sendRequest('POST', uri, headers: headers, body: body);
+    _assertStatus(response, 200);
+    return SubscriptionStatusDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// POST /api/v1/user/me/ad-scan-grant
+  /// Awards 1 extra scan after watching a rewarded ad (max 5/day).
+  Future<AdScanGrantDto> grantAdScan() async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/me/ad-scan-grant');
+    final headers = ApiConfig.buildUserHeaders(
+      accessToken: AuthService.instance.accessToken,
+    );
+    final response = await _sendRequest('POST', uri, headers: headers);
+    _assertStatus(response, 200);
+    return AdScanGrantDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 

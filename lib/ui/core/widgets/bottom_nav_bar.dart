@@ -5,7 +5,7 @@ import '../../../../services/tutorial_service.dart';
 import '../../../../cloud/services/quota_service.dart';
 import '../theme/theme_controller.dart';
 import 'scan_progress_snack_bar.dart';
-import 'app_snack_bar.dart';
+import '../../features/subscription/widgets/ad_scan_reward_widget.dart';
 
 class AppBottomNavBar extends StatelessWidget {
   final String currentPath;
@@ -166,10 +166,7 @@ class _CenterScanFAB extends StatelessWidget {
       };
     } else if (isScanQuotaExhausted) {
       onTapHandler = () {
-        AppSnackBar.show(
-          context,
-          message: QuotaService.instance.scanTooltip,
-        );
+        showAdScanPromptDialog(context);
       };
     } else {
       onTapHandler = () {
