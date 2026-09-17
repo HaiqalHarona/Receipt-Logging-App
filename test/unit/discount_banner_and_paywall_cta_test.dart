@@ -58,7 +58,7 @@ void main() {
       expect(find.text('Claim'), findsNothing);
     });
 
-    testWidgets('renders when user is logged in and discount is active',
+    testWidgets('renders when user is logged in and discount is active with trial history',
         (WidgetTester tester) async {
       configureViewport(tester);
 
@@ -73,9 +73,10 @@ void main() {
         userToken: 'mock-token',
       );
 
-      const activeStatus = SubscriptionStatusDto(
+      final activeStatus = SubscriptionStatusDto(
         tier: 'free',
         isInTrial: false,
+        trialStartAt: DateTime(2026, 8, 1),
         isTrialExpired: true,
         isDiscountActive: true,
         discountDaysRemaining: 5,
@@ -84,13 +85,87 @@ void main() {
       );
 
       await tester.pumpWidget(buildTestableWidget(
-        const DiscountOfferBanner(status: activeStatus),
+        DiscountOfferBanner(status: activeStatus),
       ));
       await tester.pump();
 
       expect(find.text('Special Discount'), findsOneWidget);
       expect(find.text('5 days left'), findsOneWidget);
       expect(find.text('Claim'), findsOneWidget);
+
+      // Verify vector fire icon is used instead of emoji 🔥
+      expect(find.byIcon(Icons.local_fire_department_rounded), findsOneWidget);
+      expect(find.text('🔥'), findsNothing);
+    });
+
+    testWidgets('does NOT render when user account never had a trial (trialStartAt is null)',
+        (WidgetTester tester) async {
+      configureViewport(tester);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-discount-no-trial',
+          username: 'NoTrialUser',
+          email: 'notrial@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          tier: 'free',
+        ),
+        userToken: 'mock-token',
+      );
+
+      const ineligibleStatus = SubscriptionStatusDto(
+        tier: 'free',
+        isInTrial: false,
+        trialStartAt: null, // Never went through 14-day trial
+        isTrialExpired: false,
+        isDiscountActive: true,
+        discountDaysRemaining: 5,
+        adScansToday: 0,
+        adScansRemaining: 5,
+      );
+
+      await tester.pumpWidget(buildTestableWidget(
+        const DiscountOfferBanner(status: ineligibleStatus),
+      ));
+      await tester.pump();
+
+      expect(find.text('Special Discount'), findsNothing);
+      expect(find.byIcon(Icons.local_fire_department_rounded), findsNothing);
+    });
+
+    testWidgets('does NOT render when user is already premium tier',
+        (WidgetTester tester) async {
+      configureViewport(tester);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-discount-premium',
+          username: 'PremiumUser',
+          email: 'premium@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          tier: 'premium',
+        ),
+        userToken: 'mock-token',
+      );
+
+      final premiumStatus = SubscriptionStatusDto(
+        tier: 'premium',
+        isInTrial: false,
+        trialStartAt: DateTime(2026, 8, 1),
+        isTrialExpired: true,
+        isDiscountActive: true,
+        discountDaysRemaining: 5,
+        adScansToday: 0,
+        adScansRemaining: 5,
+      );
+
+      await tester.pumpWidget(buildTestableWidget(
+        DiscountOfferBanner(status: premiumStatus),
+      ));
+      await tester.pump();
+
+      expect(find.text('Special Discount'), findsNothing);
+      expect(find.byIcon(Icons.local_fire_department_rounded), findsNothing);
     });
 
     testWidgets('does NOT render when discount is expired or inactive',
@@ -109,9 +184,10 @@ void main() {
       );
 
       // Case 1: isDiscountActive is false
-      const inactiveStatus = SubscriptionStatusDto(
+      final inactiveStatus = SubscriptionStatusDto(
         tier: 'free',
         isInTrial: false,
+        trialStartAt: DateTime(2026, 8, 1),
         isTrialExpired: true,
         isDiscountActive: false,
         discountDaysRemaining: 0,
@@ -120,15 +196,16 @@ void main() {
       );
 
       await tester.pumpWidget(buildTestableWidget(
-        const DiscountOfferBanner(status: inactiveStatus),
+        DiscountOfferBanner(status: inactiveStatus),
       ));
       await tester.pump();
       expect(find.text('Special Discount'), findsNothing);
 
       // Case 2: discountDaysRemaining is 0
-      const expiredDaysStatus = SubscriptionStatusDto(
+      final expiredDaysStatus = SubscriptionStatusDto(
         tier: 'free',
         isInTrial: false,
+        trialStartAt: DateTime(2026, 8, 1),
         isTrialExpired: true,
         isDiscountActive: true,
         discountDaysRemaining: 0,
@@ -137,7 +214,7 @@ void main() {
       );
 
       await tester.pumpWidget(buildTestableWidget(
-        const DiscountOfferBanner(status: expiredDaysStatus),
+        DiscountOfferBanner(status: expiredDaysStatus),
       ));
       await tester.pump();
       expect(find.text('Special Discount'), findsNothing);
@@ -313,6 +390,72 @@ void main() {
 
       // SnackBar should be rendered on the sheet
       expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('ineligible accounts without trial history do NOT see offer banners or free month badges',
+        (WidgetTester tester) async {
+      configureViewport(tester);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-paywall-no-trial',
+          username: 'NoTrialPaywallUser',
+          email: 'notrialpaywall@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          tier: 'free',
+        ),
+        userToken: 'mock-token',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(
+        const PremiumPaywallSheet(isFullPage: false),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Standard non-offer badges must be visible
+      expect(find.text('SAVE 33%'), findsOneWidget);
+      expect(find.text('FLEXIBLE'), findsOneWidget);
+
+      // Offer badges and discount copies must NOT be displayed
+      expect(find.text('3 MONTHS FREE'), findsNothing);
+      expect(find.text('1 MONTH FREE'), findsNothing);
+      expect(find.text('Special Downgrade Offer'), findsNothing);
+    });
+
+    testWidgets('showPremiumPaywallSheet configures fixed height to 5/6 of screen',
+        (WidgetTester tester) async {
+      configureViewport(tester);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-paywall-height',
+          username: 'HeightUser',
+          email: 'height@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          tier: 'free',
+        ),
+        userToken: 'mock-token',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(
+        Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showPremiumPaywallSheet(context),
+            child: const Text('Launch Paywall'),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Launch Paywall'));
+      await tester.pumpAndSettle();
+
+      // Find the SizedBox that constrains the modal sheet
+      final sizedBoxes = tester.widgetList<SizedBox>(find.byType(SizedBox));
+      final matchingBox = sizedBoxes.firstWhere(
+        (box) => box.height != null && (box.height! - (1400 * (5 / 6))).abs() < 1.0,
+      );
+      expect(matchingBox.height, closeTo(1400 * (5 / 6), 0.1));
     });
   });
 }

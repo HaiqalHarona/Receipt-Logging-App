@@ -1391,6 +1391,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!AuthService.instance.isLoggedIn) {
+      return const SizedBox.shrink();
+    }
+
     final controller = AppThemeController.instance;
     final textPrimary = controller.textColor;
     final textSecondary = controller.secondaryTextColor;

@@ -71,8 +71,8 @@ final GoRouter appRouter = GoRouter(
     if (isLoggedIn && isAuthRoute) {
       return '/dashboard';
     }
-    if (!isLoggedIn && path == '/user-settings') {
-      return '/dashboard';
+    if (!isLoggedIn && (path == '/user-settings' || path == '/paywall')) {
+      return '/auth';
     }
     return null;
   },

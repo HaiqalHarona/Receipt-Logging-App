@@ -3,19 +3,22 @@ class SubscriptionConstants {
   SubscriptionConstants._();
 
   // ── RevenueCat Entitlement & Product IDs ───────────────────────────────────
-  static const String premiumEntitlementId = 'premium';
+  static const String premiumEntitlementId = 'sancfund_pro';
+  static const String defaultOfferingId = 'default';
 
   // Standard packages
   static const String monthlyPackageId = '\$rc_monthly';
   static const String annualPackageId = '\$rc_annual';
 
   // Product identifiers configured in stores
-  static const String monthlyProductId = 'premium_monthly';
-  static const String annualProductId = 'premium_annual';
+  static const String monthlyProductId = 'monthly';
+  static const String annualProductId = 'yearly';
 
-  // Promotional discounted variants
+  // Legacy & promotional discounted variants
   static const String monthlyPromoProductId = 'premium_monthly_promo';
   static const String annualPromoProductId = 'premium_annual_promo';
+  static const String legacyMonthlyProductId = 'premium_monthly';
+  static const String legacyAnnualProductId = 'premium_annual';
 
   // ── Standard Pricing Fallbacks (When store products are loading / sandbox) ──
   static const String monthlyDisplayPrice = '\$5.99';

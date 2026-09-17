@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../constants/subscription_constants.dart';
 import '../../../../services/app_logger_service.dart';
@@ -128,6 +129,99 @@ class _AdScanPromptDialogState extends State<AdScanPromptDialog> {
 
     final adScansToday = _stats?.adScansToday ?? 0;
     final canWatchAd = adScansToday < SubscriptionConstants.maxDailyAdScans;
+    final isLoggedIn = AuthService.instance.isLoggedIn;
+
+    if (!isLoggedIn) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+        child: Neumorphic(
+          style: NeumorphicStyle(
+            depth: 0,
+            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(22)),
+            color: NeumorphicTheme.baseColor(context),
+            border: NeumorphicBorder(
+              color: accent.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.deepOrangeAccent.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.lock_clock_rounded,
+                      color: Colors.deepOrangeAccent,
+                      size: 32,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  "Daily Scan Limit Reached",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Guest mode includes 5 scans per day. Sign in or register to unlock bonus ad scans, cloud sync, and unlimited premium plans.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: textSecondary,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 46,
+                  child: NeumorphicButtonWidget(
+                    color: accent,
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      context.push('/auth');
+                    },
+                    child: const Center(
+                      child: Text(
+                        "Sign In / Register",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      "Maybe Later",
+                      style: TextStyle(color: textSecondary, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     if (_isWatchingAd) {
       return Dialog(
@@ -422,6 +516,7 @@ class _ScannerQuotaExhaustedBannerState
 
     final adScansToday = _stats?.adScansToday ?? 0;
     final canWatchAd = adScansToday < SubscriptionConstants.maxDailyAdScans;
+    final isLoggedIn = AuthService.instance.isLoggedIn;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -460,9 +555,11 @@ class _ScannerQuotaExhaustedBannerState
                   ),
                 ),
                 Text(
-                  canWatchAd
-                      ? "Watch 30s ad for +1 scan ($adScansToday/5 used)"
-                      : "Daily ad scans exhausted. Resets at 00:00 UTC",
+                  !isLoggedIn
+                      ? "Sign in to unlock more scans & sync"
+                      : (canWatchAd
+                          ? "Watch 30s ad for +1 scan ($adScansToday/5 used)"
+                          : "Daily ad scans exhausted. Resets at 00:00 UTC"),
                   style: TextStyle(
                     fontSize: 10.5,
                     color: textSecondary,
@@ -472,7 +569,35 @@ class _ScannerQuotaExhaustedBannerState
             ),
           ),
           const SizedBox(width: 8),
-          if (canWatchAd)
+          if (!isLoggedIn)
+            GestureDetector(
+              onTap: () => context.push('/auth'),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.login_rounded,
+                        color: Colors.white, size: 14),
+                    SizedBox(width: 3),
+                    Text(
+                      "Sign In",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (canWatchAd)
             GestureDetector(
               onTap: () async {
                 await showAdScanPromptDialog(context);

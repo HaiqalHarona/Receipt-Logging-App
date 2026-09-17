@@ -85,6 +85,32 @@ class SubscriptionStatusDto {
       adScansRemaining: json['ad_scans_remaining'] as int? ?? 5,
     );
   }
+
+  SubscriptionStatusDto copyWith({
+    String? tier,
+    bool? isInTrial,
+    DateTime? trialStartAt,
+    int? trialDaysRemaining,
+    bool? isTrialExpired,
+    DateTime? discountOfferShownAt,
+    int? discountDaysRemaining,
+    bool? isDiscountActive,
+    int? adScansToday,
+    int? adScansRemaining,
+  }) {
+    return SubscriptionStatusDto(
+      tier: tier ?? this.tier,
+      isInTrial: isInTrial ?? this.isInTrial,
+      trialStartAt: trialStartAt ?? this.trialStartAt,
+      trialDaysRemaining: trialDaysRemaining ?? this.trialDaysRemaining,
+      isTrialExpired: isTrialExpired ?? this.isTrialExpired,
+      discountOfferShownAt: discountOfferShownAt ?? this.discountOfferShownAt,
+      discountDaysRemaining: discountDaysRemaining ?? this.discountDaysRemaining,
+      isDiscountActive: isDiscountActive ?? this.isDiscountActive,
+      adScansToday: adScansToday ?? this.adScansToday,
+      adScansRemaining: adScansRemaining ?? this.adScansRemaining,
+    );
+  }
 }
 
 class AdScanGrantDto {

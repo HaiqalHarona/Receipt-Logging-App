@@ -145,6 +145,12 @@ class QuotaService extends ChangeNotifier {
     notifyListeners();
   }
 
+  @visibleForTesting
+  void setStatusForTesting(QuotaStatusDto? status) {
+    _status = status;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _countdownTimer?.cancel();

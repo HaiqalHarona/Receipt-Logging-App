@@ -7,6 +7,7 @@ import '../../../../constants/subscription_constants.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/account_required_dialog.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/models/subscription_models.dart';
@@ -19,11 +20,25 @@ Future<bool?> showPremiumPaywallSheet(
   BuildContext context, {
   PaywallPlanType initialPlan = PaywallPlanType.annual,
 }) {
+  if (!AuthService.instance.isLoggedIn) {
+    AccountRequiredDialog.show(
+      context,
+      title: 'Sign In for Premium',
+      message:
+          'A registered account is required to subscribe to Premium and sync your subscription across devices.',
+    );
+    return Future.value(false);
+  }
+
+  final screenHeight = MediaQuery.of(context).size.height;
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => PremiumPaywallSheet(initialPlan: initialPlan),
+    builder: (ctx) => SizedBox(
+      height: screenHeight * (5 / 6),
+      child: PremiumPaywallSheet(initialPlan: initialPlan),
+    ),
   );
 }
 
@@ -95,6 +110,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
   Offering? get _currentOffering {
     if (_offerings == null) return null;
     return _offerings!.current ??
+        _offerings!.all[SubscriptionConstants.defaultOfferingId] ??
         (_offerings!.all.isNotEmpty ? _offerings!.all.values.first : null);
   }
 
@@ -108,6 +124,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
             p.identifier == SubscriptionConstants.annualPackageId ||
             p.storeProduct.identifier == SubscriptionConstants.annualProductId ||
             p.storeProduct.identifier == SubscriptionConstants.annualPromoProductId ||
+            p.storeProduct.identifier == SubscriptionConstants.legacyAnnualProductId ||
             p.identifier.toLowerCase().contains('annual') ||
             p.identifier.toLowerCase().contains('year') ||
             p.storeProduct.identifier.toLowerCase().contains('annual') ||
@@ -128,6 +145,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
             p.identifier == SubscriptionConstants.monthlyPackageId ||
             p.storeProduct.identifier == SubscriptionConstants.monthlyProductId ||
             p.storeProduct.identifier == SubscriptionConstants.monthlyPromoProductId ||
+            p.storeProduct.identifier == SubscriptionConstants.legacyMonthlyProductId ||
             p.identifier.toLowerCase().contains('month') ||
             p.storeProduct.identifier.toLowerCase().contains('month'),
       );
@@ -143,7 +161,11 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
   }
 
   bool get _isDiscountActive {
-    return _subStatus?.isDiscountActive ?? false;
+    final status = _subStatus;
+    if (status == null) return false;
+    if (status.trialStartAt == null) return false;
+    if (status.tier == 'premium') return false;
+    return status.isDiscountActive;
   }
 
   int get _discountDaysRemaining {
@@ -235,6 +257,15 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
 
   Future<void> _onPurchaseSuccess() async {
     if (!mounted) return;
+    setState(() {
+      if (_subStatus != null) {
+        _subStatus = _subStatus!.copyWith(
+          isDiscountActive: false,
+          tier: 'premium',
+          discountDaysRemaining: 0,
+        );
+      }
+    });
     AppSnackBar.show(
       context,
       message: '🎉 Welcome to Premium! All features unlocked.',

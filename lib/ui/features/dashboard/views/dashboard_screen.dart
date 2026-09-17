@@ -221,6 +221,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                     // 7-Day Downgrade Discount Urgency Banner
                     if (AuthService.instance.isLoggedIn &&
                         _subStatus != null &&
+                        _subStatus!.trialStartAt != null &&
+                        _subStatus!.tier != 'premium' &&
                         _subStatus!.isDiscountActive &&
                         (_subStatus!.discountDaysRemaining == null ||
                             _subStatus!.discountDaysRemaining! > 0) &&

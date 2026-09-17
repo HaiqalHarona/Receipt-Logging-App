@@ -22,6 +22,8 @@ class DiscountOfferBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!AuthService.instance.isLoggedIn ||
         status == null ||
+        status!.trialStartAt == null ||
+        status!.tier == 'premium' ||
         !status!.isDiscountActive ||
         (status!.discountDaysRemaining != null && status!.discountDaysRemaining! <= 0)) {
       return const SizedBox.shrink();
@@ -70,7 +72,11 @@ class DiscountOfferBanner extends StatelessWidget {
                     color: Colors.deepOrangeAccent.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text('🔥', style: TextStyle(fontSize: 20)),
+                  child: const Icon(
+                    Icons.local_fire_department_rounded,
+                    color: Colors.deepOrangeAccent,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -108,7 +114,7 @@ class DiscountOfferBanner extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "Up to 3 months free on subscribing to Premium before this offer ends.",
+                        "Get up to 3 months free before this offer ends!",
                         style: TextStyle(
                           fontSize: 11.5,
                           color: textSecondary,

@@ -34,12 +34,14 @@ class SubscriptionService {
       return;
     }
 
-    final apiKey =
-        dotenv.isInitialized ? dotenv.maybeGet('REVENUE_CAT_KEY') : null;
+    const envKey = String.fromEnvironment('REVENUE_CAT_KEY');
+    final apiKey = envKey.isNotEmpty
+        ? envKey
+        : (dotenv.isInitialized ? dotenv.maybeGet('REVENUE_CAT_KEY') : null);
     if (apiKey == null || apiKey.isEmpty) {
       AppLogger.warning(
         'Subscription',
-        'REVENUE_CAT_KEY not found in .env — RevenueCat will run in mockup/unconfigured mode',
+        'REVENUE_CAT_KEY not found in environment or .env — RevenueCat will run in mockup/unconfigured mode',
       );
       return;
     }
@@ -136,13 +138,25 @@ class SubscriptionService {
       AppLogger.info('Subscription', 'Initiating purchase for package: ${package.identifier}');
       final purchaseResult = await Purchases.purchase(PurchaseParams.package(package));
       final customerInfo = purchaseResult.customerInfo;
+
+      AppLogger.info(
+        'Subscription',
+        'RevenueCat Purchase result: package=${package.identifier}, '
+        'entitlements=${customerInfo.entitlements.all.map((k, v) => MapEntry(k, v.isActive))}, '
+        'activeSubscriptions=${customerInfo.activeSubscriptions.toList()}, '
+        'allExpirationDates=${customerInfo.allExpirationDates}',
+      );
+
       final isPremium = _evaluatePremiumEntitlement(customerInfo);
+      final activeEntitlement = customerInfo.entitlements.all[SubscriptionConstants.premiumEntitlementId];
+      final expirationDateStr = activeEntitlement?.expirationDate;
 
       // Sync entitlement state with FastAPI backend
       await syncWithBackend(
         isPremium: isPremium,
         productIdentifier: package.storeProduct.identifier,
         originalPurchaseDate: customerInfo.originalPurchaseDate,
+        expirationDate: expirationDateStr,
       );
 
       return isPremium;
@@ -168,10 +182,13 @@ class SubscriptionService {
       AppLogger.info('Subscription', 'Restoring purchases...');
       final customerInfo = await Purchases.restorePurchases();
       final isPremium = _evaluatePremiumEntitlement(customerInfo);
+      final activeEntitlement = customerInfo.entitlements.all[SubscriptionConstants.premiumEntitlementId];
+      final expirationDateStr = activeEntitlement?.expirationDate;
 
       await syncWithBackend(
         isPremium: isPremium,
         originalPurchaseDate: customerInfo.originalPurchaseDate,
+        expirationDate: expirationDateStr,
       );
 
       return isPremium;
@@ -188,10 +205,13 @@ class SubscriptionService {
     try {
       final customerInfo = await Purchases.getCustomerInfo();
       final isPremium = _evaluatePremiumEntitlement(customerInfo);
+      final activeEntitlement = customerInfo.entitlements.all[SubscriptionConstants.premiumEntitlementId];
+      final expirationDateStr = activeEntitlement?.expirationDate;
 
       await syncWithBackend(
         isPremium: isPremium,
         originalPurchaseDate: customerInfo.originalPurchaseDate,
+        expirationDate: expirationDateStr,
       );
 
       return isPremium;
@@ -201,10 +221,41 @@ class SubscriptionService {
     }
   }
 
-  /// Check if user has active premium entitlement in CustomerInfo
+  /// Check if user has active premium entitlement in CustomerInfo.
+  /// Falls back to checking any active entitlement, then activeSubscriptions.
   bool _evaluatePremiumEntitlement(CustomerInfo info) {
+    // 1. Primary: check the configured entitlement ID ('sancfund_pro')
     final entitlement = info.entitlements.all[SubscriptionConstants.premiumEntitlementId];
-    return entitlement != null && entitlement.isActive;
+    if (entitlement != null && entitlement.isActive) {
+      return true;
+    }
+
+    // 2. Fallback: check if any entitlement is active
+    final anyEntitlementActive = info.entitlements.all.values.any((e) => e.isActive);
+    if (anyEntitlementActive) {
+      final activeKeys = info.entitlements.all.entries
+          .where((e) => e.value.isActive)
+          .map((e) => e.key)
+          .toList();
+      AppLogger.info(
+        'Subscription',
+        'Configured entitlement "${SubscriptionConstants.premiumEntitlementId}" not active, '
+        'but found other active entitlements: $activeKeys. Treating as premium.',
+      );
+      return true;
+    }
+
+    // 3. Fallback: active subscriptions exist (reliable in sandbox/test environments)
+    if (info.activeSubscriptions.isNotEmpty) {
+      AppLogger.info(
+        'Subscription',
+        'No active entitlement found, but active subscriptions exist: ${info.activeSubscriptions.toList()}. '
+        'Treating as premium.',
+      );
+      return true;
+    }
+
+    return false;
   }
 
   /// Push updated entitlement status to FastAPI backend (/subscriptions/sync)
