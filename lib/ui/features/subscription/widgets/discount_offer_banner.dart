@@ -3,6 +3,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../constants/subscription_constants.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../../cloud/models/subscription_models.dart';
+import '../../../../cloud/services/auth_service.dart';
 import '../views/premium_paywall_sheet.dart';
 
 /// Persistent banner displayed on Dashboard/Home screen when user is in
@@ -19,7 +20,10 @@ class DiscountOfferBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (status == null || !status!.isDiscountActive) {
+    if (!AuthService.instance.isLoggedIn ||
+        status == null ||
+        !status!.isDiscountActive ||
+        (status!.discountDaysRemaining != null && status!.discountDaysRemaining! <= 0)) {
       return const SizedBox.shrink();
     }
 
@@ -76,7 +80,7 @@ class DiscountOfferBanner extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            "Special Downgrade Discount",
+                            "Special Discount",
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -104,7 +108,7 @@ class DiscountOfferBanner extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "Get 1 or 3 months free on Premium before this offer ends.",
+                        "Up to 3 months free on subscribing to Premium before this offer ends.",
                         style: TextStyle(
                           fontSize: 11.5,
                           color: textSecondary,

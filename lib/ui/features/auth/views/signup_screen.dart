@@ -34,6 +34,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _isTrialEligible = true;
 
   // Inline field-level error states
   String? _usernameError;
@@ -49,6 +50,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/dashboard');
       });
+    }
+    _checkTrialEligibility();
+  }
+
+  Future<void> _checkTrialEligibility() async {
+    // Check locally first (SecureStorage / prefs)
+    if (DeviceIdentityService.instance.hasDeviceUsedTrial) {
+      if (mounted) setState(() => _isTrialEligible = false);
+      return;
+    }
+    // Verify with backend against device registry
+    final eligible = await DeviceIdentityService.instance
+        .checkTrialEligibility(BackendApiClient.instance);
+    if (mounted) {
+      setState(() => _isTrialEligible = eligible);
     }
   }
 
@@ -185,6 +201,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // Check if user was granted 14-day trial and schedule notifications
       final isTrial = user.tier == 'premium' || (user.preferences['is_in_trial'] == true);
       if (isTrial) {
+        await DeviceIdentityService.instance.markTrialUsed();
         final trialStartStr = user.preferences['trial_start_at'] as String?;
         final trialStart = trialStartStr != null
             ? (DateTime.tryParse(trialStartStr) ?? DateTime.now())
@@ -218,8 +235,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         message: 'Account created! Welcome, ${user.username}!',
       );
 
-      // Navigate to dashboard, clearing the auth stack
-      context.go('/dashboard');
+      // Navigate to user settings and highlight Plan & Usage widget if trial was redeemed, else dashboard
+      if (isTrial) {
+        context.go('/user-settings?highlight=plan');
+      } else {
+        context.go('/dashboard');
+      }
     } on ApiException catch (e) {
       setState(() => _isLoading = false);
 
@@ -412,64 +433,65 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     color: textSecondary,
                   ),
                 ),
-                const SizedBox(height: 16),
-
                 // ── 14-Day Free Premium Reverse Trial Banner ─────────────────
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        accent.withValues(alpha: 0.16),
-                        accent.withValues(alpha: 0.05),
+                if (_isTrialEligible) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          accent.withValues(alpha: 0.16),
+                          accent.withValues(alpha: 0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: accent.withValues(alpha: 0.35),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Text('🎁', style: TextStyle(fontSize: 18)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Here's a Gift For You",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                "Sign up now and get instant upgrade to Premium for 14 days. No credit card required!",
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: textSecondary,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: accent.withValues(alpha: 0.35),
-                      width: 1.2,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Text('🎁', style: TextStyle(fontSize: 18)),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "14 Days Free Premium Access",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              "Sign up to get instant access to 50 daily scans & fast AI vision. No credit card required!",
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: textSecondary,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                ],
                 const SizedBox(height: 20),
 
                 // ── Visual Progress Stepper ──────────────────────────────────

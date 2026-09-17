@@ -11,6 +11,7 @@
 
 import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../services/app_logger_service.dart';
@@ -23,9 +24,21 @@ class DeviceIdentityService {
 
   static const String _keyDeviceId = 'app_device_id';
   static const String _keyDeviceToken = 'app_device_token';
+  static const String _keyTrialUsed = 'app_has_device_used_trial';
+
+  FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
+  /// Allows unit tests to provide an in-memory secure storage mock.
+  void setSecureStorageForTesting(FlutterSecureStorage storage) {
+    _secureStorage = storage;
+  }
 
   String? _deviceId;
   String? _deviceToken;
+  bool _hasDeviceUsedTrial = false;
   bool _isInitialized = false;
 
   /// Returns the persistent hardware device ID.
@@ -34,12 +47,16 @@ class DeviceIdentityService {
   /// Returns the persistent hardware device token.
   String get deviceToken => _deviceToken ?? '';
 
+  /// Returns whether this hardware device has already redeemed a 14-day trial.
+  bool get hasDeviceUsedTrial => _hasDeviceUsedTrial;
+
   /// Returns whether device identity has been initialized.
   bool get isInitialized => _isInitialized;
 
   /// Initializes device identity:
-  /// 1. Reads `deviceId` and `deviceToken` from SharedPreferences or `.env` fixed configuration.
-  /// 2. Generates and saves them ONCE if missing.
+  /// 1. Reads `deviceId`, `deviceToken`, and `hasDeviceUsedTrial` from FlutterSecureStorage
+  ///    (iOS Keychain / Android Keystore, persisting across app reinstalls) or SharedPreferences.
+  /// 2. Generates and securely persists them ONCE if missing.
   /// 3. Registers or refreshes the device with the backend (POST /api/v1/devices/register) asynchronously.
   Future<void> init(BackendApiClient apiClient) async {
     if (_isInitialized) return;
@@ -60,11 +77,26 @@ class DeviceIdentityService {
         final prefs = await SharedPreferences.getInstance();
         const uuid = Uuid();
 
-        // Read or generate persistent deviceId
-        _deviceId = prefs.getString(_keyDeviceId);
+        // 1. Check secure storage first (preserves identity across uninstalls on iOS & Keystore)
+        String? secureDeviceId;
+        String? secureDeviceToken;
+        String? secureTrialUsed;
+        try {
+          secureDeviceId = await _secureStorage.read(key: _keyDeviceId);
+          secureDeviceToken = await _secureStorage.read(key: _keyDeviceToken);
+          secureTrialUsed = await _secureStorage.read(key: _keyTrialUsed);
+        } catch (e) {
+          AppLogger.warning('DeviceIdentity', 'SecureStorage read error: $e');
+        }
+
+        final prefsDeviceId = prefs.getString(_keyDeviceId);
+        final prefsDeviceToken = prefs.getString(_keyDeviceToken);
+        final prefsTrialUsed = prefs.getBool(_keyTrialUsed) ?? false;
+
+        // Resolve deviceId
+        _deviceId = secureDeviceId ?? prefsDeviceId;
         if (_deviceId == null || _deviceId!.isEmpty) {
           _deviceId = 'dev_${uuid.v4()}';
-          await prefs.setString(_keyDeviceId, _deviceId!);
           AppLogger.info('DeviceIdentity',
               'Generated new persistent deviceId: $_deviceId');
         } else {
@@ -72,12 +104,29 @@ class DeviceIdentityService {
               'Loaded existing persistent deviceId: $_deviceId');
         }
 
-        // Read or generate persistent deviceToken
-        _deviceToken = prefs.getString(_keyDeviceToken);
+        // Resolve deviceToken
+        _deviceToken = secureDeviceToken ?? prefsDeviceToken;
         if (_deviceToken == null || _deviceToken!.isEmpty) {
           _deviceToken = 'token_${uuid.v4()}';
-          await prefs.setString(_keyDeviceToken, _deviceToken!);
           AppLogger.info('DeviceIdentity', 'Generated new deviceToken');
+        }
+
+        // Resolve trial used flag
+        _hasDeviceUsedTrial = secureTrialUsed == 'true' || prefsTrialUsed;
+
+        // Persist to both SecureStorage and SharedPreferences for dual-layer durability
+        try {
+          await prefs.setString(_keyDeviceId, _deviceId!);
+          await prefs.setString(_keyDeviceToken, _deviceToken!);
+          await prefs.setBool(_keyTrialUsed, _hasDeviceUsedTrial);
+
+          await _secureStorage.write(key: _keyDeviceId, value: _deviceId);
+          await _secureStorage.write(key: _keyDeviceToken, value: _deviceToken);
+          if (_hasDeviceUsedTrial) {
+            await _secureStorage.write(key: _keyTrialUsed, value: 'true');
+          }
+        } catch (e) {
+          AppLogger.warning('DeviceIdentity', 'Error saving persistent credentials: $e');
         }
       }
 
@@ -111,6 +160,39 @@ class DeviceIdentityService {
     _isInitialized = true;
   }
 
+  /// Marks this physical hardware device as having redeemed a 14-day trial.
+  /// Persisted in SecureStorage (Keychain/Keystore) and SharedPreferences.
+  Future<void> markTrialUsed() async {
+    _hasDeviceUsedTrial = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyTrialUsed, true);
+      await _secureStorage.write(key: _keyTrialUsed, value: 'true');
+      AppLogger.info('DeviceIdentity', 'Device marked as trial used: $_deviceId');
+    } catch (e) {
+      AppLogger.warning('DeviceIdentity', 'Error saving trial used flag: $e');
+    }
+  }
+
+  /// Queries the backend GET /api/v1/devices/{deviceId}/trial-status to determine
+  /// if this device is eligible to display and redeem the 14-day trial.
+  Future<bool> checkTrialEligibility(BackendApiClient apiClient) async {
+    if (_hasDeviceUsedTrial) {
+      return false;
+    }
+    try {
+      final trialUsed = await apiClient.checkDeviceTrialStatus(deviceId);
+      if (trialUsed) {
+        await markTrialUsed();
+        return false;
+      }
+      return true;
+    } catch (e) {
+      AppLogger.warning('DeviceIdentity', 'Failed to check trial eligibility: $e');
+      return !_hasDeviceUsedTrial;
+    }
+  }
+
   /// Keeps the persistent hardware `deviceId` intact, regenerates a fresh secret `deviceToken`,
   /// authenticates with the current `deviceToken` via `POST /api/v1/devices/rotate-token`,
   /// and saves the new `deviceToken` locally.
@@ -125,6 +207,7 @@ class DeviceIdentityService {
       if (_deviceId == null || _deviceId!.isEmpty) {
         _deviceId = 'dev_${uuid.v4()}';
         await prefs.setString(_keyDeviceId, _deviceId!);
+        await _secureStorage.write(key: _keyDeviceId, value: _deviceId);
       }
 
       final oldToken = _deviceToken ?? prefs.getString(_keyDeviceToken) ?? '';
@@ -149,6 +232,7 @@ class DeviceIdentityService {
 
       _deviceToken = newToken;
       await prefs.setString(_keyDeviceToken, _deviceToken!);
+      await _secureStorage.write(key: _keyDeviceToken, value: _deviceToken);
       AppLogger.info('DeviceIdentity',
           'Saved new deviceToken locally for deviceId: $_deviceId');
     } catch (e, st) {

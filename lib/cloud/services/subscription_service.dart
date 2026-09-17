@@ -86,6 +86,7 @@ class SubscriptionService {
 
   /// Reset to anonymous user on logout
   Future<void> logOut() async {
+    _cachedOfferings = null;
     if (!_isConfigured || kIsWeb) return;
     try {
       await Purchases.logOut();
@@ -97,7 +98,10 @@ class SubscriptionService {
 
   /// Retrieve current offerings from RevenueCat with fallback to cached
   Future<Offerings?> getOfferings({bool forceRefresh = false}) async {
-    if (!_isConfigured || kIsWeb) return null;
+    if (!_isConfigured || kIsWeb) {
+      AppLogger.info('Subscription', 'getOfferings skipped (isConfigured=$_isConfigured, kIsWeb=$kIsWeb)');
+      return null;
+    }
 
     if (!forceRefresh && _cachedOfferings != null) {
       return _cachedOfferings;
@@ -109,7 +113,8 @@ class SubscriptionService {
       AppLogger.info(
         'Subscription',
         'Fetched offerings: current=${offerings.current?.identifier}, '
-        'availablePackages=${offerings.current?.availablePackages.length ?? 0}',
+        'availablePackages=${offerings.current?.availablePackages.length ?? 0}, '
+        'allOfferings=${offerings.all.keys.toList()}',
       );
       return offerings;
     } catch (e) {

@@ -243,6 +243,17 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Checks whether a hardware device has already claimed the 14-day trial.
+  /// Calls GET /api/v1/devices/{deviceId}/trial-status.
+  Future<bool> checkDeviceTrialStatus(String deviceId) async {
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}/devices/$deviceId/trial-status');
+    final response = await _sendRequest('GET', uri);
+    _assertStatus(response, 200);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (data['trial_used'] as bool?) ?? false;
+  }
+
   /// Fetches current hardware device registration details.
   Future<DeviceRecordDto> fetchDeviceProfile({
     required String deviceId,
@@ -1734,6 +1745,21 @@ class BackendApiClient {
     final response = await _sendRequest('POST', uri, headers: headers);
     _assertStatus(response, 200);
     return AdScanGrantDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// POST /api/v1/user/me/simulate-trial-expiry
+  /// Dev/Testing: Fast-forwards trial start date to 15 days ago, executes
+  /// downgrade to Free tier, and activates 7-day 50% discount offer.
+  Future<UserStatsDto> simulateTrialExpiry() async {
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}/user/me/simulate-trial-expiry');
+    final headers = ApiConfig.buildUserHeaders(
+      accessToken: AuthService.instance.accessToken,
+    );
+    final response = await _sendRequest('POST', uri, headers: headers);
+    _assertStatus(response, 200);
+    return UserStatsDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 

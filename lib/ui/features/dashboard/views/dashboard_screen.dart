@@ -24,6 +24,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     with AutomaticKeepAliveClientMixin {
   final DashboardViewModel _viewModel = DashboardViewModel();
   SubscriptionStatusDto? _subStatus;
+  String? _subStatusUserId;
 
   @override
   bool get wantKeepAlive => true;
@@ -31,15 +32,42 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void initState() {
     super.initState();
+    AuthService.instance.addListener(_onAuthChanged);
     _loadSubscriptionStatusAndCheckDowngrade();
   }
 
+  void _onAuthChanged() {
+    final currentUserId = AuthService.instance.currentUserId;
+    if (!AuthService.instance.isLoggedIn || currentUserId == null) {
+      if (_subStatus != null || _subStatusUserId != null) {
+        setState(() {
+          _subStatus = null;
+          _subStatusUserId = null;
+        });
+      }
+    } else if (currentUserId != _subStatusUserId) {
+      _loadSubscriptionStatusAndCheckDowngrade();
+    }
+  }
+
   Future<void> _loadSubscriptionStatusAndCheckDowngrade() async {
-    if (!AuthService.instance.isLoggedIn) return;
+    if (!AuthService.instance.isLoggedIn) {
+      if (_subStatus != null || _subStatusUserId != null) {
+        setState(() {
+          _subStatus = null;
+          _subStatusUserId = null;
+        });
+      }
+      return;
+    }
+    final userId = AuthService.instance.currentUserId;
     try {
       final status = await BackendApiClient.instance.getSubscriptionStatus();
       if (mounted) {
-        setState(() => _subStatus = status);
+        setState(() {
+          _subStatus = status;
+          _subStatusUserId = userId;
+        });
       }
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -55,6 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   void dispose() {
+    AuthService.instance.removeListener(_onAuthChanged);
     _viewModel.dispose();
     super.dispose();
   }
@@ -190,7 +219,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                     const SizedBox(height: 16),
 
                     // 7-Day Downgrade Discount Urgency Banner
-                    if (_subStatus != null && _subStatus!.isDiscountActive)
+                    if (AuthService.instance.isLoggedIn &&
+                        _subStatus != null &&
+                        _subStatus!.isDiscountActive &&
+                        (_subStatus!.discountDaysRemaining == null ||
+                            _subStatus!.discountDaysRemaining! > 0) &&
+                        _subStatusUserId == AuthService.instance.currentUserId)
                       DiscountOfferBanner(
                         status: _subStatus,
                         onOfferClaimed: _loadSubscriptionStatusAndCheckDowngrade,

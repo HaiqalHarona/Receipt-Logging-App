@@ -1,5 +1,6 @@
 // File: lib/ui/features/settings/views/user_settings_screen.dart
 
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
+import '../../../../cloud/api/api_config.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/models/user_models.dart';
 import '../../../../data/repositories/receipt_repository.dart';
@@ -26,9 +28,16 @@ import '../../../../services/app_logger_service.dart';
 import '../../../../services/sync_coordinator.dart';
 import '../../../../cloud/services/quota_service.dart';
 import '../../subscription/views/premium_paywall_sheet.dart';
+import '../../subscription/widgets/downgrade_popup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserSettingsScreen extends StatefulWidget {
-  const UserSettingsScreen({super.key});
+  final bool highlightPlan;
+
+  const UserSettingsScreen({
+    super.key,
+    this.highlightPlan = false,
+  });
 
   @override
   State<UserSettingsScreen> createState() => _UserSettingsScreenState();
@@ -42,6 +51,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   bool _isManualSyncing = false;
   bool _isUploadingAvatar = false;
   bool _isExporting = false;
+  bool _isSimulatingExpiry = false;
+  bool _highlightPlan = false;
+  Timer? _highlightTimer;
+  final GlobalKey _planSectionKey = GlobalKey();
   final ImagePicker _imagePicker = ImagePicker();
 
   // ── EMAIL VERIFICATION STATE ─────────────────────────────────────────────
@@ -62,10 +75,27 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     SyncCoordinator.instance.addListener(_onSyncCoordinatorUpdated);
     _loadProfile();
     QuotaService.instance.refreshQuota();
+
+    if (widget.highlightPlan) {
+      _highlightPlan = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_planSectionKey.currentContext != null) {
+          Scrollable.ensureVisible(
+            _planSectionKey.currentContext!,
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeInOut,
+          );
+        }
+        _highlightTimer = Timer(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _highlightPlan = false);
+        });
+      });
+    }
   }
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     QuotaService.instance.removeListener(_onQuotaUpdated);
     LocalImageCacheService.instance.removeListener(_onAvatarUpdated);
     SyncCoordinator.instance.removeListener(_onSyncCoordinatorUpdated);
@@ -102,6 +132,49 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         _profile = profile;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _simulateTrialExpiry() async {
+    if (_isSimulatingExpiry) return;
+    setState(() => _isSimulatingExpiry = true);
+    try {
+      AppLogger.info('UI', 'Simulating 14-day trial expiry...');
+      await BackendApiClient.instance.simulateTrialExpiry();
+
+      // Reset local day15 popup flag for current user so popup is guaranteed to show
+      final userId = AuthService.instance.currentUserId;
+      if (userId != null && userId.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('downgrade_day15_popup_shown_$userId');
+      }
+
+      // Refresh profile & quota
+      await AuthService.instance.getOrFetchProfile(force: true);
+      await QuotaService.instance.refreshQuota();
+      await _loadProfile();
+
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: '14-Day trial expired! Downgraded to Free tier.',
+        );
+        // Trigger Day 15 downgrade dialog
+        await DowngradePopupHelper.checkAndShow(context);
+      }
+    } catch (e) {
+      AppLogger.error('UI', 'Failed to simulate trial expiry: $e');
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: 'Failed to simulate trial expiry: $e',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSimulatingExpiry = false);
+      }
     }
   }
 
@@ -1360,6 +1433,17 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
     // ── 7-DAY PASSWORD COOLDOWN CALCULATION ──────────────────────────────
     final activeProfile = _profile ?? AuthService.instance.cachedProfile;
+    final trialStartStr =
+        activeProfile?.preferences['trial_start_at'] as String?;
+    final trialStart =
+        trialStartStr != null ? DateTime.tryParse(trialStartStr) : null;
+    final trialEnd = trialStart?.add(const Duration(days: 14));
+    final isTrialActive = (resolvedTier == 'PREMIUM' ||
+            activeProfile?.preferences['is_in_trial'] == true) &&
+        trialStart != null &&
+        trialEnd != null &&
+        DateTime.now().toUtc().isBefore(trialEnd.toUtc());
+
     final lastChangedStr =
         activeProfile?.preferences['password_changed_at'] as String?;
     DateTime? lastChanged;
@@ -1770,14 +1854,100 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       // ── 1.5 PLAN & USAGE ──────────────────────────────────
                       _buildSectionHeader("PLAN & USAGE", textSecondary),
                       const SizedBox(height: 8),
-                      _buildDailyQuotaCard(
-                        controller: controller,
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                        accent: accent,
-                        tierColor: tierColor,
-                        tierName: resolvedTier,
+                      AnimatedContainer(
+                        key: _planSectionKey,
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeInOut,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _highlightPlan
+                                ? Colors.amber.shade500
+                                : Colors.transparent,
+                            width: _highlightPlan ? 2.5 : 0.0,
+                          ),
+                          boxShadow: _highlightPlan
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.amber.withValues(alpha: 0.4),
+                                    blurRadius: 18,
+                                    spreadRadius: 2,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: _buildDailyQuotaCard(
+                          controller: controller,
+                          textPrimary: textPrimary,
+                          textSecondary: textSecondary,
+                          accent: accent,
+                          tierColor: tierColor,
+                          tierName: resolvedTier,
+                          isTrialActive: isTrialActive,
+                          trialEnd: trialEnd,
+                        ),
                       ),
+                      if (ApiConfig.isDevelopment) ...[
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: _isSimulatingExpiry ? null : _simulateTrialExpiry,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: controller.currentBaseColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.timer_outlined,
+                                    size: 16, color: accent),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Simulate 14-Day Trial Expiration",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Fast-forwards to Day 15 and triggers downgrade flow & 50% discount offer.",
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (_isSimulatingExpiry)
+                                  SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: accent,
+                                    ),
+                                  )
+                                else
+                                  Icon(Icons.play_arrow_rounded,
+                                      size: 18, color: accent),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 18),
 
                       // ── 2. DYNAMIC STATS OVERVIEW ──────────────────────────
@@ -2824,6 +2994,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     required Color accent,
     required Color tierColor,
     required String tierName,
+    bool isTrialActive = false,
+    DateTime? trialEnd,
   }) {
     final quotaSvc = QuotaService.instance;
     final isDev = tierName.toUpperCase() == 'DEV';
@@ -2998,6 +3170,38 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
               ],
             ],
           ),
+          if (isTrialActive && trialEnd != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.amber.withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.stars_rounded, size: 16, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "14-Day Trial Active · Ends on ${DateFormat.yMMMd().format(trialEnd)}",
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
 
           // Scan Quota Metric (Deepened Indentation)

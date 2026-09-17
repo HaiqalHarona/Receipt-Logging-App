@@ -15,12 +15,15 @@ import '../../../../cloud/services/quota_service.dart';
 import '../../../../cloud/services/subscription_service.dart';
 
 /// Shows the refined RevenueCat-powered Premium Paywall modal bottom sheet.
-Future<bool?> showPremiumPaywallSheet(BuildContext context) {
+Future<bool?> showPremiumPaywallSheet(
+  BuildContext context, {
+  PaywallPlanType initialPlan = PaywallPlanType.annual,
+}) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => const PremiumPaywallSheet(),
+    builder: (ctx) => PremiumPaywallSheet(initialPlan: initialPlan),
   );
 }
 
@@ -28,23 +31,31 @@ enum PaywallPlanType { annual, monthly }
 
 class PremiumPaywallSheet extends StatefulWidget {
   final bool isFullPage;
+  final PaywallPlanType initialPlan;
 
-  const PremiumPaywallSheet({super.key, this.isFullPage = false});
+  const PremiumPaywallSheet({
+    super.key,
+    this.isFullPage = false,
+    this.initialPlan = PaywallPlanType.annual,
+  });
 
   @override
   State<PremiumPaywallSheet> createState() => _PremiumPaywallSheetState();
 }
 
 class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
-  PaywallPlanType _selectedPlan = PaywallPlanType.annual;
+  late PaywallPlanType _selectedPlan;
   Offerings? _offerings;
   SubscriptionStatusDto? _subStatus;
+  bool _isLoadingOfferings = true;
   bool _isPurchasing = false;
   bool _isRestoring = false;
 
   @override
   void initState() {
     super.initState();
+    _selectedPlan = widget.initialPlan;
+    _isLoadingOfferings = true;
     _loadOfferingsAndStatus();
   }
 
@@ -64,40 +75,64 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
         setState(() {
           _offerings = offerings;
           _subStatus = status;
+          _isLoadingOfferings = false;
         });
       }
-    } catch (e) {
-      AppLogger.warning('Paywall', 'Error loading offerings/status: $e');
+      AppLogger.info(
+        'Paywall',
+        'Offerings loaded: current=${offerings?.current?.identifier}, '
+        'allOfferings=${offerings?.all.keys.toList()}, '
+        'availableCount=${_currentOffering?.availablePackages.length ?? 0}',
+      );
+    } catch (e, st) {
+      AppLogger.warning('Paywall', 'Error loading offerings/status: $e', st);
+      if (mounted) {
+        setState(() => _isLoadingOfferings = false);
+      }
     }
   }
 
+  Offering? get _currentOffering {
+    if (_offerings == null) return null;
+    return _offerings!.current ??
+        (_offerings!.all.isNotEmpty ? _offerings!.all.values.first : null);
+  }
+
   Package? get _annualPackage {
-    final available = _offerings?.current?.availablePackages;
-    if (available == null) return null;
+    final available = _currentOffering?.availablePackages;
+    if (available == null || available.isEmpty) return null;
     try {
       return available.firstWhere(
         (p) =>
             p.packageType == PackageType.annual ||
             p.identifier == SubscriptionConstants.annualPackageId ||
-            p.storeProduct.identifier == SubscriptionConstants.annualProductId,
+            p.storeProduct.identifier == SubscriptionConstants.annualProductId ||
+            p.storeProduct.identifier == SubscriptionConstants.annualPromoProductId ||
+            p.identifier.toLowerCase().contains('annual') ||
+            p.identifier.toLowerCase().contains('year') ||
+            p.storeProduct.identifier.toLowerCase().contains('annual') ||
+            p.storeProduct.identifier.toLowerCase().contains('year'),
       );
     } catch (_) {
-      return null;
+      return available.first;
     }
   }
 
   Package? get _monthlyPackage {
-    final available = _offerings?.current?.availablePackages;
-    if (available == null) return null;
+    final available = _currentOffering?.availablePackages;
+    if (available == null || available.isEmpty) return null;
     try {
       return available.firstWhere(
         (p) =>
             p.packageType == PackageType.monthly ||
             p.identifier == SubscriptionConstants.monthlyPackageId ||
-            p.storeProduct.identifier == SubscriptionConstants.monthlyProductId,
+            p.storeProduct.identifier == SubscriptionConstants.monthlyProductId ||
+            p.storeProduct.identifier == SubscriptionConstants.monthlyPromoProductId ||
+            p.identifier.toLowerCase().contains('month') ||
+            p.storeProduct.identifier.toLowerCase().contains('month'),
       );
     } catch (_) {
-      return null;
+      return available.length > 1 ? available[1] : available.first;
     }
   }
 
@@ -117,35 +152,55 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
 
   Future<void> _onPurchase() async {
     if (_isPurchasing) return;
+    AppLogger.info('Paywall', 'User tapped purchase for plan: $_selectedPlan');
 
-    final package = _currentSelectedPackage;
-    if (package == null && SubscriptionService.instance.isConfigured) {
+    if (_isLoadingOfferings) {
+      AppLogger.info('Paywall', 'Offerings still loading, waiting...');
       AppSnackBar.show(
         context,
-        message: 'Product not found. Please try again later.',
-        isError: true,
+        message: 'Connecting to store, please wait a moment...',
       );
       return;
     }
 
+    final package = _currentSelectedPackage;
+    if (package == null) {
+      final isConfigured = SubscriptionService.instance.isConfigured;
+      AppLogger.warning(
+        'Paywall',
+        'Cannot initiate purchase: package is null for $_selectedPlan. '
+        'isConfigured=$isConfigured, '
+        'offeringsLoaded=${_offerings != null}, '
+        'currentOffering=${_currentOffering?.identifier}, '
+        'availablePackages=${_currentOffering?.availablePackages.map((p) => "${p.identifier} (${p.storeProduct.identifier})").toList()}',
+      );
+
+      if (!isConfigured) {
+        AppSnackBar.show(
+          context,
+          message:
+              'In-app purchases are not configured or supported on this device.',
+          isError: true,
+        );
+      } else {
+        AppSnackBar.show(
+          context,
+          message:
+              'Store products unavailable. Please ensure in-app purchases are configured and try again.',
+          isError: true,
+        );
+      }
+      return;
+    }
+
     setState(() => _isPurchasing = true);
-    AppLogger.info('Paywall', 'User tapped purchase for plan: $_selectedPlan');
+    AppLogger.info('Paywall',
+        'User tapped purchase for plan: $_selectedPlan (package: ${package.identifier})');
 
     try {
-      if (package != null) {
-        final success = await SubscriptionService.instance.purchasePackage(package);
-        if (success) {
-          await _onPurchaseSuccess();
-        }
-      } else {
-        // Mock fallback if RevenueCat is not configured on this platform/emulator
-        await Future.delayed(const Duration(seconds: 1));
-        await SubscriptionService.instance.syncWithBackend(
-          isPremium: true,
-          productIdentifier: _selectedPlan == PaywallPlanType.annual
-              ? SubscriptionConstants.annualProductId
-              : SubscriptionConstants.monthlyProductId,
-        );
+      final success =
+          await SubscriptionService.instance.purchasePackage(package);
+      if (success) {
         await _onPurchaseSuccess();
       }
     } on PlatformException catch (e) {
@@ -352,22 +407,33 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: Colors.deepOrangeAccent.withValues(alpha: 0.4),
+                  color: Colors.deepOrangeAccent.withValues(alpha: 0.45),
                   width: 1.2,
                 ),
               ),
               child: Row(
                 children: [
-                  const Text('🔥', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.deepOrangeAccent.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.local_fire_department_rounded,
+                      color: Colors.deepOrangeAccent,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Special Downgrade Discount!",
+                          "Special 7-Day Discount Active",
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -391,50 +457,57 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
             ),
 
           // ── Plan Selector Cards ──────────────────────────────────────────
-          Row(
-            children: [
-              // Annual Plan Option
-              Expanded(
-                child: _buildPlanOptionCard(
-                  plan: PaywallPlanType.annual,
-                  title: "Annual",
-                  badge: _isDiscountActive ? "3 MONTHS FREE" : "SAVE 33%",
-                  badgeColor: Colors.tealAccent.shade700,
-                  priceMain: SubscriptionConstants.annualMonthlyEquivalent,
-                  priceSub: "/mo",
-                  billingPeriod: "Billed $annualPriceStr / year",
-                  promoNote: _isDiscountActive
-                      ? "Pay now, first charge deferred"
-                      : "Best value overall",
-                  isSelected: _selectedPlan == PaywallPlanType.annual,
-                  accent: accent,
-                  textPrimary: textPrimary,
-                  textSecondary: textSecondary,
-                  controller: controller,
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Annual Plan Option (Dominant & Pre-selected)
+                Expanded(
+                  child: _buildPlanOptionCard(
+                    plan: PaywallPlanType.annual,
+                    title: "Annual",
+                    badge: _isDiscountActive ? "3 MONTHS FREE" : "SAVE 33%",
+                    badgeColor: Colors.tealAccent.shade700,
+                    isRecommended: true,
+                    strikeThroughPrice: "\$5.99",
+                    priceMain: SubscriptionConstants.annualMonthlyEquivalent,
+                    priceSub: "/mo",
+                    billingPeriod: "Billed $annualPriceStr / year",
+                    promoNote: _isDiscountActive
+                        ? "Pay for 9 mos, get 12 · 90 days on us"
+                        : "Best value overall · Save \$24/yr",
+                    isSelected: _selectedPlan == PaywallPlanType.annual,
+                    accent: accent,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    controller: controller,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              // Monthly Plan Option
-              Expanded(
-                child: _buildPlanOptionCard(
-                  plan: PaywallPlanType.monthly,
-                  title: "Monthly",
-                  badge: _isDiscountActive ? "1 MONTH FREE" : "FLEXIBLE",
-                  badgeColor: amberColor,
-                  priceMain: monthlyPriceStr,
-                  priceSub: "/mo",
-                  billingPeriod: "Billed monthly",
-                  promoNote: _isDiscountActive
-                      ? "First month free, then $monthlyPriceStr/mo"
-                      : "Cancel anytime",
-                  isSelected: _selectedPlan == PaywallPlanType.monthly,
-                  accent: accent,
-                  textPrimary: textPrimary,
-                  textSecondary: textSecondary,
-                  controller: controller,
+                const SizedBox(width: 10),
+                // Monthly Plan Option
+                Expanded(
+                  child: _buildPlanOptionCard(
+                    plan: PaywallPlanType.monthly,
+                    title: "Monthly",
+                    badge: _isDiscountActive ? "1 MONTH FREE" : "FLEXIBLE",
+                    badgeColor: amberColor,
+                    isRecommended: false,
+                    strikeThroughPrice: null,
+                    priceMain: monthlyPriceStr,
+                    priceSub: "/mo",
+                    billingPeriod: "Billed monthly",
+                    promoNote: _isDiscountActive
+                        ? "First month on us, then $monthlyPriceStr/mo"
+                        : "Flexible · Cancel anytime",
+                    isSelected: _selectedPlan == PaywallPlanType.monthly,
+                    accent: accent,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                    controller: controller,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 20),
 
@@ -467,7 +540,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                   icon: Icons.auto_awesome_rounded,
                   iconColor: Colors.tealAccent.shade400,
                   title: "50,000 AI Chat Tokens",
-                  subtitle: "Deep financial analysis & expense queries",
+                  subtitle: "Gain customized and useful spending insights",
                   textPrimary: textPrimary,
                   textSecondary: textSecondary,
                 ),
@@ -476,16 +549,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                   icon: Icons.flash_on_rounded,
                   iconColor: amberColor,
                   title: "Priority Vision OCR Processing",
-                  subtitle: "Gemini 2.5 Flash flagship AI: saves ~16.5s per scan",
-                  textPrimary: textPrimary,
-                  textSecondary: textSecondary,
-                ),
-                const Divider(height: 20, thickness: 0.6),
-                _buildBenefitItem(
-                  icon: Icons.file_download_outlined,
-                  iconColor: Colors.blueAccent.shade400,
-                  title: "Advanced Financial Exports",
-                  subtitle: "Export all categories & itemized line receipts",
+                  subtitle: "Save ~16.5s per scan with flagship AI",
                   textPrimary: textPrimary,
                   textSecondary: textSecondary,
                 ),
@@ -518,16 +582,31 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                           color: Colors.white,
                         ),
                       )
-                    : Text(
-                        _isDiscountActive
-                            ? "Claim Discount & Upgrade"
-                            : "Upgrade to Premium",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.2,
-                        ),
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _isDiscountActive
+                                ? (_selectedPlan == PaywallPlanType.annual
+                                    ? "Claim 3 Months Free & Upgrade"
+                                    : "Claim 1 Month Free & Upgrade")
+                                : (_selectedPlan == PaywallPlanType.annual
+                                    ? "Upgrade to Annual (Save 33%)"
+                                    : "Upgrade to Monthly"),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ],
                       ),
               ),
             ),
@@ -642,12 +721,17 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: NeumorphicTheme.baseColor(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+    return ScaffoldMessenger(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: BoxDecoration(
+            color: NeumorphicTheme.baseColor(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: content,
+        ),
       ),
-      child: content,
     );
   }
 
@@ -656,6 +740,8 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
     required String title,
     required String badge,
     required Color badgeColor,
+    required bool isRecommended,
+    required String? strikeThroughPrice,
     required String priceMain,
     required String priceSub,
     required String billingPeriod,
@@ -670,102 +756,165 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
       onTap: () => setState(() => _selectedPlan = plan),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
               ? accent.withValues(alpha: 0.08)
               : controller.currentBaseColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? accent : textSecondary.withValues(alpha: 0.15),
+            color: isSelected ? accent : textSecondary.withValues(alpha: 0.18),
             width: isSelected ? 2.0 : 1.0,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: accent.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: accent.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   )
                 ]
               : null,
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: textPrimary,
-                  ),
+            if (isRecommended)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? accent
+                      : textSecondary.withValues(alpha: 0.18),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(14)),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
+                child: Center(
                   child: Text(
-                    badge,
+                    "MOST POPULAR · BEST VALUE",
                     style: TextStyle(
                       fontSize: 8.5,
                       fontWeight: FontWeight.bold,
-                      color: badgeColor,
+                      letterSpacing: 0.5,
+                      color: isSelected ? Colors.white : textSecondary,
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  priceMain,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: textPrimary,
+              ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
+                      ),
+                      Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: isSelected ? accent : Colors.transparent,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? accent
+                                : textSecondary.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: isSelected
+                            ? const Icon(Icons.check_rounded,
+                                size: 13, color: Colors.white)
+                            : null,
+                      ),
+                    ],
                   ),
-                ),
-                Text(
-                  priceSub,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: textSecondary,
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      badge,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              billingPeriod,
-              style: TextStyle(
-                fontSize: 10.5,
-                color: textSecondary,
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        priceMain,
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
+                      ),
+                      Text(
+                        priceSub,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: textSecondary,
+                        ),
+                      ),
+                      if (strikeThroughPrice != null) ...[
+                        const SizedBox(width: 5),
+                        Text(
+                          strikeThroughPrice,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: textSecondary.withValues(alpha: 0.6),
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    billingPeriod,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    promoNote,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? accent
+                          : textSecondary.withValues(alpha: 0.8),
+                      height: 1.2,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              promoNote,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? accent : textSecondary.withValues(alpha: 0.8),
-                height: 1.2,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildBenefitItem({
