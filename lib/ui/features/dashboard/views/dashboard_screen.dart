@@ -1,12 +1,17 @@
 import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../cloud/api/backend_api_client.dart';
+import '../../../../cloud/models/subscription_models.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../services/app_logger_service.dart';
 import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';
 import 'widgets/recent_transactions_list.dart';
+import '../../subscription/widgets/discount_offer_banner.dart';
+import '../../subscription/widgets/downgrade_popup.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -18,12 +23,67 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen>
     with AutomaticKeepAliveClientMixin {
   final DashboardViewModel _viewModel = DashboardViewModel();
+  SubscriptionStatusDto? _subStatus;
+  String? _subStatusUserId;
 
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    AuthService.instance.addListener(_onAuthChanged);
+    _loadSubscriptionStatusAndCheckDowngrade();
+  }
+
+  void _onAuthChanged() {
+    final currentUserId = AuthService.instance.currentUserId;
+    if (!AuthService.instance.isLoggedIn || currentUserId == null) {
+      if (_subStatus != null || _subStatusUserId != null) {
+        setState(() {
+          _subStatus = null;
+          _subStatusUserId = null;
+        });
+      }
+    } else if (currentUserId != _subStatusUserId) {
+      _loadSubscriptionStatusAndCheckDowngrade();
+    }
+  }
+
+  Future<void> _loadSubscriptionStatusAndCheckDowngrade() async {
+    if (!AuthService.instance.isLoggedIn) {
+      if (_subStatus != null || _subStatusUserId != null) {
+        setState(() {
+          _subStatus = null;
+          _subStatusUserId = null;
+        });
+      }
+      return;
+    }
+    final userId = AuthService.instance.currentUserId;
+    try {
+      final status = await BackendApiClient.instance.getSubscriptionStatus();
+      if (mounted) {
+        setState(() {
+          _subStatus = status;
+          _subStatusUserId = userId;
+        });
+      }
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            DowngradePopupHelper.checkAndShow(context);
+          }
+        });
+      }
+    } catch (e) {
+      AppLogger.warning('Dashboard', 'Failed checking subscription status: $e');
+    }
+  }
+
+  @override
   void dispose() {
+    AuthService.instance.removeListener(_onAuthChanged);
     _viewModel.dispose();
     super.dispose();
   }
@@ -156,7 +216,22 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+
+                    // 7-Day Downgrade Discount Urgency Banner
+                    if (AuthService.instance.isLoggedIn &&
+                        _subStatus != null &&
+                        _subStatus!.trialStartAt != null &&
+                        _subStatus!.tier != 'premium' &&
+                        _subStatus!.isDiscountActive &&
+                        (_subStatus!.discountDaysRemaining == null ||
+                            _subStatus!.discountDaysRemaining! > 0) &&
+                        _subStatusUserId == AuthService.instance.currentUserId)
+                      DiscountOfferBanner(
+                        status: _subStatus,
+                        onOfferClaimed: _loadSubscriptionStatusAndCheckDowngrade,
+                      ),
+                    const SizedBox(height: 8),
 
                     // Monthly Spending Line Graph (encompasses indented summary carousel)
                     MonthlySpendingGraphCard(

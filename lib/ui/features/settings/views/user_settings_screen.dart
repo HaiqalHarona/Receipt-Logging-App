@@ -1,5 +1,6 @@
 // File: lib/ui/features/settings/views/user_settings_screen.dart
 
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
+import '../../../../cloud/api/api_config.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/models/user_models.dart';
 import '../../../../data/repositories/receipt_repository.dart';
@@ -25,9 +27,17 @@ import '../../../../services/local_image_cache_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../services/sync_coordinator.dart';
 import '../../../../cloud/services/quota_service.dart';
+import '../../subscription/views/premium_paywall_sheet.dart';
+import '../../subscription/widgets/downgrade_popup.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserSettingsScreen extends StatefulWidget {
-  const UserSettingsScreen({super.key});
+  final bool highlightPlan;
+
+  const UserSettingsScreen({
+    super.key,
+    this.highlightPlan = false,
+  });
 
   @override
   State<UserSettingsScreen> createState() => _UserSettingsScreenState();
@@ -41,6 +51,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   bool _isManualSyncing = false;
   bool _isUploadingAvatar = false;
   bool _isExporting = false;
+  bool _isSimulatingExpiry = false;
+  bool _highlightPlan = false;
+  Timer? _highlightTimer;
+  final GlobalKey _planSectionKey = GlobalKey();
   final ImagePicker _imagePicker = ImagePicker();
 
   // ── EMAIL VERIFICATION STATE ─────────────────────────────────────────────
@@ -61,10 +75,27 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     SyncCoordinator.instance.addListener(_onSyncCoordinatorUpdated);
     _loadProfile();
     QuotaService.instance.refreshQuota();
+
+    if (widget.highlightPlan) {
+      _highlightPlan = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_planSectionKey.currentContext != null) {
+          Scrollable.ensureVisible(
+            _planSectionKey.currentContext!,
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeInOut,
+          );
+        }
+        _highlightTimer = Timer(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _highlightPlan = false);
+        });
+      });
+    }
   }
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     QuotaService.instance.removeListener(_onQuotaUpdated);
     LocalImageCacheService.instance.removeListener(_onAvatarUpdated);
     SyncCoordinator.instance.removeListener(_onSyncCoordinatorUpdated);
@@ -101,6 +132,49 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
         _profile = profile;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _simulateTrialExpiry() async {
+    if (_isSimulatingExpiry) return;
+    setState(() => _isSimulatingExpiry = true);
+    try {
+      AppLogger.info('UI', 'Simulating 14-day trial expiry...');
+      await BackendApiClient.instance.simulateTrialExpiry();
+
+      // Reset local day15 popup flag for current user so popup is guaranteed to show
+      final userId = AuthService.instance.currentUserId;
+      if (userId != null && userId.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('downgrade_day15_popup_shown_$userId');
+      }
+
+      // Refresh profile & quota
+      await AuthService.instance.getOrFetchProfile(force: true);
+      await QuotaService.instance.refreshQuota();
+      await _loadProfile();
+
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: '14-Day trial expired! Downgraded to Free tier.',
+        );
+        // Trigger Day 15 downgrade dialog
+        await DowngradePopupHelper.checkAndShow(context);
+      }
+    } catch (e) {
+      AppLogger.error('UI', 'Failed to simulate trial expiry: $e');
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: 'Failed to simulate trial expiry: $e',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSimulatingExpiry = false);
+      }
     }
   }
 
@@ -1317,6 +1391,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!AuthService.instance.isLoggedIn) {
+      return const SizedBox.shrink();
+    }
+
     final controller = AppThemeController.instance;
     final textPrimary = controller.textColor;
     final textSecondary = controller.secondaryTextColor;
@@ -1359,6 +1437,17 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
     // ── 7-DAY PASSWORD COOLDOWN CALCULATION ──────────────────────────────
     final activeProfile = _profile ?? AuthService.instance.cachedProfile;
+    final trialStartStr =
+        activeProfile?.preferences['trial_start_at'] as String?;
+    final trialStart =
+        trialStartStr != null ? DateTime.tryParse(trialStartStr) : null;
+    final trialEnd = trialStart?.add(const Duration(days: 14));
+    final isTrialActive = (resolvedTier == 'PREMIUM' ||
+            activeProfile?.preferences['is_in_trial'] == true) &&
+        trialStart != null &&
+        trialEnd != null &&
+        DateTime.now().toUtc().isBefore(trialEnd.toUtc());
+
     final lastChangedStr =
         activeProfile?.preferences['password_changed_at'] as String?;
     DateTime? lastChanged;
@@ -1769,14 +1858,100 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       // ── 1.5 PLAN & USAGE ──────────────────────────────────
                       _buildSectionHeader("PLAN & USAGE", textSecondary),
                       const SizedBox(height: 8),
-                      _buildDailyQuotaCard(
-                        controller: controller,
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                        accent: accent,
-                        tierColor: tierColor,
-                        tierName: resolvedTier,
+                      AnimatedContainer(
+                        key: _planSectionKey,
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeInOut,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _highlightPlan
+                                ? Colors.amber.shade500
+                                : Colors.transparent,
+                            width: _highlightPlan ? 2.5 : 0.0,
+                          ),
+                          boxShadow: _highlightPlan
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.amber.withValues(alpha: 0.4),
+                                    blurRadius: 18,
+                                    spreadRadius: 2,
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: _buildDailyQuotaCard(
+                          controller: controller,
+                          textPrimary: textPrimary,
+                          textSecondary: textSecondary,
+                          accent: accent,
+                          tierColor: tierColor,
+                          tierName: resolvedTier,
+                          isTrialActive: isTrialActive,
+                          trialEnd: trialEnd,
+                        ),
                       ),
+                      if (ApiConfig.isDevelopment) ...[
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: _isSimulatingExpiry ? null : _simulateTrialExpiry,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: controller.currentBaseColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.timer_outlined,
+                                    size: 16, color: accent),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Simulate 14-Day Trial Expiration",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Fast-forwards to Day 15 and triggers downgrade flow & 50% discount offer.",
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (_isSimulatingExpiry)
+                                  SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: accent,
+                                    ),
+                                  )
+                                else
+                                  Icon(Icons.play_arrow_rounded,
+                                      size: 18, color: accent),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 18),
 
                       // ── 2. DYNAMIC STATS OVERVIEW ──────────────────────────
@@ -2823,6 +2998,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     required Color accent,
     required Color tierColor,
     required String tierName,
+    bool isTrialActive = false,
+    DateTime? trialEnd,
   }) {
     final quotaSvc = QuotaService.instance;
     final isDev = tierName.toUpperCase() == 'DEV';
@@ -2997,6 +3174,38 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
               ],
             ],
           ),
+          if (isTrialActive && trialEnd != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.amber.withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.stars_rounded, size: 16, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "14-Day Trial Active · Ends on ${DateFormat.yMMMd().format(trialEnd)}",
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
 
           // Scan Quota Metric (Deepened Indentation)
@@ -3113,329 +3322,21 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     );
   }
 
-  void _showPremiumUpgradeBottomSheet(
+  Future<void> _showPremiumUpgradeBottomSheet(
     BuildContext context,
     AppThemeController controller,
     Color accent,
     Color textPrimary,
     Color textSecondary,
-  ) {
-    AppLogger.info('UI', 'User opened Premium Upgrade bottom sheet');
-    final amberColor = Colors.amber.shade500;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: BoxDecoration(
-            color: NeumorphicTheme.baseColor(ctx),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 12,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Drag Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: textSecondary.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Top Header Badge & Title
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(9),
-                      decoration: BoxDecoration(
-                        color: amberColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: amberColor.withValues(alpha: 0.4),
-                          width: 1,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.workspace_premium_rounded,
-                        color: amberColor,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                "Upgrade to Premium",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: amberColor.withValues(alpha: 0.18),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  "TIER",
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: amberColor,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            "Supercharge your receipt workflow and unlock advanced AI.",
-                            style:
-                                TextStyle(fontSize: 12.5, color: textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Benefits Container
-                Container(
-                  decoration: BoxDecoration(
-                    color: controller.currentBaseColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: textSecondary.withValues(alpha: 0.12),
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _buildPaywallBenefitRow(
-                        icon: Icons.camera_alt_rounded,
-                        iconColor: accent,
-                        title: "50 Daily Receipt Scans",
-                        description:
-                            "5x higher daily scan allowance (50/day vs 10/day on Free) for high-volume receipt extraction.",
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                      ),
-                      const Divider(height: 24, thickness: 0.7),
-                      _buildPaywallBenefitRow(
-                        icon: Icons.auto_awesome_rounded,
-                        iconColor: Colors.tealAccent.shade400,
-                        title: "50,000 AI Chat Tokens",
-                        description:
-                            "5x AI token capacity for deep financial querying, item breakdowns, and spending trends.",
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                      ),
-                      const Divider(height: 24, thickness: 0.7),
-                      _buildPaywallBenefitRow(
-                        icon: Icons.bolt_rounded,
-                        iconColor: amberColor,
-                        title: "Priority Vision OCR Processing",
-                        description:
-                            "High-priority server queue for instant receipt digitisation and category parsing.",
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                      ),
-                      const Divider(height: 24, thickness: 0.7),
-                      _buildPaywallBenefitRow(
-                        icon: Icons.file_download_outlined,
-                        iconColor: Colors.blueAccent.shade400,
-                        title: "Advanced Financial Exports",
-                        description:
-                            "Unlimited multi-format CSV and PDF exports with full receipt item breakdowns.",
-                        textPrimary: textPrimary,
-                        textSecondary: textSecondary,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Pricing Card & Purchase CTA
-                NeumorphicCardWidget(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "PREMIUM SUBSCRIPTION",
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: textSecondary,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              Text(
-                                "\$4.99",
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
-                                ),
-                              ),
-                              Text(
-                                " / month",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          AppSnackBar.show(
-                            context,
-                            message:
-                                "In-app purchases launching soon! Stay tuned.",
-                          );
-                        },
-                        child: Neumorphic(
-                          style: NeumorphicStyle(
-                            depth: 4,
-                            intensity: 0.9,
-                            boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12),
-                            ),
-                            color: amberColor.withValues(alpha: 0.15),
-                            border: NeumorphicBorder(
-                              color: amberColor,
-                              width: 1.5,
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.keyboard_double_arrow_up_rounded,
-                                size: 16,
-                                color: amberColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                "Upgrade",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: amberColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: Text(
-                    "Cancel anytime. Terms of Service & Privacy Policy apply.",
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: textSecondary.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  ) async {
+    AppLogger.info('UI', 'User opened Premium Upgrade paywall sheet');
+    final upgraded = await showPremiumPaywallSheet(context);
+    if (upgraded == true && mounted) {
+      await AuthService.instance.getOrFetchProfile(force: true);
+      await _loadProfile();
+    }
   }
 
-  Widget _buildPaywallBenefitRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String description,
-    required Color textPrimary,
-    required Color textSecondary,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: 2),
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: iconColor),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.bold,
-                  color: textPrimary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  color: textSecondary.withValues(alpha: 0.85),
-                  height: 1.35,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildDivider(Color textSecondary) {
     return Divider(

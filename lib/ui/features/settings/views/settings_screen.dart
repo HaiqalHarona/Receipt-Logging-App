@@ -2444,7 +2444,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Choose an export format to save all receipts, AI conversations, and categories to your device storage. Zero cloud requests are made.",
+                    "Choose an export format to save all receipts, AI chats, and categories. Zero cloud requests are made.",
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.4,

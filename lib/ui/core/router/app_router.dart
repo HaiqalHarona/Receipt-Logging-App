@@ -71,8 +71,8 @@ final GoRouter appRouter = GoRouter(
     if (isLoggedIn && isAuthRoute) {
       return '/dashboard';
     }
-    if (!isLoggedIn && path == '/user-settings') {
-      return '/dashboard';
+    if (!isLoggedIn && (path == '/user-settings' || path == '/paywall')) {
+      return '/auth';
     }
     return null;
   },
@@ -99,8 +99,16 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: '/settings',
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) {
+            if (state.uri.queryParameters['highlight'] == 'plan') {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) {
+                  context.push('/user-settings?highlight=plan');
+                }
+              });
+            }
+            return const NoTransitionPage(child: SizedBox.shrink());
+          },
         ),
       ],
     ),
@@ -196,8 +204,15 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/user-settings',
-      pageBuilder: (context, state) =>
-          _buildInstantPage(state: state, child: const UserSettingsScreen()),
+      pageBuilder: (context, state) {
+        final highlightPlan =
+            state.uri.queryParameters['highlight'] == 'plan' ||
+                (state.extra as Map<String, dynamic>?)?['highlight'] == 'plan';
+        return _buildInstantPage(
+          state: state,
+          child: UserSettingsScreen(highlightPlan: highlightPlan),
+        );
+      },
     ),
     GoRoute(
       path: '/scanner',

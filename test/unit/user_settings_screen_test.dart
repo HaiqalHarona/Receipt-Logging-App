@@ -300,13 +300,15 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      // Upgrade bottom sheet is opened
-      expect(find.text('Upgrade to Premium'), findsOneWidget);
+      // Upgrade bottom sheet is opened with Annual plan pre-selected by default
+      expect(find.text('SancFund Premium'), findsOneWidget);
+      expect(find.text('Upgrade to Annual (Save 33%)'), findsOneWidget);
       expect(find.text('50 Daily Receipt Scans'), findsOneWidget);
       expect(find.text('50,000 AI Chat Tokens'), findsOneWidget);
       expect(find.text('Priority Vision OCR Processing'), findsOneWidget);
-      expect(find.text('Advanced Financial Exports'), findsOneWidget);
-      expect(find.text('\$4.99'), findsOneWidget);
+      expect(find.text('Instant Multi-Device Cloud Sync'), findsOneWidget);
+      expect(find.text('\$3.99'), findsOneWidget);
+      expect(find.text('\$5.99'), findsNWidgets(2));
     });
 
     testWidgets(
@@ -396,6 +398,55 @@ void main() {
       await tester.tap(find.text('Reset'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Change Account Password'), findsNothing);
+    });
+
+    testWidgets(
+        'UserSettingsScreen with active trial renders trial end status line and simulate trial expiry button',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final now = DateTime.now().toUtc();
+      await AuthService.instance.saveSession(
+        UserRecordDto(
+          id: 'usr-trial-1',
+          username: 'TrialUser',
+          email: 'trial@example.com',
+          createdAt: now.toIso8601String(),
+          tier: 'premium',
+          preferences: {
+            'is_in_trial': true,
+            'trial_start_at': now.toIso8601String(),
+          },
+        ),
+        userToken: 'mock-trial-token',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(
+        const UserSettingsScreen(highlightPlan: true),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // PLAN & USAGE header is present
+      expect(find.text('PLAN & USAGE'), findsOneWidget);
+
+      // Status line with 14-Day Trial Active is visible
+      expect(
+        find.textContaining('14-Day Trial Active · Ends on'),
+        findsOneWidget,
+      );
+
+      // Simulate 14-Day Trial Expiration button is rendered
+      expect(
+        find.text('Simulate 14-Day Trial Expiration'),
+        findsOneWidget,
+      );
+
+      // Advance timer past 4-second highlight animation
+      await tester.pump(const Duration(seconds: 5));
     });
   });
 }

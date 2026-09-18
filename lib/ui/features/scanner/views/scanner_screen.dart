@@ -14,6 +14,7 @@ import '../../../../services/tutorial_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/services/quota_service.dart';
 import '../../../core/widgets/coach_mark_overlay.dart';
+import '../../subscription/widgets/ad_scan_reward_widget.dart';
 
 /// Vision Receipt Scanner Screen
 /// Supports single scan vs. bulk mode (capped at 10 receipts max),
@@ -126,7 +127,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
 
     if (QuotaService.instance.isScanQuotaExhausted) {
-      AppSnackBar.show(context, message: QuotaService.instance.scanTooltip);
+      showAdScanPromptDialog(context);
       return;
     }
 
@@ -159,7 +160,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     if (_isSubmitting) return;
 
     if (QuotaService.instance.isScanQuotaExhausted) {
-      AppSnackBar.show(context, message: QuotaService.instance.scanTooltip);
+      showAdScanPromptDialog(context);
       return;
     }
 
@@ -343,6 +344,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                           accent: accent,
                           onRemoveItem: _removeQueuedImage,
                         ),
+                      const ScannerQuotaExhaustedBanner(),
                       _ScannerBottomControls(
                         controller: controller,
                         accent: accent,
@@ -796,8 +798,7 @@ class _ScannerBottomControls extends StatelessWidget {
       onTap: isProcessing
           ? () {}
           : (isScanQuotaExhausted
-              ? () => AppSnackBar.show(context,
-                  message: QuotaService.instance.scanTooltip)
+              ? () => showAdScanPromptDialog(context)
               : onPickGallery),
     );
 
@@ -812,8 +813,7 @@ class _ScannerBottomControls extends StatelessWidget {
       onTap: isProcessing
           ? null
           : (isScanQuotaExhausted
-              ? () => AppSnackBar.show(context,
-                  message: QuotaService.instance.scanTooltip)
+              ? () => showAdScanPromptDialog(context)
               : onCapture),
       child: Neumorphic(
         style: NeumorphicStyle(
