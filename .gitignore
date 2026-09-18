@@ -54,3 +54,4 @@ app.*.map.json
 AGENTS.md
 artifacts/
 .scripts/*
+.dart-define.json
