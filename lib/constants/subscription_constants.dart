@@ -2,28 +2,34 @@
 class SubscriptionConstants {
   SubscriptionConstants._();
 
-  // ── RevenueCat Entitlement & Product IDs ───────────────────────────────────
+  // ── RevenueCat Entitlement & Offering IDs ───────────────────────────────────
   static const String premiumEntitlementId = 'sancfund_pro';
-  static const String defaultOfferingId = 'default';
+  static const String normalOfferingId = 'sancfund_pro_offerings';
+  static const String offerOfferingId = 'sancfund_pro_offer_offerings';
 
   // Standard packages
-  static const String monthlyPackageId = '\$rc_monthly';
-  static const String annualPackageId = '\$rc_annual';
+  static const String monthlyPackageId = r'$rc_monthly';
+  static const String annualPackageId = r'$rc_annual';
 
   // Product identifiers configured in stores
   static const String monthlyProductId = 'monthly';
   static const String annualProductId = 'yearly';
 
-  // Legacy & promotional discounted variants
-  static const String monthlyPromoProductId = 'premium_monthly_promo';
-  static const String annualPromoProductId = 'premium_annual_promo';
+  // Promotional discounted variants (post-trial offer)
+  static const String monthlyPromoProductId = 'monthly_offer';
+  static const String annualPromoProductId = 'yearly_offer';
   static const String legacyMonthlyProductId = 'premium_monthly';
   static const String legacyAnnualProductId = 'premium_annual';
 
   // ── Standard Pricing Fallbacks (When store products are loading / sandbox) ──
-  static const String monthlyDisplayPrice = '\$5.99';
-  static const String annualDisplayPrice = '\$47.88';
-  static const String annualMonthlyEquivalent = '\$3.99';
+  static const String monthlyDisplayPrice = r'$3.99';
+  static const String annualDisplayPrice = r'$35.99';
+  static const String annualMonthlyEquivalent = r'$3.00';
+
+  // ── Offer Pricing Fallbacks (Post-trial discount window) ───────────────────
+  static const String offerMonthlyDisplayPrice = r'$2.99';
+  static const String offerAnnualDisplayPrice = r'$26.91';
+  static const String offerAnnualMonthlyEquivalent = r'$2.24';
 
   // ── Durations & Limits ──────────────────────────────────────────────────────
   static const int reverseTrialDays = 14;

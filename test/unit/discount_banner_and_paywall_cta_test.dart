@@ -420,6 +420,7 @@ void main() {
       // Offer badges and discount copies must NOT be displayed
       expect(find.text('3 MONTHS FREE'), findsNothing);
       expect(find.text('1 MONTH FREE'), findsNothing);
+      expect(find.text('FIRST MONTH OFF'), findsNothing);
       expect(find.text('Special Downgrade Offer'), findsNothing);
     });
 

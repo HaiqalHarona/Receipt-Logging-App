@@ -109,8 +109,11 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
 
   Offering? get _currentOffering {
     if (_offerings == null) return null;
-    return _offerings!.current ??
-        _offerings!.all[SubscriptionConstants.defaultOfferingId] ??
+    final targetOfferingId = _isDiscountActive
+        ? SubscriptionConstants.offerOfferingId
+        : SubscriptionConstants.normalOfferingId;
+    return _offerings!.all[targetOfferingId] ??
+        _offerings!.current ??
         (_offerings!.all.isNotEmpty ? _offerings!.all.values.first : null);
   }
 
@@ -122,6 +125,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
         (p) =>
             p.packageType == PackageType.annual ||
             p.identifier == SubscriptionConstants.annualPackageId ||
+            p.identifier == SubscriptionConstants.annualPromoProductId ||
             p.storeProduct.identifier == SubscriptionConstants.annualProductId ||
             p.storeProduct.identifier == SubscriptionConstants.annualPromoProductId ||
             p.storeProduct.identifier == SubscriptionConstants.legacyAnnualProductId ||
@@ -143,6 +147,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
         (p) =>
             p.packageType == PackageType.monthly ||
             p.identifier == SubscriptionConstants.monthlyPackageId ||
+            p.identifier == SubscriptionConstants.monthlyPromoProductId ||
             p.storeProduct.identifier == SubscriptionConstants.monthlyProductId ||
             p.storeProduct.identifier == SubscriptionConstants.monthlyPromoProductId ||
             p.storeProduct.identifier == SubscriptionConstants.legacyMonthlyProductId ||
@@ -319,9 +324,13 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
     final amberColor = Colors.amber.shade600;
 
     final annualPriceStr = _annualPackage?.storeProduct.priceString ??
-        SubscriptionConstants.annualDisplayPrice;
+        (_isDiscountActive
+            ? SubscriptionConstants.offerAnnualDisplayPrice
+            : SubscriptionConstants.annualDisplayPrice);
     final monthlyPriceStr = _monthlyPackage?.storeProduct.priceString ??
-        SubscriptionConstants.monthlyDisplayPrice;
+        (_isDiscountActive
+            ? SubscriptionConstants.offerMonthlyDisplayPrice
+            : SubscriptionConstants.monthlyDisplayPrice);
 
     Widget content = SingleChildScrollView(
       padding: EdgeInsets.only(
@@ -500,13 +509,15 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                     badge: _isDiscountActive ? "3 MONTHS FREE" : "SAVE 33%",
                     badgeColor: Colors.tealAccent.shade700,
                     isRecommended: true,
-                    strikeThroughPrice: "\$5.99",
-                    priceMain: SubscriptionConstants.annualMonthlyEquivalent,
+                    strikeThroughPrice: "\$3.99",
+                    priceMain: _isDiscountActive
+                        ? SubscriptionConstants.offerAnnualMonthlyEquivalent
+                        : SubscriptionConstants.annualMonthlyEquivalent,
                     priceSub: "/mo",
                     billingPeriod: "Billed $annualPriceStr / year",
                     promoNote: _isDiscountActive
                         ? "Pay for 9 mos, get 12 · 90 days on us"
-                        : "Best value overall · Save \$24/yr",
+                        : "Best value overall · Save \$12/yr",
                     isSelected: _selectedPlan == PaywallPlanType.annual,
                     accent: accent,
                     textPrimary: textPrimary,
@@ -520,15 +531,15 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                   child: _buildPlanOptionCard(
                     plan: PaywallPlanType.monthly,
                     title: "Monthly",
-                    badge: _isDiscountActive ? "1 MONTH FREE" : "FLEXIBLE",
+                    badge: _isDiscountActive ? "FIRST MONTH OFF" : "FLEXIBLE",
                     badgeColor: amberColor,
                     isRecommended: false,
-                    strikeThroughPrice: null,
+                    strikeThroughPrice: _isDiscountActive ? "\$3.99" : null,
                     priceMain: monthlyPriceStr,
                     priceSub: "/mo",
                     billingPeriod: "Billed monthly",
                     promoNote: _isDiscountActive
-                        ? "First month on us, then $monthlyPriceStr/mo"
+                        ? "First month \$2.99, then \$3.99/mo"
                         : "Flexible · Cancel anytime",
                     isSelected: _selectedPlan == PaywallPlanType.monthly,
                     accent: accent,
@@ -620,7 +631,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                             _isDiscountActive
                                 ? (_selectedPlan == PaywallPlanType.annual
                                     ? "Claim 3 Months Free & Upgrade"
-                                    : "Claim 1 Month Free & Upgrade")
+                                    : "Claim Offer & Upgrade")
                                 : (_selectedPlan == PaywallPlanType.annual
                                     ? "Upgrade to Annual (Save 33%)"
                                     : "Upgrade to Monthly"),

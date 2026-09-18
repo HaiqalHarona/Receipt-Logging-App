@@ -431,7 +431,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
-                                        "\$3.99",
+                                        SubscriptionConstants.offerAnnualMonthlyEquivalent,
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -500,7 +500,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                               BorderRadius.circular(4),
                                         ),
                                         child: Text(
-                                          "1 MONTH FREE",
+                                          "FIRST MONTH OFF",
                                           style: TextStyle(
                                             fontSize: 8,
                                             fontWeight: FontWeight.bold,
@@ -517,7 +517,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
-                                        "\$5.99",
+                                        SubscriptionConstants.offerMonthlyDisplayPrice,
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,

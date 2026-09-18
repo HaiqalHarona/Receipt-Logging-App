@@ -66,7 +66,7 @@ void main() {
       // Dual interactive preview cards
       expect(find.text('3 MONTHS FREE'), findsOneWidget);
       expect(find.text('Annual · Save 33%'), findsOneWidget);
-      expect(find.text('1 MONTH FREE'), findsOneWidget);
+      expect(find.text('FIRST MONTH OFF'), findsOneWidget);
       expect(find.text('Monthly Plan'), findsOneWidget);
 
       // Primary CTA and dismiss button
@@ -106,8 +106,8 @@ void main() {
 
       // Annual plan recommended badge
       expect(find.text('MOST POPULAR · BEST VALUE'), findsOneWidget);
-      expect(find.text('\$3.99'), findsOneWidget);
-      expect(find.text('\$5.99'), findsNWidgets(2)); // Monthly price + Annual strikethrough
+      expect(find.text('\$3.00'), findsOneWidget);
+      expect(find.text('\$3.99'), findsNWidgets(2)); // Monthly price + Annual strikethrough
 
       // Initial CTA button defaults to Annual
       expect(find.text('Upgrade to Annual (Save 33%)'), findsOneWidget);
