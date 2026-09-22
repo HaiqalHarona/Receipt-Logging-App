@@ -254,7 +254,6 @@ To allow in-app APK installation on Android 8.0+ (Oreo through Android 15), the 
 <!-- android/app/src/main/AndroidManifest.xml -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.CAMERA" />
 </manifest>
 ```
