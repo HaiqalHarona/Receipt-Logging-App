@@ -235,28 +235,32 @@ class ScanBatchController extends ChangeNotifier {
     String pendingEvent = '';
     String pendingData = '';
 
-    _sseSubscription = stream.listen(
-      (chunk) {
-        // SSE is newline-delimited. Split chunk on newlines and process each line.
-        for (final rawLine in chunk.split('\n')) {
-          final line = rawLine.trimRight();
+    _sseSubscription = stream
+        .transform(const LineSplitter())
+        .listen(
+      (line) {
+        final trimmed = line.trimRight();
 
-          if (line.startsWith('event:')) {
-            pendingEvent = line.substring(6).trim();
-          } else if (line.startsWith('data:')) {
-            pendingData = line.substring(5).trim();
-          } else if (line.startsWith(':')) {
-            // keep-alive comment — ignore
-          } else if (line.isEmpty && pendingEvent.isNotEmpty) {
-            _handleSseEvent(
-              event: pendingEvent,
-              data: pendingData,
-              batchId: batchId,
-              total: total,
-            );
-            pendingEvent = '';
-            pendingData = '';
+        if (trimmed.startsWith('event:')) {
+          pendingEvent = trimmed.substring(6).trim();
+        } else if (trimmed.startsWith('data:')) {
+          final content = trimmed.length > 5 ? trimmed.substring(5).trim() : '';
+          if (pendingData.isEmpty) {
+            pendingData = content;
+          } else {
+            pendingData += '\n$content';
           }
+        } else if (trimmed.startsWith(':')) {
+          // keep-alive comment — ignore
+        } else if (trimmed.isEmpty && pendingEvent.isNotEmpty) {
+          _handleSseEvent(
+            event: pendingEvent,
+            data: pendingData,
+            batchId: batchId,
+            total: total,
+          );
+          pendingEvent = '';
+          pendingData = '';
         }
       },
       onError: (Object e) {
@@ -371,9 +375,9 @@ class ScanBatchController extends ChangeNotifier {
             },
           );
         }
-      } catch (e) {
+      } catch (e, st) {
         AppLogger.error(
-            'ScanBatch', 'Failed to parse batch_complete payload', e);
+            'ScanBatch', 'Failed to parse batch_complete payload: $e\nPayload was: $data', e, st);
         _completedReceipts = [];
         notifyListeners();
         _showError('Scan completed but results could not be read.',
