@@ -30,6 +30,8 @@ import '../../../../cloud/services/quota_service.dart';
 import '../../subscription/views/premium_paywall_sheet.dart';
 import '../../subscription/widgets/downgrade_popup.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../cloud/services/subscription_service.dart';
 
 class UserSettingsScreen extends StatefulWidget {
   final bool highlightPlan;
@@ -43,7 +45,8 @@ class UserSettingsScreen extends StatefulWidget {
   State<UserSettingsScreen> createState() => _UserSettingsScreenState();
 }
 
-class _UserSettingsScreenState extends State<UserSettingsScreen> {
+class _UserSettingsScreenState extends State<UserSettingsScreen>
+    with WidgetsBindingObserver {
   UserRecordDto? _profile;
   Future<File?>? _avatarFuture;
   bool _isLoading = true;
@@ -65,6 +68,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     AppLogger.info('UI', 'UserSettingsScreen initialized');
     _profile = AuthService.instance.cachedProfile;
     _isLoading = _profile == null;
@@ -95,11 +99,25 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _highlightTimer?.cancel();
     QuotaService.instance.removeListener(_onQuotaUpdated);
     LocalImageCacheService.instance.removeListener(_onAvatarUpdated);
     SyncCoordinator.instance.removeListener(_onSyncCoordinatorUpdated);
     super.dispose();
+  }
+
+  @override
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.resumed && mounted) {
+      AppLogger.info(
+          'UI', 'App resumed in UserSettingsScreen; checking subscription entitlements');
+      await SubscriptionService.instance.checkAndSyncEntitlements();
+      await _loadProfile();
+      if (mounted) {
+        QuotaService.instance.refreshQuota();
+      }
+    }
   }
 
   void _onSyncCoordinatorUpdated() {
@@ -3032,6 +3050,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
     final amberColor = Colors.amber.shade500;
 
+    final resetAtUtc = quotaSvc.status?.resetAt;
+    final effectiveResetUtc = resetAtUtc ??
+        () {
+          final now = DateTime.now().toUtc();
+          return DateTime.utc(now.year, now.month, now.day + 1);
+        }();
+    final localResetTimeStr =
+        DateFormat('HH:mm').format(effectiveResetUtc.toLocal());
+
     return NeumorphicCardWidget(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -3068,54 +3095,46 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                tierName,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              // Countdown pill component directly beside Tier Name
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 7, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: controller.currentBaseColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color:
-                                        textSecondary.withValues(alpha: 0.15),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.schedule_rounded,
-                                        size: 11, color: textSecondary),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      quotaSvc.liveResetCountdown,
-                                      style: TextStyle(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: textPrimary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
                           Text(
-                            "Resets 00:00 UTC",
+                            tierName,
                             style: TextStyle(
-                              fontSize: 11,
-                              color: textSecondary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          // Countdown pill component directly below Tier Name with local reset tooltip
+                          Tooltip(
+                            message: "Quota resets at $localResetTimeStr",
+                            triggerMode: TooltipTriggerMode.tap,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: controller.currentBaseColor,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color:
+                                      textSecondary.withValues(alpha: 0.15),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.schedule_rounded,
+                                      size: 11, color: textSecondary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    quotaSvc.liveResetCountdown,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -3164,6 +3183,47 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
                             fontSize: 11.5,
                             fontWeight: FontWeight.bold,
                             color: amberColor,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else if (tierName == 'PREMIUM' && !isTrialActive) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _onManageTap(context),
+                  child: Neumorphic(
+                    style: NeumorphicStyle(
+                      depth: 3,
+                      intensity: 0.9,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(10),
+                      ),
+                      color: controller.currentBaseColor,
+                      border: NeumorphicBorder(
+                        color: textSecondary.withValues(alpha: 0.35),
+                        width: 1.2,
+                      ),
+                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.settings_rounded,
+                          size: 14,
+                          color: textSecondary,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          "Manage",
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: textSecondary,
                             letterSpacing: 0.2,
                           ),
                         ),
@@ -3335,6 +3395,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       await AuthService.instance.getOrFetchProfile(force: true);
       await _loadProfile();
     }
+  }
+
+  Future<void> _onManageTap(BuildContext context) async {
+    AppLogger.info('UI', 'User tapped Manage subscription');
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _ManageSubscriptionSheet(),
+    );
   }
 
 
@@ -3889,6 +3961,197 @@ class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Bottom sheet shown before launching Play Store subscription management.
+/// Informs user that cancellation takes effect at cycle end, and plan changes defer.
+class _ManageSubscriptionSheet extends StatelessWidget {
+  const _ManageSubscriptionSheet();
+
+  static const _playStoreUrl =
+      'https://play.google.com/store/account/subscriptions';
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppThemeController.instance;
+    final textPrimary = controller.textColor;
+    final textSecondary = controller.secondaryTextColor;
+    final accent = controller.accentColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: NeumorphicTheme.baseColor(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: textSecondary.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Header Icon
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.workspace_premium_rounded,
+                  color: accent, size: 28),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Title
+          Text(
+            "Manage Your Subscription",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Info bullets
+          _ManageSubscriptionInfoRow(
+            icon: Icons.cancel_outlined,
+            iconColor: Colors.redAccent,
+            text:
+                "Cancel anytime — your current plan continues until the end of your billing period.",
+            textSecondary: textSecondary,
+          ),
+          const SizedBox(height: 10),
+          _ManageSubscriptionInfoRow(
+            icon: Icons.swap_vert_rounded,
+            iconColor: Colors.tealAccent.shade700,
+            text:
+                "Switch plans — the new plan activates automatically when your current period ends.",
+            textSecondary: textSecondary,
+          ),
+          const SizedBox(height: 10),
+          _ManageSubscriptionInfoRow(
+            icon: Icons.store_rounded,
+            iconColor: accent,
+            text:
+                "All billing is managed securely. The app updates your plan status automatically.",
+            textSecondary: textSecondary,
+          ),
+          const SizedBox(height: 22),
+
+          // Action CTA
+          SizedBox(
+            height: 50,
+            child: NeumorphicButtonWidget(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                final uri = Uri.parse(_playStoreUrl);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } else {
+                  if (context.mounted) {
+                    AppSnackBar.show(
+                      context,
+                      message:
+                          'Could not open Google Play. Please manage your subscription directly in the Play Store app.',
+                      isError: true,
+                    );
+                  }
+                }
+              },
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.open_in_new_rounded,
+                      color: Colors.white, size: 17),
+                  SizedBox(width: 8),
+                  Text(
+                    "Manage on Google Play",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Dismiss Button
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                "Dismiss",
+                style: TextStyle(fontSize: 13, color: textSecondary),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManageSubscriptionInfoRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String text;
+  final Color textSecondary;
+
+  const _ManageSubscriptionInfoRow({
+    required this.icon,
+    required this.iconColor,
+    required this.text,
+    required this.textSecondary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(5),
+          margin: const EdgeInsets.only(top: 1),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 15, color: iconColor),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style:
+                TextStyle(fontSize: 12.5, color: textSecondary, height: 1.35),
+          ),
+        ),
+      ],
     );
   }
 }

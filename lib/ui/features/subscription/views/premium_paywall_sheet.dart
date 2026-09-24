@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
@@ -65,6 +66,17 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
   bool _isLoadingOfferings = true;
   bool _isPurchasing = false;
   bool _isRestoring = false;
+  int _offeringsRetryCount = 0;
+  static const int _maxOfferingsRetries = 3;
+  static const Duration _offeringsRetryDelay = Duration(seconds: 5);
+
+  Timer? _offeringsRetryTimer;
+
+  /// True only when RC has successfully delivered both packages.
+  bool get _isProductsReady =>
+      !_isLoadingOfferings &&
+      _annualPackage != null &&
+      _monthlyPackage != null;
 
   @override
   void initState() {
@@ -72,6 +84,12 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
     _selectedPlan = widget.initialPlan;
     _isLoadingOfferings = true;
     _loadOfferingsAndStatus();
+  }
+
+  @override
+  void dispose() {
+    _offeringsRetryTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadOfferingsAndStatus() async {
@@ -93,6 +111,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
           _isLoadingOfferings = false;
         });
       }
+      _scheduleOfferingsRetryIfNeeded();
       AppLogger.info(
         'Paywall',
         'Offerings loaded: current=${offerings?.current?.identifier}, '
@@ -104,7 +123,29 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
       if (mounted) {
         setState(() => _isLoadingOfferings = false);
       }
+      _scheduleOfferingsRetryIfNeeded();
     }
+  }
+
+  void _scheduleOfferingsRetryIfNeeded() {
+    if (_isProductsReady || _offeringsRetryCount >= _maxOfferingsRetries) return;
+
+    _offeringsRetryTimer?.cancel();
+    _offeringsRetryTimer = Timer(_offeringsRetryDelay, () async {
+      if (!mounted || _isProductsReady) return;
+      _offeringsRetryCount++;
+      try {
+        final offerings = await SubscriptionService.instance.getOfferings();
+        if (mounted) {
+          setState(() {
+            _offerings = offerings;
+          });
+        }
+      } catch (_) {}
+      if (mounted) {
+        _scheduleOfferingsRetryIfNeeded();
+      }
+    });
   }
 
   Offering? get _currentOffering {
@@ -163,6 +204,17 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
     return _selectedPlan == PaywallPlanType.annual
         ? _annualPackage
         : _monthlyPackage;
+  }
+
+  /// Monthly equivalent of the annual plan price, derived from RC data.
+  /// Returns null when the annual package is not yet available.
+  String? get _annualMonthlyEquivalentStr {
+    final product = _annualPackage?.storeProduct;
+    if (product == null) return null;
+    final double monthly = product.price / 12;
+    final symbol = product.priceString.replaceAll(RegExp(r'[\d.,\s]'), '').trim();
+    final prefix = symbol.isNotEmpty ? symbol : r'$';
+    return '$prefix${monthly.toStringAsFixed(2)}';
   }
 
   bool get _isDiscountActive {
@@ -323,14 +375,8 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
     final accent = controller.accentColor;
     final amberColor = Colors.amber.shade600;
 
-    final annualPriceStr = _annualPackage?.storeProduct.priceString ??
-        (_isDiscountActive
-            ? SubscriptionConstants.offerAnnualDisplayPrice
-            : SubscriptionConstants.annualDisplayPrice);
-    final monthlyPriceStr = _monthlyPackage?.storeProduct.priceString ??
-        (_isDiscountActive
-            ? SubscriptionConstants.offerMonthlyDisplayPrice
-            : SubscriptionConstants.monthlyDisplayPrice);
+    final annualPriceStr = _annualPackage?.storeProduct.priceString;
+    final monthlyPriceStr = _monthlyPackage?.storeProduct.priceString;
 
     Widget content = SingleChildScrollView(
       padding: EdgeInsets.only(
@@ -504,17 +550,18 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                 // Annual Plan Option (Dominant & Pre-selected)
                 Expanded(
                   child: _buildPlanOptionCard(
+                    isEnabled: _isProductsReady,
                     plan: PaywallPlanType.annual,
                     title: "Annual",
                     badge: _isDiscountActive ? "3 MONTHS FREE" : "SAVE 33%",
                     badgeColor: Colors.tealAccent.shade700,
                     isRecommended: true,
-                    strikeThroughPrice: "\$3.99",
-                    priceMain: _isDiscountActive
-                        ? SubscriptionConstants.offerAnnualMonthlyEquivalent
-                        : SubscriptionConstants.annualMonthlyEquivalent,
+                    strikeThroughPrice: null,
+                    priceMain: _annualMonthlyEquivalentStr ?? '—',
                     priceSub: "/mo",
-                    billingPeriod: "Billed $annualPriceStr / year",
+                    billingPeriod: annualPriceStr != null
+                        ? "Billed $annualPriceStr / year"
+                        : "Billed annually",
                     promoNote: _isDiscountActive
                         ? "Pay for 9 mos, get 12 · 90 days on us"
                         : "Best value overall · Save \$12/yr",
@@ -529,13 +576,14 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                 // Monthly Plan Option
                 Expanded(
                   child: _buildPlanOptionCard(
+                    isEnabled: _isProductsReady,
                     plan: PaywallPlanType.monthly,
                     title: "Monthly",
                     badge: _isDiscountActive ? "FIRST MONTH OFF" : "FLEXIBLE",
                     badgeColor: amberColor,
                     isRecommended: false,
-                    strikeThroughPrice: _isDiscountActive ? "\$3.99" : null,
-                    priceMain: monthlyPriceStr,
+                    strikeThroughPrice: null,
+                    priceMain: monthlyPriceStr ?? '—',
                     priceSub: "/mo",
                     billingPeriod: "Billed monthly",
                     promoNote: _isDiscountActive
@@ -613,7 +661,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
           SizedBox(
             height: 52,
             child: NeumorphicButtonWidget(
-              onPressed: _isPurchasing ? null : _onPurchase,
+              onPressed: (_isPurchasing || !_isProductsReady) ? null : _onPurchase,
               child: Center(
                 child: _isPurchasing
                     ? const SizedBox(
@@ -628,13 +676,15 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            _isDiscountActive
-                                ? (_selectedPlan == PaywallPlanType.annual
-                                    ? "Claim 3 Months Free & Upgrade"
-                                    : "Claim Offer & Upgrade")
-                                : (_selectedPlan == PaywallPlanType.annual
-                                    ? "Upgrade to Annual (Save 33%)"
-                                    : "Upgrade to Monthly"),
+                            !_isProductsReady
+                                ? "Loading prices…"
+                                : (_isDiscountActive
+                                    ? (_selectedPlan == PaywallPlanType.annual
+                                        ? "Claim 3 Months Free & Upgrade"
+                                        : "Claim Offer & Upgrade")
+                                    : (_selectedPlan == PaywallPlanType.annual
+                                        ? "Upgrade to Annual (Save 33%)"
+                                        : "Upgrade to Monthly")),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 15.5,
@@ -642,12 +692,14 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                               letterSpacing: 0.2,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
+                          if (_isProductsReady) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ],
                         ],
                       ),
               ),
@@ -793,9 +845,10 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
     required Color textPrimary,
     required Color textSecondary,
     required AppThemeController controller,
+    bool isEnabled = true,
   }) {
-    return GestureDetector(
-      onTap: () => setState(() => _selectedPlan = plan),
+    final card = GestureDetector(
+      onTap: isEnabled ? () => setState(() => _selectedPlan = plan) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
@@ -822,7 +875,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
           children: [
             if (isRecommended)
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                height: 22,
                 decoration: BoxDecoration(
                   color: isSelected
                       ? accent
@@ -830,18 +883,19 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(14)),
                 ),
-                child: Center(
-                  child: Text(
-                    "MOST POPULAR · BEST VALUE",
-                    style: TextStyle(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                      color: isSelected ? Colors.white : textSecondary,
-                    ),
+                alignment: Alignment.center,
+                child: Text(
+                  "MOST POPULAR · BEST VALUE",
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    color: isSelected ? Colors.white : textSecondary,
                   ),
                 ),
-              ),
+              )
+            else
+              const SizedBox(height: 22),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -957,6 +1011,18 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
       ),
     ),
   );
+
+    if (!isEnabled) {
+      return IgnorePointer(
+        ignoring: true,
+        child: Opacity(
+          opacity: 0.5,
+          child: card,
+        ),
+      );
+    }
+
+    return card;
   }
 
   Widget _buildBenefitItem({

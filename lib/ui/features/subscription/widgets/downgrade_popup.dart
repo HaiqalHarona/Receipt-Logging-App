@@ -431,7 +431,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
-                                        SubscriptionConstants.offerAnnualMonthlyEquivalent,
+                                        '—',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -517,7 +517,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
-                                        SubscriptionConstants.offerMonthlyDisplayPrice,
+                                        r'$1.99',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,

@@ -4,8 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reciept_logging/ui/features/settings/views/user_settings_screen.dart';
+import 'package:intl/intl.dart';
 import 'package:reciept_logging/cloud/services/auth_service.dart';
 import 'package:reciept_logging/cloud/models/user_models.dart';
+import 'package:reciept_logging/cloud/services/quota_service.dart';
+import 'package:reciept_logging/cloud/models/quota_models.dart';
 import 'package:reciept_logging/services/sync_coordinator.dart';
 import 'package:reciept_logging/ui/core/theme/app_theme.dart';
 
@@ -302,13 +305,12 @@ void main() {
 
       // Upgrade bottom sheet is opened with Annual plan pre-selected by default
       expect(find.text('SancFund Premium'), findsOneWidget);
-      expect(find.text('Upgrade to Annual (Save 33%)'), findsOneWidget);
+      expect(find.text('Loading prices…'), findsOneWidget);
       expect(find.text('50 Daily Receipt Scans'), findsOneWidget);
       expect(find.text('50,000 AI Chat Tokens'), findsOneWidget);
       expect(find.text('Priority Vision OCR Processing'), findsOneWidget);
       expect(find.text('Instant Multi-Device Cloud Sync'), findsOneWidget);
-      expect(find.text('\$3.99'), findsOneWidget);
-      expect(find.text('\$5.99'), findsNWidgets(2));
+      expect(find.text(r'$3.99'), findsNothing);
     });
 
     testWidgets(
@@ -447,6 +449,111 @@ void main() {
 
       // Advance timer past 4-second highlight animation
       await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets(
+        'Plan & Usage section renders Manage button for paid PREMIUM tier; no Upgrade button',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-premium-paid-1',
+          username: 'PremiumPaidUser',
+          email: 'premium-paid@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          tier: 'premium',
+        ),
+        userToken: 'mock-token-premium-paid',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // PLAN & USAGE section
+      expect(find.text('PLAN & USAGE'), findsOneWidget);
+      expect(find.text('PREMIUM'), findsAtLeastNWidgets(1));
+
+      // Manage button present, Upgrade button absent
+      expect(find.text('Manage'), findsOneWidget);
+      expect(find.text('Upgrade'), findsNothing);
+
+      // Tap Manage button to open bottom sheet
+      await tester.tap(find.text('Manage'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('Manage Your Subscription'), findsOneWidget);
+      expect(find.text('Manage on Google Play'), findsOneWidget);
+      expect(find.text('Dismiss'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Plan & Usage displays countdown timer below tier name with tap tooltip showing local reset time and removes Resets 00:00 UTC',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final fixedResetUtc = DateTime.utc(2026, 9, 25, 0, 0);
+      final expectedLocalTime =
+          DateFormat('HH:mm').format(fixedResetUtc.toLocal());
+
+      QuotaService.instance.setStatusForTesting(
+        QuotaStatusDto(
+          tier: 'free',
+          scan: const QuotaMetricDto(
+              used: 2, limit: 10, remaining: 8, isExhausted: false),
+          chat: const QuotaMetricDto(
+              used: 1000, limit: 10000, remaining: 9000, isExhausted: false),
+          resetAt: fixedResetUtc,
+          secondsToReset: 3600,
+          resetCountdown: '1h 0m',
+        ),
+      );
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-free-1',
+          username: 'FreeUser',
+          email: 'free@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          tier: 'free',
+        ),
+        userToken: 'mock-token-free',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const UserSettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // PLAN & USAGE section rendered
+      expect(find.text('PLAN & USAGE'), findsOneWidget);
+
+      // 'Resets 00:00 UTC' text is no longer rendered
+      expect(find.text('Resets 00:00 UTC'), findsNothing);
+
+      // Tooltip is present with expected local reset time
+      final tooltipFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is Tooltip &&
+            widget.message == 'Quota resets at $expectedLocalTime',
+      );
+      expect(tooltipFinder, findsOneWidget);
+
+      // Verify the Tooltip wraps the countdown timer text
+      expect(
+        find.descendant(
+          of: tooltipFinder,
+          matching: find.text(QuotaService.instance.liveResetCountdown),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }
