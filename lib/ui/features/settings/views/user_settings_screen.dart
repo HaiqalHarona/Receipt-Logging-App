@@ -3248,11 +3248,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.stars_rounded, size: 16, color: Colors.amber),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       "14-Day Trial Active · Ends on ${DateFormat.yMMMd().format(trialEnd)}",
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,

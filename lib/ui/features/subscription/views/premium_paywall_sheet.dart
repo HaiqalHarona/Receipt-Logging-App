@@ -206,15 +206,61 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
         : _monthlyPackage;
   }
 
-  /// Monthly equivalent of the annual plan price, derived from RC data.
-  /// Returns null when the annual package is not yet available.
-  String? get _annualMonthlyEquivalentStr {
-    final product = _annualPackage?.storeProduct;
-    if (product == null) return null;
-    final double monthly = product.price / 12;
-    final symbol = product.priceString.replaceAll(RegExp(r'[\d.,\s]'), '').trim();
-    final prefix = symbol.isNotEmpty ? symbol : r'$';
-    return '$prefix${monthly.toStringAsFixed(2)}';
+  /// USD Display string for Annual monthly-equivalent price.
+  String get _annualPriceMainDisplay {
+    if (!_isProductsReady) return '—';
+    return _isDiscountActive ? r'$1.50*' : r'$2.00*';
+  }
+
+  /// USD Display string for Monthly price.
+  String get _monthlyPriceMainDisplay {
+    if (!_isProductsReady) return '—';
+    return _isDiscountActive ? r'$1.99*' : r'$2.99*';
+  }
+
+  /// Strikethrough price for Annual card.
+  String? get _annualStrikeThroughPrice {
+    if (!_isProductsReady) return null;
+    return _isDiscountActive ? r'$2.00' : r'$2.99';
+  }
+
+  /// Strikethrough price for Monthly card (shown only during discount mode).
+  String? get _monthlyStrikeThroughPrice {
+    if (!_isProductsReady) return null;
+    return _isDiscountActive ? r'$2.99' : null;
+  }
+
+  /// Billing period subtext for Annual card.
+  String get _annualBillingPeriodText {
+    if (!_isProductsReady) return "Billed annually";
+    return _isDiscountActive
+        ? "Billed \$17.99 for 1st year"
+        : "Billed \$23.99 / year";
+  }
+
+  /// Calculated annual discount percentage relative to monthly billing term.
+  /// Example: ((2.99 - (23.99 / 12)) / 2.99 * 100) = 33%
+  int? get _savePercent {
+    if (!_isProductsReady) return null;
+    return 33;
+  }
+
+  /// Badge text for the Annual plan card.
+  String get _annualBadgeText {
+    if (_isDiscountActive) return "3 MONTHS FREE";
+    return _isProductsReady ? "SAVE 33%" : "BEST VALUE";
+  }
+
+  /// Subtext note for the Annual plan card.
+  String get _annualPromoNote {
+    if (_isDiscountActive) return "Pay for 9 mos, get 12 · 90 days on us ;)";
+    return _isProductsReady ? "Best Value · Save 33%" : "Best value overall";
+  }
+
+  /// Subtext note for the Monthly plan card.
+  String get _monthlyPromoNote {
+    if (!_isDiscountActive) return "Flexible · Cancel anytime";
+    return "First month \$1.99, then \$2.99/mo";
   }
 
   bool get _isDiscountActive {
@@ -375,9 +421,6 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
     final accent = controller.accentColor;
     final amberColor = Colors.amber.shade600;
 
-    final annualPriceStr = _annualPackage?.storeProduct.priceString;
-    final monthlyPriceStr = _monthlyPackage?.storeProduct.priceString;
-
     Widget content = SingleChildScrollView(
       padding: EdgeInsets.only(
         left: 20,
@@ -430,7 +473,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                     Row(
                       children: [
                         Text(
-                          "SancFund Premium",
+                          "Premium",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -519,7 +562,7 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Special 7-Day Discount Active",
+                          "Special 7-Day Discount",
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -553,18 +596,14 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                     isEnabled: _isProductsReady,
                     plan: PaywallPlanType.annual,
                     title: "Annual",
-                    badge: _isDiscountActive ? "3 MONTHS FREE" : "SAVE 33%",
+                    badge: _annualBadgeText,
                     badgeColor: Colors.tealAccent.shade700,
                     isRecommended: true,
-                    strikeThroughPrice: null,
-                    priceMain: _annualMonthlyEquivalentStr ?? '—',
+                    strikeThroughPrice: _annualStrikeThroughPrice,
+                    priceMain: _annualPriceMainDisplay,
                     priceSub: "/mo",
-                    billingPeriod: annualPriceStr != null
-                        ? "Billed $annualPriceStr / year"
-                        : "Billed annually",
-                    promoNote: _isDiscountActive
-                        ? "Pay for 9 mos, get 12 · 90 days on us"
-                        : "Best value overall · Save \$12/yr",
+                    billingPeriod: _annualBillingPeriodText,
+                    promoNote: _annualPromoNote,
                     isSelected: _selectedPlan == PaywallPlanType.annual,
                     accent: accent,
                     textPrimary: textPrimary,
@@ -582,13 +621,11 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                     badge: _isDiscountActive ? "FIRST MONTH OFF" : "FLEXIBLE",
                     badgeColor: amberColor,
                     isRecommended: false,
-                    strikeThroughPrice: null,
-                    priceMain: monthlyPriceStr ?? '—',
+                    strikeThroughPrice: _monthlyStrikeThroughPrice,
+                    priceMain: _monthlyPriceMainDisplay,
                     priceSub: "/mo",
                     billingPeriod: "Billed monthly",
-                    promoNote: _isDiscountActive
-                        ? "First month \$2.99, then \$3.99/mo"
-                        : "Flexible · Cancel anytime",
+                    promoNote: _monthlyPromoNote,
                     isSelected: _selectedPlan == PaywallPlanType.monthly,
                     accent: accent,
                     textPrimary: textPrimary,
@@ -599,7 +636,24 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Text(
+                _isDiscountActive
+                ? "* Prices shown in USD. One-time offer."
+                : "* Prices shown in USD.",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                  color: textSecondary.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // ── Premium Features List ───────────────────────────────────────
           NeumorphicCardWidget(
@@ -683,7 +737,9 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                                         ? "Claim 3 Months Free & Upgrade"
                                         : "Claim Offer & Upgrade")
                                     : (_selectedPlan == PaywallPlanType.annual
-                                        ? "Upgrade to Annual (Save 33%)"
+                                        ? (_savePercent != null
+                                            ? "Upgrade to Annual (Save $_savePercent%)"
+                                            : "Upgrade to Annual Plan")
                                         : "Upgrade to Monthly")),
                             style: const TextStyle(
                               color: Colors.white,

@@ -137,32 +137,10 @@ class DowngradeDay15Dialog extends StatelessWidget {
                 child: Container(
                   width: 64,
                   height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        accent.withValues(alpha: 0.25),
-                        amberColor.withValues(alpha: 0.15),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    border: Border.all(
-                      color: accent.withValues(alpha: 0.5),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.25),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
                   child: Icon(
-                    Icons.workspace_premium_rounded,
+                    Icons.error_outline,
                     color: amberColor,
-                    size: 32,
+                    size: 64,
                   ),
                 ),
               ),
@@ -183,10 +161,10 @@ class DowngradeDay15Dialog extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.stars_rounded, size: 14, color: amberColor),
                       const SizedBox(width: 5),
                       Text(
                         "TRIAL COMPLETED · EXCLUSIVE OFFER",
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -431,7 +409,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
-                                        '—',
+                                        r'$1.50*',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -449,7 +427,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    "Annual · Save 33%",
+                                    "Annual · 3 Months Free",
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
@@ -500,7 +478,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                               BorderRadius.circular(4),
                                         ),
                                         child: Text(
-                                          "FIRST MONTH OFF",
+                                          "1 MONTH DISCOUNT",
                                           style: TextStyle(
                                             fontSize: 8,
                                             fontWeight: FontWeight.bold,
@@ -517,7 +495,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
-                                        r'$1.99',
+                                        r'$1.99*',
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -555,6 +533,21 @@ class DowngradeDay15Dialog extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Text(
+                        "* Prices shown in USD",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                          color: textSecondary.withValues(alpha: 0.7),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -673,9 +666,7 @@ class DowngradeReminderDialog extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                isFinal
-                    ? "Final Days: $daysRemaining Left!"
-                    : "Don't Miss Out: $daysRemaining Days Left",
+                "$daysRemaining Days Left!",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 18,
@@ -685,7 +676,7 @@ class DowngradeReminderDialog extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                "Your exclusive discount on SancFund Premium is expiring soon. Get 1 month free (monthly) or 3 months free (annual) before it's gone!",
+                "Your exclusive discount on Premium is expiring soon. Get up to 3 months free before it's gone!",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,
