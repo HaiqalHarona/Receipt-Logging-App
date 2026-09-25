@@ -304,7 +304,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       // Upgrade bottom sheet is opened with Annual plan pre-selected by default
-      expect(find.text('SancFund Premium'), findsOneWidget);
+      expect(find.text('Premium'), findsOneWidget);
       expect(find.text('Loading prices…'), findsOneWidget);
       expect(find.text('50 Daily Receipt Scans'), findsOneWidget);
       expect(find.text('50,000 AI Chat Tokens'), findsOneWidget);

@@ -134,7 +134,7 @@ class DowngradeDay15Dialog extends StatelessWidget {
             children: [
               // ── Header Visual Badge ─────────────────────────────────────
               Center(
-                child: Container(
+                child: SizedBox(
                   width: 64,
                   height: 64,
                   child: Icon(

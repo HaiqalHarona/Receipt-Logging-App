@@ -1029,19 +1029,9 @@ class SpendingNotificationService extends ChangeNotifier {
   }
 
   Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
-    if (!_isTestEnvironment && !kIsWeb && Platform.isAndroid) {
-      try {
-        final androidImpl = _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>();
-        final canExact =
-            await androidImpl?.canScheduleExactNotifications() ?? true;
-        if (!canExact) {
-          return AndroidScheduleMode.inexactAllowWhileIdle;
-        }
-      } catch (_) {}
-    }
-    return AndroidScheduleMode.exactAllowWhileIdle;
+    // In compliance with Google Play Store exact alarm policy, standard notifications
+    // use inexact scheduling which requires zero declaration forms or special permissions.
+    return AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
 
