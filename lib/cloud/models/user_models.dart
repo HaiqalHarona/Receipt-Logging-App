@@ -77,6 +77,10 @@ class UserRecordDto {
   bool get isEmailVerified =>
       emailVerifiedAt != null && emailVerifiedAt!.isNotEmpty;
 
+  /// Whether the user's mobile number has been verified.
+  bool get isMobileVerified =>
+      mobileVerifiedAt != null && mobileVerifiedAt!.isNotEmpty;
+
   factory UserRecordDto.fromJson(Map<String, dynamic> json) {
     return UserRecordDto(
       id: (json['id'] as String?) ?? '',

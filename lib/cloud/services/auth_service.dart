@@ -327,6 +327,30 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Updates user email address via `PATCH /user/me` and updates local cache.
+  Future<UserRecordDto> updateEmail(String newEmail) async {
+    if (!isLoggedIn || _username == null) {
+      throw const ApiException('User session is not active.', statusCode: 401);
+    }
+
+    final updated = await BackendApiClient.instance.updateUserProfile(
+      username: _username,
+      email: newEmail,
+    );
+
+    _cachedProfile = updated;
+    _email = updated.email;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyEmail, updated.email);
+    } catch (_) {}
+
+    await _persistProfile(updated, syncPreferences: false);
+    notifyListeners();
+    AppLogger.info('AuthService', 'Email updated for user: $_username -> $newEmail');
+    return updated;
+  }
+
   /// Changes user account password via authenticated POST /user/change-password.
   /// Updates local session token and password_changed_at cooldown timestamp on success without logging the user out.
   Future<bool> changePassword({

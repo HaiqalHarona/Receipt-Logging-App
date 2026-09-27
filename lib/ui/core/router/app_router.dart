@@ -16,6 +16,7 @@ import '../../features/auth/views/reset_password_screen.dart';
 import '../../features/settings/views/customization_screen.dart';
 import '../../features/settings/views/db_viewer_screen.dart';
 import '../../features/settings/views/user_settings_screen.dart';
+import '../../features/settings/views/contact_security_screen.dart';
 import '../../features/scanner/views/scanner_screen.dart';
 import '../../features/ai_assistant/views/chat_detail_screen.dart';
 import '../../features/onboarding/views/onboarding_screen.dart';
@@ -71,7 +72,7 @@ final GoRouter appRouter = GoRouter(
     if (isLoggedIn && isAuthRoute) {
       return '/dashboard';
     }
-    if (!isLoggedIn && (path == '/user-settings' || path == '/paywall')) {
+    if (!isLoggedIn && (path.startsWith('/user-settings') || path == '/paywall')) {
       return '/auth';
     }
     return null;
@@ -213,6 +214,11 @@ final GoRouter appRouter = GoRouter(
           child: UserSettingsScreen(highlightPlan: highlightPlan),
         );
       },
+    ),
+    GoRoute(
+      path: '/user-settings/contact-security',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const ContactSecurityScreen()),
     ),
     GoRoute(
       path: '/scanner',
