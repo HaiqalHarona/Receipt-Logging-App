@@ -16,6 +16,8 @@ import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/api/api_config.dart';
+import '../../../../cloud/services/google_auth_service.dart';
+import '../widgets/google_sign_in_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -34,6 +36,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _isTrialEligible = true;
 
   // Inline field-level error states
@@ -237,7 +240,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       // Navigate to user settings and highlight Plan & Usage widget if trial was redeemed, else dashboard
       if (isTrial) {
-        context.go('/user-settings?highlight=plan');
+        context.go('/dashboard');
+        context.push('/user-settings?highlight=plan');
       } else {
         context.go('/dashboard');
       }
@@ -761,7 +765,52 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
+
+                // ── Or Divider ───────────────────────────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        "or sign up with",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── Google Sign Up Button ────────────────────────────────────
+                GoogleSignInButton(
+                  isLoading: _isGoogleLoading,
+                  label: "Sign up with Google",
+                  onPressed: () {
+                    GoogleAuthService.instance.signInWithGoogle(
+                      context,
+                      onLoadingChanged: (loading) {
+                        if (mounted) setState(() => _isGoogleLoading = loading);
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
 
                 // ── Legal Terms Disclaimer ──────────────────────────────────
                 Center(

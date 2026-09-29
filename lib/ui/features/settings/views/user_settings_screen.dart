@@ -728,28 +728,40 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
         trialEnd != null &&
         DateTime.now().toUtc().isBefore(trialEnd.toUtc());
 
-    return NeumorphicBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Top Navigation Bar
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    NeumorphicIconBadge(
-                      icon: Icons.arrow_back_rounded,
-                      iconSize: 20,
-                      onTap: () {
-                        AppLogger.info(
-                            'UI', 'User tapped Back on UserSettingsScreen');
-                        context.pop();
-                      },
-                    ),
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          AppLogger.info('UI', 'UserSettingsScreen PopScope handled back -> go /dashboard');
+          context.go('/dashboard');
+        }
+      },
+      child: NeumorphicBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Top Navigation Bar
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      NeumorphicIconBadge(
+                        icon: Icons.arrow_back_rounded,
+                        iconSize: 20,
+                        onTap: () {
+                          AppLogger.info(
+                              'UI', 'User tapped Back on UserSettingsScreen');
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/dashboard');
+                          }
+                        },
+                      ),
                     Text(
                       "Account & Profile",
                       style: TextStyle(
@@ -1819,8 +1831,9 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSectionHeader(String label, Color textSecondary) {
     return Padding(

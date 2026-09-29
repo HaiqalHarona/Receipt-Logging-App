@@ -62,17 +62,29 @@ class DeviceIdentityService {
     if (_isInitialized) return;
 
     try {
-      // Check if fixed development device ID is explicitly enabled via .env
-      final isFixedDevMode = dotenv.isInitialized &&
-          dotenv.maybeGet('USE_FIXED_DEVICE_ID') == 'true';
+      // Check if fixed development device ID is explicitly enabled via dart-define or .env
+      const dartDefineFixedDev =
+          bool.fromEnvironment('USE_FIXED_DEVICE_ID', defaultValue: false);
+      const dartDefineDeviceId =
+          String.fromEnvironment('FIXED_DEVICE_ID', defaultValue: '');
+      const dartDefineDeviceToken =
+          String.fromEnvironment('FIXED_DEVICE_TOKEN', defaultValue: '');
+
+      final isFixedDevMode = dartDefineFixedDev ||
+          (dotenv.isInitialized &&
+              dotenv.maybeGet('USE_FIXED_DEVICE_ID') == 'true');
 
       if (isFixedDevMode) {
-        _deviceId =
-            dotenv.maybeGet('FIXED_DEVICE_ID') ?? 'dev_fixed_debug_device_001';
-        _deviceToken = dotenv.maybeGet('FIXED_DEVICE_TOKEN') ??
-            'token_fixed_debug_secret_001';
+        _deviceId = dartDefineDeviceId.isNotEmpty
+            ? dartDefineDeviceId
+            : (dotenv.maybeGet('FIXED_DEVICE_ID') ??
+                'dev_fixed_debug_device_001');
+        _deviceToken = dartDefineDeviceToken.isNotEmpty
+            ? dartDefineDeviceToken
+            : (dotenv.maybeGet('FIXED_DEVICE_TOKEN') ??
+                'token_fixed_debug_secret_001');
         AppLogger.info('DeviceIdentity',
-            'Loaded fixed development device identity from .env: $_deviceId');
+            'Loaded fixed development device identity: $_deviceId');
       } else {
         final prefs = await SharedPreferences.getInstance();
         const uuid = Uuid();

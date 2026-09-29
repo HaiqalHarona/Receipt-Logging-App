@@ -33,6 +33,7 @@ import '../../data/repositories/conversation_repository.dart';
 import '../../data/repositories/chat_message_repository.dart';
 import 'subscription_service.dart';
 import '../../services/subscription_notification_service.dart';
+import 'google_auth_service.dart';
 
 class AuthService extends ChangeNotifier {
   AuthService._();
@@ -604,6 +605,7 @@ class AuthService extends ChangeNotifier {
       await prefs.remove(_keyMobileNumber);
       AppLogger.info('AuthService', 'Session cleared (logged out)');
       unawaited(SubscriptionService.instance.logOut());
+      unawaited(GoogleAuthService.instance.signOut());
       unawaited(QuotaService.instance.refreshQuota());
       notifyListeners();
     } catch (e, st) {

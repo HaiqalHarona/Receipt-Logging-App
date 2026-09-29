@@ -7,9 +7,18 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/api/api_config.dart';
 import '../../../core/widgets/alpha_breadcrumb_badge.dart';
+import '../../../../cloud/services/google_auth_service.dart';
+import '../widgets/google_sign_in_button.dart';
 
-class AuthScreen extends StatelessWidget {
+class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
+
+  @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  bool _isGoogleLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -243,6 +252,23 @@ class AuthScreen extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // ── Google Sign-In ────────────────────────────────
+                            GoogleSignInButton(
+                              isLoading: _isGoogleLoading,
+                              label: "Continue with Google",
+                              onPressed: () {
+                                GoogleAuthService.instance.signInWithGoogle(
+                                  context,
+                                  onLoadingChanged: (loading) {
+                                    if (mounted) {
+                                      setState(() => _isGoogleLoading = loading);
+                                    }
+                                  },
+                                );
+                              },
                             ),
                             const SizedBox(height: 24),
 

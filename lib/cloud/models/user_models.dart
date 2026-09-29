@@ -48,6 +48,7 @@ class UserRecordDto {
     required this.username,
     required this.email,
     required this.createdAt,
+    this.googleId,
     this.countryCode,
     this.mobileNumber,
     this.avatarImagePath,
@@ -62,6 +63,7 @@ class UserRecordDto {
   final String id;
   final String username;
   final String email;
+  final String? googleId;
   final String? countryCode;
   final String? mobileNumber;
   final String? avatarImagePath;
@@ -86,6 +88,7 @@ class UserRecordDto {
       id: (json['id'] as String?) ?? '',
       username: (json['username'] as String?) ?? '',
       email: (json['email'] as String?) ?? '',
+      googleId: json['google_id'] as String?,
       countryCode: json['country_code'] as String?,
       mobileNumber: json['mobile_number'] as String?,
       avatarImagePath: json['avatar_image_path'] as String?,
@@ -107,6 +110,7 @@ class UserRecordDto {
         'id': id,
         'username': username,
         'email': email,
+        if (googleId != null) 'google_id': googleId,
         if (countryCode != null) 'country_code': countryCode,
         if (mobileNumber != null) 'mobile_number': mobileNumber,
         if (avatarImagePath != null) 'avatar_image_path': avatarImagePath,

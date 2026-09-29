@@ -413,6 +413,41 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Authenticates or registers a user via Google OAuth (OIDC ID Token).
+  ///
+  /// Returns a map containing:
+  /// - `needs_username`: bool
+  /// - `suggested_username`: String?
+  /// - `email`: String?
+  /// - `display_name`: String?
+  /// - `user`: `Map<String, dynamic>?`
+  /// - `access_token`: String?
+  /// - `refresh_token`: String?
+  /// - `message`: String
+  Future<Map<String, dynamic>> googleAuth({
+    required String idToken,
+    String? username,
+    Map<String, dynamic>? preferences,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/auth/google');
+
+    final body = <String, dynamic>{
+      'id_token': idToken,
+      if (username != null && username.isNotEmpty) 'username': username,
+      if (preferences != null) 'preferences': preferences,
+    };
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    _assertStatus(response, 200);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   /// Initiates password reset flow via email address or mobile number.
   Future<Map<String, dynamic>> initiatePasswordReset(String identifier) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/reset-password-initiate');
