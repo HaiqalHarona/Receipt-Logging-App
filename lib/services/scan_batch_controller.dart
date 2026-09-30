@@ -15,6 +15,7 @@ import '../domain/models/receipt.dart';
 import '../ui/core/router/app_router.dart';
 import '../ui/core/widgets/scan_progress_snack_bar.dart';
 import 'app_logger_service.dart';
+import 'image_compression_service.dart';
 import 'tutorial_service.dart';
 
 /// Singleton controller that manages one active scan batch at a time.
@@ -112,11 +113,11 @@ class ScanBatchController extends ChangeNotifier {
     final deviceToken = isUser ? null : ApiConfig.deviceToken;
     final username = isUser ? AuthService.instance.currentUsername : null;
 
-    // ── Read image bytes ──────────────────────────────────────────────────
+    // ── Read and compress image bytes for OCR scanning ────────────────────
     List<({List<int> bytes, String filename})> imageFiles;
     try {
       imageFiles = await Future.wait(images.map((xf) async {
-        final bytes = await File(xf.path).readAsBytes();
+        final bytes = await ImageCompressionService.instance.compressForScan(xf.path);
         var filename = _extractBasename(xf.name.isNotEmpty ? xf.name : xf.path);
         if (filename.isEmpty) {
           filename = 'receipt_${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -124,7 +125,7 @@ class ScanBatchController extends ChangeNotifier {
         return (bytes: bytes as List<int>, filename: filename);
       }));
     } catch (e) {
-      AppLogger.error('ScanBatch', 'Failed to read image bytes', e);
+      AppLogger.error('ScanBatch', 'Failed to read/compress image bytes', e);
       _showError('Could not read image files. Please try again.', images);
       return;
     }

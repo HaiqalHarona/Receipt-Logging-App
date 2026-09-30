@@ -33,6 +33,7 @@ dependencies:
   camera: ^0.12.1
   google_mlkit_text_recognition: ^0.15.0
   image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
 
   # ── Neumorphic UI ────────────────────────────────────────────────────────────
   flutter_neumorphic_plus: ^3.3.0
