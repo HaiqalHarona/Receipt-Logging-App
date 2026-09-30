@@ -5,10 +5,13 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/trial_ineligible_dialog.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../cloud/models/user_models.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../services/subscription_notification_service.dart';
 import '../../../../services/sync_coordinator.dart';
 import 'user_settings_screen.dart';
 
@@ -710,7 +713,7 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
       }
     }
 
-    await showModalBottomSheet(
+    final updatedProfile = await showModalBottomSheet<UserRecordDto>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -738,6 +741,37 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
         },
       ),
     );
+
+    if (updatedProfile != null && mounted) {
+      await _handlePostVerificationTrialStatus(updatedProfile);
+    }
+  }
+
+  Future<void> _handlePostVerificationTrialStatus(UserRecordDto profile) async {
+    final prefs = profile.preferences;
+    final isTrialIneligible = prefs['trial_ineligible'] == true;
+    final isTrialGranted = prefs['trial_granted'] == true ||
+        (profile.tier == 'premium' && prefs['is_in_trial'] == true);
+
+    if (isTrialIneligible) {
+      if (!mounted) return;
+      await TrialIneligibleDialog.show(context);
+    } else if (isTrialGranted) {
+      await DeviceIdentityService.instance.markTrialUsed();
+      if (!mounted) return;
+      AppSnackBar.show(
+        context,
+        message: '🎉 Trial activated! You now have 14 days of Premium.',
+      );
+      final trialStartStr = prefs['trial_start_at'] as String?;
+      final trialStart = trialStartStr != null
+          ? (DateTime.tryParse(trialStartStr) ?? DateTime.now())
+          : DateTime.now();
+      unawaited(SubscriptionNotificationService.instance
+          .scheduleTrialWelcomeNotification());
+      unawaited(SubscriptionNotificationService.instance
+          .scheduleTrialExpiryNotification(trialStart));
+    }
   }
 
   // ── CHANGE PASSWORD BOTTOM SHEET ────────────────────────────────────────

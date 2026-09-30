@@ -2519,7 +2519,7 @@ class _EmailVerificationSheetState extends State<EmailVerificationSheet> {
       );
       if (!mounted) return;
       widget.onVerified(updatedProfile);
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(updatedProfile);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {

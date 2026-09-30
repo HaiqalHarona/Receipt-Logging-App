@@ -482,11 +482,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                "Sign up now and get instant upgrade to Premium for 14 days. No credit card required!",
+                                "Get 14 days of Premium upon email verification. Ineligible if email was previously used for a trial or purchase.",
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   color: textSecondary,
-                                  height: 1.3,
+                                  height: 1.35,
                                 ),
                               ),
                             ],
@@ -765,6 +765,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                 ),
+                if (_isTrialEligible) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 13,
+                        color: textSecondary.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          "Verify your email to activate your 14-day trial. Ineligible if email previously used for trial or purchase.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: textSecondary.withValues(alpha: 0.7),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // ── Or Divider ───────────────────────────────────────────────
