@@ -21,6 +21,8 @@ import '../../../../domain/models/receipt.dart';
 import 'package:isar/isar.dart';
 import '../../../../cloud/api/api_config.dart';
 import '../../../../cloud/services/google_auth_service.dart';
+import '../../../../cloud/models/user_models.dart';
+import '../../../core/widgets/two_factor_otp_sheet.dart';
 import '../widgets/google_sign_in_button.dart';
 import '../widgets/guest_override_warning_modal.dart';
 
@@ -144,10 +146,46 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await BackendApiClient.instance.loginUser(
+      var response = await BackendApiClient.instance.loginUser(
         username: identifier,
         password: password,
       );
+
+      // Handle Two-Factor Authentication (2FA) Challenge
+      if (response.requires2fa && response.tempToken != null) {
+        setState(() => _isLoading = false);
+        final tempToken = response.tempToken!;
+        final maskedEmail = response.maskedEmail;
+        UserLoginResponseDto? verifiedResponse;
+
+        if (!mounted) return;
+        await TwoFactorOtpSheet.show(
+          context,
+          title: 'Two-Factor Authentication',
+          subtitle: 'Enter the 6-digit verification code sent to your email',
+          maskedEmail: maskedEmail,
+          onVerify: (otp) async {
+            final vfy = await BackendApiClient.instance.login2faVerify(
+              tempToken: tempToken,
+              otp: otp,
+            );
+            verifiedResponse = vfy;
+          },
+          onResend: () async {
+            await BackendApiClient.instance.login2faResend(
+              tempToken: tempToken,
+            );
+          },
+        );
+
+        if (verifiedResponse == null || verifiedResponse!.user == null) {
+          AppLogger.info('UI', 'User dismissed 2FA sheet during login');
+          return;
+        }
+
+        response = verifiedResponse!;
+        setState(() => _isLoading = true);
+      }
 
       final user = response.user;
       if (user == null) {

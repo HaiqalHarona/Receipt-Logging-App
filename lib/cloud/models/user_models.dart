@@ -57,6 +57,7 @@ class UserRecordDto {
     this.emailVerifiedAt,
     this.mobileVerifiedAt,
     this.tier = 'free',
+    this.is2faEnabled = false,
     this.deletedAt,
   });
 
@@ -72,8 +73,46 @@ class UserRecordDto {
   final String? emailVerifiedAt;
   final String? mobileVerifiedAt;
   final String tier;
+  final bool is2faEnabled;
   final String createdAt;
   final String? deletedAt;
+
+  /// Creates a copy of this [UserRecordDto] with the given fields replaced with new values.
+  UserRecordDto copyWith({
+    String? id,
+    String? username,
+    String? email,
+    String? googleId,
+    String? countryCode,
+    String? mobileNumber,
+    String? avatarImagePath,
+    List<CustomCategoryDto>? customCategories,
+    Map<String, dynamic>? preferences,
+    String? emailVerifiedAt,
+    String? mobileVerifiedAt,
+    String? tier,
+    bool? is2faEnabled,
+    String? createdAt,
+    String? deletedAt,
+  }) {
+    return UserRecordDto(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      googleId: googleId ?? this.googleId,
+      countryCode: countryCode ?? this.countryCode,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      avatarImagePath: avatarImagePath ?? this.avatarImagePath,
+      customCategories: customCategories ?? this.customCategories,
+      preferences: preferences ?? this.preferences,
+      emailVerifiedAt: emailVerifiedAt ?? this.emailVerifiedAt,
+      mobileVerifiedAt: mobileVerifiedAt ?? this.mobileVerifiedAt,
+      tier: tier ?? this.tier,
+      is2faEnabled: is2faEnabled ?? this.is2faEnabled,
+      createdAt: createdAt ?? this.createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+    );
+  }
 
   /// Whether the user's email address has been verified.
   bool get isEmailVerified =>
@@ -101,6 +140,7 @@ class UserRecordDto {
       emailVerifiedAt: json['email_verified_at'] as String?,
       mobileVerifiedAt: json['mobile_verified_at'] as String?,
       tier: (json['tier'] as String?) ?? 'free',
+      is2faEnabled: (json['is_2fa_enabled'] as bool?) ?? false,
       createdAt: (json['created_at'] as String?) ?? '',
       deletedAt: json['deleted_at'] as String?,
     );
@@ -119,6 +159,7 @@ class UserRecordDto {
         if (emailVerifiedAt != null) 'email_verified_at': emailVerifiedAt,
         if (mobileVerifiedAt != null) 'mobile_verified_at': mobileVerifiedAt,
         'tier': tier,
+        'is_2fa_enabled': is2faEnabled,
         'created_at': createdAt,
         if (deletedAt != null) 'deleted_at': deletedAt,
       };
@@ -130,6 +171,9 @@ class UserLoginResponseDto {
   const UserLoginResponseDto({
     required this.success,
     required this.message,
+    this.requires2fa = false,
+    this.tempToken,
+    this.maskedEmail,
     this.user,
     this.accessToken,
     this.refreshToken,
@@ -139,6 +183,9 @@ class UserLoginResponseDto {
 
   final bool success;
   final String message;
+  final bool requires2fa;
+  final String? tempToken;
+  final String? maskedEmail;
   final UserRecordDto? user;
   final String? accessToken;
   final String? refreshToken;
@@ -149,6 +196,9 @@ class UserLoginResponseDto {
     return UserLoginResponseDto(
       success: (json['success'] as bool?) ?? false,
       message: (json['message'] as String?) ?? '',
+      requires2fa: (json['requires_2fa'] as bool?) ?? false,
+      tempToken: json['temp_token'] as String?,
+      maskedEmail: json['masked_email'] as String?,
       user: json['user'] != null
           ? UserRecordDto.fromJson(json['user'] as Map<String, dynamic>)
           : null,

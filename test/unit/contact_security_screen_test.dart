@@ -8,6 +8,61 @@ import 'package:reciept_logging/cloud/services/auth_service.dart';
 import 'package:reciept_logging/cloud/models/user_models.dart';
 import 'package:reciept_logging/services/sync_coordinator.dart';
 import 'package:reciept_logging/ui/core/theme/app_theme.dart';
+import 'package:reciept_logging/cloud/api/backend_api_client.dart';
+
+class Mock2faBackendApiClient extends BackendApiClient {
+  bool request2faActionOtpCalled = false;
+  bool enable2faCalled = false;
+
+  @override
+  Future<({bool success, int cooldownSeconds})> request2faActionOtp({
+    String action = 'security_action',
+    String? username,
+    String? userToken,
+  }) async {
+    request2faActionOtpCalled = true;
+    return (success: true, cooldownSeconds: 60);
+  }
+
+  @override
+  Future<UserRecordDto> enable2fa({required String otp, String? username, String? userToken}) async {
+    enable2faCalled = true;
+    return const UserRecordDto(
+      id: 'usr-cs-verified-2fa',
+      username: 'Verified2FAUser',
+      email: 'verified2fa@example.com',
+      is2faEnabled: true,
+      createdAt: '2026-08-10T12:00:00Z',
+      emailVerifiedAt: '2026-08-10T12:30:00Z',
+    );
+  }
+
+  @override
+  Future<UserRecordDto> fetchUserProfile({String? username, String? userToken}) async {
+    return const UserRecordDto(
+      id: 'usr-cs-verified-2fa',
+      username: 'Verified2FAUser',
+      email: 'verified2fa@example.com',
+      is2faEnabled: true,
+      createdAt: '2026-08-10T12:00:00Z',
+      emailVerifiedAt: '2026-08-10T12:30:00Z',
+    );
+  }
+
+  @override
+  Future<({bool success, String? passwordChangedAt})> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    String? username,
+    String? userToken,
+    String? twoFactorOtp,
+  }) async {
+    return (
+      success: true,
+      passwordChangedAt: DateTime.now().toUtc().toIso8601String(),
+    );
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -179,12 +234,17 @@ void main() {
     });
 
     testWidgets(
-        '2FA toggle is interactive and displays snackbar when email is verified',
+        '2FA toggle triggers OTP bottom sheet and enables 2FA upon verification',
         (WidgetTester tester) async {
       tester.view.physicalSize = const Size(800, 1400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+
+      final originalClient = BackendApiClient.instance;
+      final mockClient = Mock2faBackendApiClient();
+      BackendApiClient.instance = mockClient;
+      addTearDown(() => BackendApiClient.instance = originalClient);
 
       await AuthService.instance.saveSession(
         const UserRecordDto(
@@ -209,9 +269,19 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
+      expect(mockClient.request2faActionOtpCalled, isTrue);
+      expect(find.text('Enable Two-Factor Authentication'), findsOneWidget);
+
+      // Enter OTP into 2FA sheet
+      await tester.enterText(find.byKey(const Key('2fa_otp_input')), '123456');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(mockClient.enable2faCalled, isTrue);
+
       final switchWidget = tester.widget<Switch>(find.byType(Switch));
       expect(switchWidget.value, isTrue);
-      expect(find.text('Two-factor authentication enabled.'), findsOneWidget);
+      expect(find.text('Two-factor authentication enabled successfully.'), findsOneWidget);
     });
 
     testWidgets(
@@ -383,6 +453,73 @@ void main() {
       await tester.tap(find.text('Reset'));
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Reset Account Password'), findsNothing);
+    });
+
+    testWidgets(
+        'Changing password with 2FA active preserves email verified status and 2FA switch',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final originalClient = BackendApiClient.instance;
+      final mockClient = Mock2faBackendApiClient();
+      BackendApiClient.instance = mockClient;
+      addTearDown(() => BackendApiClient.instance = originalClient);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-cs-verified-2fa',
+          username: 'Verified2FAUser',
+          email: 'verified2fa@example.com',
+          is2faEnabled: true,
+          createdAt: '2026-08-10T12:00:00Z',
+          emailVerifiedAt: '2026-08-10T12:30:00Z',
+        ),
+        userToken: 'mock-token-cs',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const ContactSecurityScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Initially verified and 2FA switch is on
+      expect(find.text('Verified'), findsOneWidget);
+      final switchInitial =
+          tester.widget<Switch>(find.byKey(const Key('2fa_switch')));
+      expect(switchInitial.value, isTrue);
+
+      // Tap Reset password
+      await tester.tap(find.text('Reset'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Enter old and new passwords
+      final textFields = find.byType(TextField);
+      await tester.enterText(textFields.at(0), 'oldpassword123');
+      await tester.enterText(textFields.at(1), 'NewPassword123!');
+      await tester.enterText(textFields.at(2), 'NewPassword123!');
+      await tester.pump();
+
+      // Tap Update Password
+      await tester.tap(find.text('Update Password'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // 2FA OTP prompt appears because 2FA is active
+      expect(find.text('Confirm Password Change'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('2fa_otp_input')), '123456');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Verify email remains verified and 2FA toggle remains enabled and on!
+      expect(find.text('Verified'), findsOneWidget);
+      expect(find.text('Verify'), findsNothing);
+      final switchFinal =
+          tester.widget<Switch>(find.byKey(const Key('2fa_switch')));
+      expect(switchFinal.value, isTrue);
+      expect(find.byKey(const Key('2fa_switch_disabled')), findsNothing);
     });
   });
 }

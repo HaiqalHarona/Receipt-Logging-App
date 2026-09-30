@@ -18,6 +18,7 @@ import '../api/backend_api_client.dart';
 import '../models/user_models.dart';
 import 'auth_service.dart';
 import '../../ui/core/widgets/app_snack_bar.dart';
+import '../../ui/core/widgets/two_factor_otp_sheet.dart';
 import '../../ui/features/auth/widgets/google_username_prompt_sheet.dart';
 import '../../ui/features/auth/widgets/guest_override_warning_modal.dart';
 
@@ -89,6 +90,61 @@ class GoogleAuthService {
           'trial_device_id': DeviceIdentityService.instance.deviceId,
         },
       );
+
+      // Handle Two-Factor Authentication (2FA) Challenge
+      if (res['requires_2fa'] == true) {
+        onLoadingChanged?.call(false);
+        if (!context.mounted) return;
+
+        final tempToken = res['temp_token'] as String?;
+        final maskedEmail = res['masked_email'] as String?;
+
+        if (tempToken == null) {
+          throw const ApiException('Invalid 2FA challenge response from backend.',
+              statusCode: 500);
+        }
+
+        UserLoginResponseDto? verifiedResponse;
+        await TwoFactorOtpSheet.show(
+          context,
+          title: 'Two-Factor Authentication',
+          subtitle: 'Enter the 6-digit verification code sent to your email',
+          maskedEmail: maskedEmail,
+          onVerify: (otp) async {
+            final vfy = await BackendApiClient.instance.login2faVerify(
+              tempToken: tempToken,
+              otp: otp,
+            );
+            verifiedResponse = vfy;
+          },
+          onResend: () async {
+            await BackendApiClient.instance.login2faResend(
+              tempToken: tempToken,
+            );
+          },
+        );
+
+        if (verifiedResponse == null || verifiedResponse!.user == null) {
+          AppLogger.info('GoogleAuth', 'User canceled or failed 2FA verification');
+          return;
+        }
+
+        onLoadingChanged?.call(true);
+        final user = verifiedResponse!.user!;
+        final accessToken = verifiedResponse!.accessToken;
+        final refreshToken = verifiedResponse!.refreshToken;
+
+        if (!context.mounted) return;
+        await _handleReturningUserLogin(
+          context: context,
+          user: user,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          hasGuestData: hasGuestData,
+          onLoadingChanged: onLoadingChanged,
+        );
+        return;
+      }
 
       // 4. Handle first-time registration requiring username selection
       if (res['needs_username'] == true) {

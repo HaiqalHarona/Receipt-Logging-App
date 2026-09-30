@@ -10,6 +10,7 @@
 //   5. Provides clearSession() for logout.
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:isar/isar.dart';
@@ -114,7 +115,20 @@ class AuthService extends ChangeNotifier {
         AppLogger.warning('AuthService', 'Secure storage read warning: $e');
       }
 
-      if (_userId != null &&
+      final profileJson = prefs.getString('session_profile_json');
+      if (profileJson != null && profileJson.isNotEmpty) {
+        try {
+          _cachedProfile = UserRecordDto.fromJson(
+            jsonDecode(profileJson) as Map<String, dynamic>,
+          );
+        } catch (e) {
+          AppLogger.warning(
+              'AuthService', 'Failed to parse session_profile_json: $e');
+        }
+      }
+
+      if (_cachedProfile == null &&
+          _userId != null &&
           _userId!.isNotEmpty &&
           _username != null &&
           _email != null) {
@@ -127,7 +141,7 @@ class AuthService extends ChangeNotifier {
           avatarImagePath: _avatarImagePath,
           createdAt: '',
         );
-      } else {
+      } else if (_userId == null || _userId!.isEmpty) {
         // Not logged in (guest mode): sanitize any lingering cloud records from previous sessions
         await _sanitizeUnauthenticatedState();
       }
@@ -357,6 +371,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> changePassword({
     required String oldPassword,
     required String newPassword,
+    String? twoFactorOtp,
   }) async {
     if (!isLoggedIn) {
       AppLogger.warning(
@@ -368,6 +383,7 @@ class AuthService extends ChangeNotifier {
       final res = await BackendApiClient.instance.changePassword(
         oldPassword: oldPassword,
         newPassword: newPassword,
+        twoFactorOtp: twoFactorOtp,
       );
 
       if (res.success) {
@@ -379,17 +395,8 @@ class AuthService extends ChangeNotifier {
           final updatedPrefs =
               Map<String, dynamic>.from(_cachedProfile!.preferences);
           updatedPrefs['password_changed_at'] = res.passwordChangedAt;
-          _cachedProfile = UserRecordDto(
-            id: _cachedProfile!.id,
-            username: _cachedProfile!.username,
-            email: _cachedProfile!.email,
-            countryCode: _cachedProfile!.countryCode,
-            mobileNumber: _cachedProfile!.mobileNumber,
-            avatarImagePath: _cachedProfile!.avatarImagePath,
-            customCategories: _cachedProfile!.customCategories,
+          _cachedProfile = _cachedProfile!.copyWith(
             preferences: updatedPrefs,
-            createdAt: _cachedProfile!.createdAt,
-            deletedAt: _cachedProfile!.deletedAt,
           );
           await _persistProfile(_cachedProfile!);
         }
@@ -404,6 +411,19 @@ class AuthService extends ChangeNotifier {
       AppLogger.error('AuthService', 'Password change failed: $e', e, st);
       rethrow;
     }
+  }
+
+  /// Soft-deletes user profile and clears local session.
+  Future<bool> deleteAccount({String? twoFactorOtp}) async {
+    if (!isLoggedIn) return false;
+    final success = await BackendApiClient.instance.deleteUserProfile(
+      username: _username,
+      twoFactorOtp: twoFactorOtp,
+    );
+    if (success) {
+      await clearSession();
+    }
+    return success;
   }
 
   // ── SESSION MANAGEMENT ──────────────────────────────────────────────────────
@@ -502,6 +522,7 @@ class AuthService extends ChangeNotifier {
       } else {
         await prefs.remove(_keyAvatarImagePath);
       }
+      await prefs.setString('session_profile_json', jsonEncode(user.toJson()));
 
       if (syncPreferences) {
         // Sync custom categories from cloud into CategoryService (Cloud Priority: overwrite local with user's exact cloud list)
@@ -554,6 +575,7 @@ class AuthService extends ChangeNotifier {
       await prefs.remove(_keyCountryCode);
       await prefs.remove(_keyMobileNumber);
       await prefs.remove(_keyAvatarImagePath);
+      await prefs.remove('session_profile_json');
     } catch (e) {
       AppLogger.warning('AuthService', 'Failed to clear SharedPreferences: $e');
     }

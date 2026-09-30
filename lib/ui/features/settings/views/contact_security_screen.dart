@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../core/widgets/trial_ineligible_dialog.dart';
+import '../../../core/widgets/two_factor_otp_sheet.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../cloud/models/user_models.dart';
@@ -55,7 +56,76 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
     if (mounted) {
       setState(() {
         _profile = profile;
+        _is2FAEnabled = profile?.is2faEnabled ?? false;
       });
+    }
+  }
+
+  Future<void> _onToggle2FA(bool enable) async {
+    if (!_isOnline) {
+      AppSnackBar.show(
+        context,
+        message: "Internet connection required to change 2FA settings.",
+        isError: true,
+      );
+      return;
+    }
+
+    final action = enable ? 'enable_2fa' : 'disable_2fa';
+    final actionTitle = enable
+        ? 'Enable Two-Factor Authentication'
+        : 'Disable Two-Factor Authentication';
+    final actionSubtitle = enable
+        ? 'Enter the 6-digit verification code sent to your email to confirm activation.'
+        : 'Enter the 6-digit verification code sent to your email to confirm deactivation.';
+
+    try {
+      await BackendApiClient.instance.request2faActionOtp(action: action);
+    } on ApiException catch (e) {
+      if (mounted) {
+        AppSnackBar.show(context, message: e.message, isError: true);
+      }
+      return;
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.show(
+            context, message: "Failed to request verification code.", isError: true);
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    final verifiedOtp = await TwoFactorOtpSheet.show(
+      context,
+      title: actionTitle,
+      subtitle: actionSubtitle,
+      maskedEmail: _profile?.email,
+      onVerify: (otp) async {
+        if (enable) {
+          final updated = await BackendApiClient.instance.enable2fa(otp: otp);
+          _profile = updated;
+        } else {
+          final updated = await BackendApiClient.instance.disable2fa(otp: otp);
+          _profile = updated;
+        }
+      },
+      onResend: () =>
+          BackendApiClient.instance.request2faActionOtp(action: action),
+    );
+
+    if (verifiedOtp != null) {
+      setState(() => _is2FAEnabled = enable);
+      await AuthService.instance.getOrFetchProfile(force: true);
+      await _loadProfile();
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: enable
+              ? "Two-factor authentication enabled successfully."
+              : "Two-factor authentication disabled.",
+        );
+      }
     }
   }
 
@@ -638,15 +708,7 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                     key: const Key('2fa_switch'),
                                     value: _is2FAEnabled,
                                     activeThumbColor: accent,
-                                    onChanged: (val) {
-                                      setState(() => _is2FAEnabled = val);
-                                      AppSnackBar.show(
-                                        context,
-                                        message: val
-                                            ? "Two-factor authentication enabled."
-                                            : "Two-factor authentication disabled.",
-                                      );
-                                    },
+                                    onChanged: (val) => _onToggle2FA(val),
                                   )
                                 else
                                   Tooltip(
@@ -1019,12 +1081,49 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                   errorMsg = null;
                                 });
                                 try {
-                                  await AuthService.instance.changePassword(
-                                    oldPassword:
-                                        oldPasswordController.text.trim(),
-                                    newPassword:
-                                        newPasswordController.text.trim(),
-                                  );
+                                  if (_is2FAEnabled) {
+                                    await BackendApiClient.instance
+                                        .request2faActionOtp(
+                                            action: 'change_password');
+
+                                    if (!modalCtx.mounted) return;
+                                    String? verifiedOtp;
+                                    await TwoFactorOtpSheet.show(
+                                      modalCtx,
+                                      title: "Confirm Password Change",
+                                      subtitle:
+                                          "Two-factor authentication is active. Enter the 6-digit code sent to your email.",
+                                      maskedEmail: _profile?.email,
+                                      onVerify: (otp) async {
+                                        await AuthService.instance
+                                            .changePassword(
+                                          oldPassword:
+                                              oldPasswordController.text.trim(),
+                                          newPassword:
+                                              newPasswordController.text.trim(),
+                                          twoFactorOtp: otp,
+                                        );
+                                        verifiedOtp = otp;
+                                      },
+                                      onResend: () => BackendApiClient.instance
+                                          .request2faActionOtp(
+                                              action: 'change_password'),
+                                    );
+
+                                    if (verifiedOtp == null) {
+                                      setModalState(() {
+                                        isSubmitting = false;
+                                      });
+                                      return;
+                                    }
+                                  } else {
+                                    await AuthService.instance.changePassword(
+                                      oldPassword:
+                                          oldPasswordController.text.trim(),
+                                      newPassword:
+                                          newPasswordController.text.trim(),
+                                    );
+                                  }
                                   if (modalCtx.mounted) {
                                     Navigator.of(modalCtx).pop();
                                   }
@@ -1035,6 +1134,8 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                           "Password updated successfully.",
                                     );
                                   }
+                                  await AuthService.instance
+                                      .getOrFetchProfile(force: true);
                                   await _loadProfile();
                                 } on ApiException catch (e) {
                                   setModalState(() {
