@@ -4,6 +4,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../core/widgets/alpha_breadcrumb_badge.dart';
@@ -163,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         final username = AuthService.instance.currentUsername ?? "User";
         final email = AuthService.instance.currentEmail ?? "";
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
@@ -612,6 +613,19 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 horizontal: 16, vertical: 14),
                             child: Row(
                               children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.school_outlined,
+                                    color: accent,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -637,9 +651,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   ),
                                 ),
                                 Icon(
-                                  Icons.school_outlined,
-                                  color: accent,
-                                  size: 22,
+                                  Icons.chevron_right_rounded,
+                                  color: textSecondary,
+                                  size: 20,
                                 ),
                               ],
                             ),
@@ -661,6 +675,19 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 horizontal: 16, vertical: 14),
                             child: Row(
                               children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.feedback_outlined,
+                                    color: accent,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -686,9 +713,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   ),
                                 ),
                                 Icon(
-                                  Icons.feedback_outlined,
-                                  color: accent,
-                                  size: 22,
+                                  Icons.chevron_right_rounded,
+                                  color: textSecondary,
+                                  size: 20,
                                 ),
                               ],
                             ),
@@ -703,34 +730,42 @@ class _SettingsScreenState extends State<SettingsScreen>
                     const SizedBox(height: 8),
                     _buildSectionContainer(
                       children: [
-                        // Privacy Policy Row
                         InkWell(
-                          onTap: () => context.push('/legal/privacy'),
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(18)),
+                          onTap: () => context.push('/settings/policies-tour'),
+                          borderRadius: BorderRadius.circular(18),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 14),
                             child: Row(
                               children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.policy_outlined,
+                                      size: 18, color: accent),
+                                ),
+                                const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        "Privacy Policy",
+                                        "View Policies & Tour",
                                         style: TextStyle(
-                                          fontSize: 15,
+                                          fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                           color: textPrimary,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        "GDPR, CCPA/CPRA, Zero AI Training & Encryption",
+                                        "Read our legal documents or play the app's walkthrough",
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 11.5,
                                           color: textSecondary,
                                         ),
                                       ),
@@ -738,187 +773,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   ),
                                 ),
                                 Icon(
-                                  Icons.arrow_forward_ios_rounded,
+                                  Icons.chevron_right_rounded,
+                                  size: 20,
                                   color: textSecondary,
-                                  size: 14,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        _buildDivider(textSecondary),
-
-                        // Terms of Service Row
-                        InkWell(
-                          onTap: () => context.push('/legal/terms'),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Terms of Service",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Acceptable use, AI disclaimers & governing law",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  color: textSecondary,
-                                  size: 14,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        _buildDivider(textSecondary),
-
-                        // Cookie & Storage Policy Row
-                        InkWell(
-                          onTap: () => context.push('/legal/cookies'),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Cookie & Storage Policy",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Local database, secure tokens & cache details",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  color: textSecondary,
-                                  size: 14,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        _buildDivider(textSecondary),
-
-                        // Accessibility Statement Row
-                        InkWell(
-                          onTap: () => context.push('/legal/accessibility'),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Accessibility Statement",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "ADA Title III, WCAG 2.1 AA & contrast support",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  color: textSecondary,
-                                  size: 14,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        _buildDivider(textSecondary),
-
-                        // Onboarding Walkthrough Row
-                        InkWell(
-                          onTap: () {
-                            AppLogger.info('UI',
-                                'User tapped App Walkthrough from SettingsScreen');
-                            context.push('/onboarding');
-                          },
-                          borderRadius: const BorderRadius.vertical(
-                              bottom: Radius.circular(18)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "App Walkthrough",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Revisit the welcome features & privacy tour",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  color: textSecondary,
-                                  size: 14,
                                 ),
                               ],
                             ),
@@ -1909,15 +1766,29 @@ class _SettingsScreenState extends State<SettingsScreen>
                           CurrencyService.instance.setCurrency(code);
                           Navigator.of(context).pop();
                         },
-                        leading: CircleAvatar(
-                          backgroundColor: isSelected
-                              ? accent
-                              : textSecondary.withValues(alpha: 0.1),
-                          child: Text(
-                            info.symbol,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : textPrimary,
-                              fontWeight: FontWeight.bold,
+                        leading: Neumorphic(
+                          style: NeumorphicStyle(
+                            depth: isSelected ? -3 : 3,
+                            intensity: 0.8,
+                            boxShape: const NeumorphicBoxShape.circle(),
+                            color: isSelected
+                                ? accent
+                                : NeumorphicTheme.baseColor(context),
+                          ),
+                          child: SizedBox(
+                            width: 38,
+                            height: 38,
+                            child: Center(
+                              child: Text(
+                                info.symbol,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -2124,13 +1995,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: -3,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                          color: baseColor,
-                        ),
+                      NeumorphicInputFieldWidget(
+                        borderRadius: 12,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 4),
                         child: TextField(
@@ -2197,13 +2063,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: -3,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                          color: baseColor,
-                        ),
+                      NeumorphicInputFieldWidget(
+                        borderRadius: 12,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 10),
                         child: TextField(

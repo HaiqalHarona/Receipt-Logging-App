@@ -3,6 +3,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/theme_controller.dart';
+import '../widgets/app_gradient_background.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/coach_mark_overlay.dart';
 import '../../features/dashboard/views/dashboard_screen.dart';
@@ -81,7 +82,7 @@ class _MainTabShellState extends State<MainTabShell> {
         final isTutorialStep1 =
             _currentIndex == 0 && TutorialService.instance.currentStep == 1;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Stack(
             children: [
               Scaffold(

@@ -236,13 +236,9 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
           // Merchant Field
           _buildLabel("Merchant"),
           const SizedBox(height: 6),
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: -3,
-              intensity: 0.85,
-              color: NeumorphicTheme.baseColor(context),
-              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-            ),
+          NeumorphicInputFieldWidget(
+            borderRadius: 12,
+            padding: EdgeInsets.zero,
             child: TextField(
               controller: _merchantController,
               style: TextStyle(
@@ -269,14 +265,9 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                   children: [
                     _buildLabel("Date"),
                     const SizedBox(height: 6),
-                    Neumorphic(
-                      style: NeumorphicStyle(
-                        depth: -3,
-                        intensity: 0.85,
-                        color: NeumorphicTheme.baseColor(context),
-                        boxShape: NeumorphicBoxShape.roundRect(
-                            BorderRadius.circular(12)),
-                      ),
+                    NeumorphicInputFieldWidget(
+                      borderRadius: 12,
+                      padding: EdgeInsets.zero,
                       child: TextField(
                         controller: _dateController,
                         readOnly: true,
@@ -345,13 +336,9 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
           _buildLabel(
               "Amount (${CurrencyService.supportedCurrencies[_selectedCurrency]?.symbol ?? '\$'})"),
           const SizedBox(height: 6),
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: -3,
-              intensity: 0.85,
-              color: NeumorphicTheme.baseColor(context),
-              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-            ),
+          NeumorphicInputFieldWidget(
+            borderRadius: 12,
+            padding: EdgeInsets.zero,
             child: TextField(
               controller: _amountController,
               readOnly: _isAutoCalculate,
@@ -577,7 +564,7 @@ class _LockedLineItemsSection extends StatelessWidget {
         ),
         const SizedBox(height: 10),
 
-        // Blurred placeholder rows with lock icon
+        // Blurred placeholder rows with Upgrade CTA overlay
         Stack(
           alignment: Alignment.center,
           children: [
@@ -587,55 +574,37 @@ class _LockedLineItemsSection extends StatelessWidget {
                 child: _buildGhostTable(context, baseColor),
               ),
             ),
-            Neumorphic(
-              style: NeumorphicStyle(
-                depth: 3,
-                intensity: 0.85,
-                color: baseColor,
-                boxShape: const NeumorphicBoxShape.circle(),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Icon(
-                Icons.lock_outline_rounded,
-                size: 24,
-                color: textSecondary,
+            GestureDetector(
+              onTap: () => context.push('/paywall'),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.4),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline_rounded, size: 15, color: accent),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Upgrade to Premium',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 14),
-
-        // Subtle, non-intrusive upgrade CTA chip
-        Center(
-          child: GestureDetector(
-            onTap: () => context.push('/paywall'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: accent.withValues(alpha: 0.35),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.auto_awesome_rounded, size: 14, color: accent),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Upgrade to Premium',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: accent,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       ],
     );

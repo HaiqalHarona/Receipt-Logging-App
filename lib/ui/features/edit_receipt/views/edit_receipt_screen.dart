@@ -78,9 +78,9 @@ class _EditReceiptScreenState extends State<EditReceiptScreen> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               leading: Center(
-                child: NeumorphicIconBadge(
-                  icon: Icons.arrow_back_ios_new_rounded,
-                  iconSize: 18,
+                child: NeumorphicCircularButton(
+                  icon: Icons.arrow_back_rounded,
+                  iconSize: 20,
                   onTap: () => context.pop(),
                 ),
               ),

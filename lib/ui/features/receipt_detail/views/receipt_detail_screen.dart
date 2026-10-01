@@ -929,53 +929,37 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                 ),
               ),
             ),
-            Neumorphic(
-              style: NeumorphicStyle(
-                depth: 3,
-                intensity: 0.85,
-                color: baseColor,
-                boxShape: const NeumorphicBoxShape.circle(),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Icon(
-                Icons.lock_outline_rounded,
-                size: 24,
-                color: textSecondary,
+            GestureDetector(
+              onTap: () => context.push('/paywall'),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.4),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline_rounded, size: 15, color: accent),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Upgrade to Premium',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 14),
-        Center(
-          child: GestureDetector(
-            onTap: () => context.push('/paywall'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: accent.withValues(alpha: 0.35),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.auto_awesome_rounded, size: 14, color: accent),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Upgrade to Premium',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: accent,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       ],
     );

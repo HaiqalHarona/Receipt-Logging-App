@@ -163,14 +163,6 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
                               color: isSelected ? Colors.white : textPrimary,
                             ),
                           ),
-                          if (isSelected) ...[
-                            const SizedBox(width: 6),
-                            const Icon(
-                              Icons.check_rounded,
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                          ],
                         ],
                       ),
                     ),

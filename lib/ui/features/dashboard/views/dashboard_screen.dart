@@ -7,6 +7,9 @@ import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
+import '../../../core/widgets/bottom_nav_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';
 import 'widgets/recent_transactions_list.dart';
@@ -104,179 +107,188 @@ class _DashboardScreenState extends State<DashboardScreen>
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
             body: SafeArea(
               bottom: false,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(
-                    left: 24, right: 24, top: 16, bottom: 120),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: _viewModel.isLoggedIn &&
-                                  _viewModel.username != null &&
-                                  _viewModel.username!.isNotEmpty
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Welcome back,",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: textSecondary,
+              child: FadingEdgeScrollView(
+                fadeHeightTop: 20,
+                fadeHeightBottom: 28,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    left: 24,
+                    right: 24,
+                    top: 16,
+                    bottom: AppBottomNavBar.contentBottomPadding(context,
+                        extraMargin: 12.0),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: _viewModel.isLoggedIn &&
+                                    _viewModel.username != null &&
+                                    _viewModel.username!.isNotEmpty
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Welcome back,",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: textSecondary,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _viewModel.username!,
-                                      style: TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                        color: textPrimary,
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _viewModel.username!,
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Welcome back",
-                                      style: TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                        color: textPrimary,
+                                    ],
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Welcome back",
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "Here is your spending breakdown",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: textSecondary,
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "Here is your spending breakdown",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: textSecondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                          ),
+                          const SizedBox(width: 12),
+                          if (_viewModel.isLoggedIn)
+                            GestureDetector(
+                              onTap: () => context.push('/user-settings'),
+                              child: _buildAvatarWidget(
+                                  _viewModel.avatarImagePath,
+                                  _viewModel.username ?? 'User',
+                                  accent,
+                                  textSecondary,
+                                  controller),
+                            )
+                          else
+                            GestureDetector(
+                              onTap: () => context.push('/auth'),
+                              child: Neumorphic(
+                                style: NeumorphicStyle(
+                                  depth: 4,
+                                  intensity: 0.85,
+                                  boxShape: const NeumorphicBoxShape.circle(),
+                                  color: controller.currentBaseColor,
+                                  border: NeumorphicBorder(
+                                    color: controller.isDarkMode
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.white.withValues(alpha: 0.6),
+                                    width: 0.8,
+                                  ),
                                 ),
-                        ),
-                        const SizedBox(width: 12),
-                        if (_viewModel.isLoggedIn)
-                          GestureDetector(
-                            onTap: () => context.push('/user-settings'),
-                            child: _buildAvatarWidget(
-                                _viewModel.avatarImagePath,
-                                _viewModel.username ?? 'User',
-                                accent,
-                                textSecondary,
-                                controller),
-                          )
-                        else
-                          GestureDetector(
-                            onTap: () => context.push('/auth'),
-                            child: Neumorphic(
-                              style: NeumorphicStyle(
-                                depth: 4,
-                                intensity: 0.85,
-                                boxShape: const NeumorphicBoxShape.circle(),
-                                color: controller.currentBaseColor,
-                                border: NeumorphicBorder(
-                                  color: controller.isDarkMode
-                                      ? Colors.white.withValues(alpha: 0.05)
-                                      : Colors.white.withValues(alpha: 0.6),
-                                  width: 0.8,
-                                ),
-                              ),
-                              child: SizedBox(
-                                width: 38,
-                                height: 38,
-                                child: Center(
-                                  child: Icon(
-                                    Icons.person_outline_rounded,
-                                    size: 20,
-                                    color: accent,
+                                child: SizedBox(
+                                  width: 38,
+                                  height: 38,
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.person_outline_rounded,
+                                      size: 20,
+                                      color: accent,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // 7-Day Downgrade Discount Urgency Banner
-                    if (AuthService.instance.isLoggedIn &&
-                        _subStatus != null &&
-                        _subStatus!.trialStartAt != null &&
-                        _subStatus!.tier != 'premium' &&
-                        _subStatus!.isDiscountActive &&
-                        (_subStatus!.discountDaysRemaining == null ||
-                            _subStatus!.discountDaysRemaining! > 0) &&
-                        _subStatusUserId == AuthService.instance.currentUserId)
-                      DiscountOfferBanner(
-                        status: _subStatus,
-                        onOfferClaimed: _loadSubscriptionStatusAndCheckDowngrade,
+                        ],
                       ),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 16),
 
-                    // Monthly Spending Line Graph (encompasses indented summary carousel)
-                    MonthlySpendingGraphCard(
-                      viewModel: _viewModel,
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                      accent: accent,
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Recent Receipts Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Recent Receipts",
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: textPrimary,
-                          ),
+                      // 7-Day Downgrade Discount Urgency Banner
+                      if (AuthService.instance.isLoggedIn &&
+                          _subStatus != null &&
+                          _subStatus!.trialStartAt != null &&
+                          _subStatus!.tier != 'premium' &&
+                          _subStatus!.isDiscountActive &&
+                          (_subStatus!.discountDaysRemaining == null ||
+                              _subStatus!.discountDaysRemaining! > 0) &&
+                          _subStatusUserId == AuthService.instance.currentUserId)
+                        DiscountOfferBanner(
+                          status: _subStatus,
+                          onOfferClaimed: _loadSubscriptionStatusAndCheckDowngrade,
                         ),
-                        GestureDetector(
-                          onTap: () => context.go('/history'),
-                          child: Text(
-                            "See All",
+                      const SizedBox(height: 8),
+
+                      // Monthly Spending Line Graph (encompasses indented summary carousel)
+                      MonthlySpendingGraphCard(
+                        viewModel: _viewModel,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        accent: accent,
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Recent Receipts Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Recent Receipts",
                             style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: accent,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
+                          GestureDetector(
+                            onTap: () => context.go('/history'),
+                            child: Text(
+                              "See All",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: accent,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
 
-                    // Dynamic Recent Receipts List
-                    RecentTransactionsList(
-                      viewModel: _viewModel,
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                      accent: accent,
-                    ),
-                  ],
+                      // Dynamic Recent Receipts List
+                      RecentTransactionsList(
+                        viewModel: _viewModel,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        accent: accent,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

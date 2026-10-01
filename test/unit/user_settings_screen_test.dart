@@ -189,7 +189,7 @@ void main() {
       expect(find.text('50 Daily Receipt Scans'), findsOneWidget);
       expect(find.text('50,000 AI Chat Tokens'), findsOneWidget);
       expect(find.text('Priority Vision OCR Processing'), findsOneWidget);
-      expect(find.text('Instant Multi-Device Cloud Sync'), findsOneWidget);
+      expect(find.text('4x Faster Bulk Scanning'), findsOneWidget);
       expect(find.text(r'$3.99'), findsNothing);
     });
 

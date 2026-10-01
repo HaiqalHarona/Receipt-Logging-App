@@ -7,6 +7,9 @@ import '../../../../data/repositories/conversation_repository.dart';
 import '../../../../domain/models/conversation.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
+import '../../../core/widgets/bottom_nav_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import 'widgets/conversation_list_item_widget.dart';
 
 /// Screen displaying the list of AI chat conversations with search functionality,
@@ -143,7 +146,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
         final allConversations = ConversationRepository.instance.conversations;
         final filteredList = _filterConversations(allConversations);
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
@@ -164,43 +167,46 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Conversations",
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                      color: textPrimary,
-                                    ),
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "Conversations",
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "All logged chats (${allConversations.length} records)",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: textSecondary,
+                                  children: [
+                                    TextSpan(
+                                      text: " (${allConversations.length})",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: textSecondary,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
 
-                            // "+" New Chat Action Button
+                            // "+" New Chat Action Button (outlined, protruded, not filled)
                             NeumorphicButton(
                               onPressed: _handleCreateNewChat,
                               style: NeumorphicStyle(
-                                depth: 3,
+                                depth: controller.neuDepth,
                                 intensity: 0.85,
-                                color: accent,
+                                color: baseColor,
                                 boxShape: const NeumorphicBoxShape.circle(),
+                                border: NeumorphicBorder(
+                                  color: accent,
+                                  width: 1.5,
+                                ),
                               ),
                               padding: const EdgeInsets.all(10),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.add_rounded,
-                                color: Colors.white,
+                                color: accent,
                                 size: 20,
                               ),
                             ),
@@ -211,11 +217,25 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
                         // Indented Search Bar
                         Neumorphic(
                           style: NeumorphicStyle(
-                            depth: -3,
-                            intensity: 0.8,
-                            color: baseColor,
+                            depth: -(controller.neuDepth.clamp(1.5, 3.5)),
+                            intensity: controller.isDarkMode ? 0.45 : 0.8,
+                            color: controller.isDarkMode
+                                ? Color.alphaBlend(
+                                    Colors.black.withValues(alpha: 0.15),
+                                    baseColor)
+                                : baseColor,
+                            shadowDarkColorEmboss:
+                                controller.shadowDarkColorEmboss,
+                            shadowLightColorEmboss:
+                                controller.shadowLightColorEmboss,
                             boxShape: NeumorphicBoxShape.roundRect(
                                 BorderRadius.circular(14)),
+                            border: NeumorphicBorder(
+                              color: controller.isDarkMode
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              width: 0.8,
+                            ),
                           ),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
@@ -259,7 +279,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
                     ),
                   ),
 
-                  // ── Scrollable Conversations List ──
+                    // ── Scrollable Conversations List ──
                   Expanded(
                     child: filteredList.isEmpty
                         ? _buildEmptyState(
@@ -268,29 +288,36 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
                             textSecondary: textSecondary,
                             accent: accent,
                             baseColor: baseColor,
+                            depth: controller.neuDepth,
                           )
-                        : ListView.separated(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.only(
-                              left: 24,
-                              right: 24,
-                              top: 8,
-                              bottom: 110, // Avoid bottom nav overlap
+                        : FadingEdgeScrollView(
+                            fadeHeightTop: 20,
+                            fadeHeightBottom: 28,
+                            child: ListView.separated(
+                              controller: _scrollController,
+                              padding: EdgeInsets.only(
+                                left: 24,
+                                right: 24,
+                                top: 8,
+                                bottom: AppBottomNavBar.contentBottomPadding(
+                                    context,
+                                    extraMargin: 24.0),
+                              ),
+                              itemCount: filteredList.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final conv = filteredList[index];
+                                return ConversationListItemWidget(
+                                  conversation: conv,
+                                  onTap: () {
+                                    AppLogger.info('UI',
+                                        'User tapped conversation: ${conv.id} ("${conv.title}")');
+                                    context.push('/chat', extra: conv);
+                                  },
+                                );
+                              },
                             ),
-                            itemCount: filteredList.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final conv = filteredList[index];
-                              return ConversationListItemWidget(
-                                conversation: conv,
-                                onTap: () {
-                                  AppLogger.info('UI',
-                                      'User tapped conversation: ${conv.id} ("${conv.title}")');
-                                  context.push('/chat', extra: conv);
-                                },
-                              );
-                            },
                           ),
                   ),
                 ],
@@ -308,43 +335,51 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
     required Color textSecondary,
     required Color accent,
     required Color baseColor,
+    required double depth,
   }) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 30),
-            Neumorphic(
-              style: NeumorphicStyle(
-                depth: 3,
-                intensity: 0.8,
-                boxShape: const NeumorphicBoxShape.circle(),
-                color: baseColor,
-              ),
-              padding: const EdgeInsets.all(24),
-              child: Icon(
-                isSearching
-                    ? Icons.search_off_rounded
-                    : Icons.chat_bubble_outline_rounded,
-                size: 40,
-                color: accent,
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight:
+                  (constraints.maxHeight - 80).clamp(0.0, double.infinity),
             ),
-            const SizedBox(height: 20),
-            Text(
-              isSearching
-                  ? "No matching conversations"
-                  : "No conversations yet",
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Neumorphic(
+                    style: NeumorphicStyle(
+                      depth: depth,
+                      intensity: 0.8,
+                      boxShape: const NeumorphicBoxShape.circle(),
+                      color: baseColor,
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Icon(
+                      isSearching
+                          ? Icons.search_off_rounded
+                          : Icons.chat_bubble_outline_rounded,
+                      size: 40,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    isSearching
+                        ? "No matching conversations"
+                        : "No conversations yet",
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: textPrimary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
             const SizedBox(height: 8),
             Text(
               isSearching
@@ -357,10 +392,13 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
+                  const SizedBox(height: 30),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

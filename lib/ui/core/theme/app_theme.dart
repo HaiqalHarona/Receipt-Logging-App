@@ -36,8 +36,8 @@ class AppTheme {
       // Reduced highlight to prevent harsh bright edge cut in dark mode
       shadowDarkColor: Color(0xFF080810),
       shadowLightColor: Color(0xFF282838),
-      shadowDarkColorEmboss: Color(0xFF06060C),
-      shadowLightColorEmboss: Color(0x18282838),
+      shadowDarkColorEmboss: Color(0xB3000000),
+      shadowLightColorEmboss: Color(0x28FFFFFF),
       textTheme: TextTheme(
         bodyLarge: TextStyle(color: darkTextPrimary),
         bodyMedium: TextStyle(color: darkTextSecondary),
@@ -159,7 +159,7 @@ class NeumorphicButtonWidget extends StatelessWidget {
         ? hsl.withLightness((hsl.lightness * 0.55).clamp(0.0, 1.0)).toColor()
         : baseBtnColor;
 
-    final effectiveDepth = isDisabled ? -4.0 : (depth ?? controller.neuDepth);
+    final effectiveDepth = isDisabled ? 1.0 : (depth ?? controller.neuDepth);
 
     return Container(
       margin: margin,
@@ -168,12 +168,12 @@ class NeumorphicButtonWidget extends StatelessWidget {
         style: NeumorphicStyle(
           color: effectiveColor,
           depth: effectiveDepth,
-          intensity: isDisabled ? 0.85 : 0.9,
+          intensity: isDisabled ? 0.4 : 0.9,
           boxShape:
               NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
           border: NeumorphicBorder(
             color: isDisabled
-                ? Colors.black.withValues(alpha: 0.35)
+                ? Colors.black.withValues(alpha: 0.15)
                 : Colors.white.withValues(alpha: 0.25),
             width: 1.0,
           ),
@@ -191,14 +191,14 @@ class NeumorphicInputFieldWidget extends StatelessWidget {
   final Widget child;
   final EdgeInsets? padding;
   final double borderRadius;
-  final double depth;
+  final double? depth;
 
   const NeumorphicInputFieldWidget({
     super.key,
     required this.child,
     this.padding,
     this.borderRadius = 14,
-    this.depth = -2.5,
+    this.depth,
   });
 
   @override
@@ -207,22 +207,21 @@ class NeumorphicInputFieldWidget extends StatelessWidget {
     final isDark = controller.isDarkMode;
     final bg = controller.currentBaseColor;
     final inputBg = isDark
-        ? Color.alphaBlend(Colors.black.withValues(alpha: 0.18), bg)
+        ? Color.alphaBlend(Colors.black.withValues(alpha: 0.15), bg)
         : bg;
+
+    final effectiveDepth =
+        depth ?? -(controller.neuDepth.clamp(1.5, 3.5));
 
     return Neumorphic(
       padding:
-          padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       style: NeumorphicStyle(
-        depth: depth,
-        intensity: isDark ? 0.35 : 0.75,
+        depth: effectiveDepth,
+        intensity: isDark ? 0.45 : 0.8,
         color: inputBg,
-        shadowDarkColorEmboss: isDark
-            ? Colors.black.withValues(alpha: 0.75)
-            : controller.shadowDarkColor,
-        shadowLightColorEmboss: isDark
-            ? inputBg.withValues(alpha: 0.05)
-            : controller.shadowLightColor,
+        shadowDarkColorEmboss: controller.shadowDarkColorEmboss,
+        shadowLightColorEmboss: controller.shadowLightColorEmboss,
         boxShape:
             NeumorphicBoxShape.roundRect(BorderRadius.circular(borderRadius)),
         border: NeumorphicBorder(
@@ -236,6 +235,9 @@ class NeumorphicInputFieldWidget extends StatelessWidget {
     );
   }
 }
+
+/// Alias for NeumorphicInputFieldWidget
+typedef NeumorphicInputFieldContainer = NeumorphicInputFieldWidget;
 
 /// Circular Neumorphic Icon Badge Wrapper
 class NeumorphicIconBadge extends StatelessWidget {
@@ -297,3 +299,72 @@ class NeumorphicIconBadge extends StatelessWidget {
     return widget;
   }
 }
+
+/// Circular Interactive Neumorphic Button
+class NeumorphicCircularButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double iconSize;
+  final double padding;
+  final Color? iconColor;
+  final Color? color;
+  final double depth;
+  final String? tooltip;
+  final bool isLoading;
+
+  const NeumorphicCircularButton({
+    super.key,
+    required this.icon,
+    this.onTap,
+    this.iconSize = 20,
+    this.padding = 8,
+    this.iconColor,
+    this.color,
+    this.depth = 3,
+    this.tooltip,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppThemeController.instance;
+    final textPrimary = controller.textColor;
+    final baseColor = color ?? controller.currentBaseColor;
+
+    Widget button = NeumorphicButton(
+      onPressed: isLoading ? null : onTap,
+      style: NeumorphicStyle(
+        shape: NeumorphicShape.convex,
+        boxShape: const NeumorphicBoxShape.circle(),
+        depth: depth,
+        intensity: 0.8,
+        color: baseColor,
+      ),
+      padding: EdgeInsets.all(padding),
+      child: isLoading
+          ? SizedBox(
+              width: iconSize,
+              height: iconSize,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: iconColor ?? controller.accentColor,
+              ),
+            )
+          : Icon(
+              icon,
+              color: iconColor ?? textPrimary,
+              size: iconSize,
+            ),
+    );
+
+    if (tooltip != null) {
+      return Tooltip(
+        message: tooltip!,
+        triggerMode: TooltipTriggerMode.tap,
+        child: button,
+      );
+    }
+    return button;
+  }
+}
+

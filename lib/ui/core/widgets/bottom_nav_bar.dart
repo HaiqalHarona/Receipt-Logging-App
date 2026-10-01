@@ -17,6 +17,17 @@ class AppBottomNavBar extends StatelessWidget {
     this.fabKey,
   });
 
+  /// Calculates the bottom padding required for scrollable content so that
+  /// the lowest element clears the protruding center FAB with an extra margin
+  /// matching horizontal screen margin (default 24.0).
+  static double contentBottomPadding(BuildContext context, {double extraMargin = 24.0}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final margin5Percent = screenWidth * 0.05;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    // Nav bar height (70) + top protrusion of FAB (18) + bottom margin + system inset + extraMargin
+    return 70.0 + 18.0 + margin5Percent + bottomInset + extraMargin;
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(

@@ -16,6 +16,7 @@ import '../../../../domain/models/chat_message.dart';
 import '../../../../domain/models/conversation.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/services/quota_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 
@@ -259,14 +260,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 18),
-                Neumorphic(
-                  style: NeumorphicStyle(
-                    depth: -3,
-                    intensity: 0.8,
-                    color: baseColor,
-                    boxShape:
-                        NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                  ),
+                NeumorphicInputFieldWidget(
+                  borderRadius: 12,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   child: TextField(
@@ -647,19 +642,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     child: Row(
                       children: [
                         // Back Button
-                        NeumorphicButton(
-                          onPressed: () => context.pop(),
-                          style: NeumorphicStyle(
-                            depth: 3,
-                            boxShape: const NeumorphicBoxShape.circle(),
-                            color: baseColor,
-                          ),
-                          padding: const EdgeInsets.all(8),
-                          child: Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            size: 16,
-                            color: textPrimary,
-                          ),
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () => context.pop(),
                         ),
                         const SizedBox(width: 12),
 
@@ -820,16 +806,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             QuotaService.instance.isChatQuotaExhausted;
 
                         Widget inputPill = Expanded(
-                          child: Neumorphic(
-                            style: NeumorphicStyle(
-                              depth: -3,
-                              intensity: 0.8,
-                              color: isChatQuotaExhausted
-                                  ? baseColor.withValues(alpha: 0.5)
-                                  : baseColor,
-                              boxShape: NeumorphicBoxShape.roundRect(
-                                  BorderRadius.circular(24)),
-                            ),
+                          child: NeumorphicInputFieldWidget(
+                            borderRadius: 24,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 4),
                             child: Row(

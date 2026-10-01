@@ -149,7 +149,7 @@ void main() {
       expect(find.byIcon(Icons.lock_outline_rounded), findsOneWidget);
 
       // Should show the upgrade CTA chip
-      expect(find.text('Upgrade for full itemised breakdown'), findsOneWidget);
+      expect(find.text('Upgrade to Premium'), findsOneWidget);
 
       // Should NOT show the Add Line Item button
       expect(find.text('Add Line Item'), findsNothing);
@@ -158,7 +158,7 @@ void main() {
       expect(find.text('Battercatch Seafood'), findsOneWidget);
 
       // Tapping CTA chip should navigate to /paywall
-      final ctaFinder = find.text('Upgrade for full itemised breakdown');
+      final ctaFinder = find.text('Upgrade to Premium');
       await tester.ensureVisible(ctaFinder);
       await tester.tap(ctaFinder);
       await tester.pumpAndSettle();
@@ -176,7 +176,7 @@ void main() {
       expect(find.byIcon(Icons.lock_outline_rounded), findsNothing);
 
       // Should NOT show the upgrade CTA chip
-      expect(find.text('Upgrade for full itemised breakdown'), findsNothing);
+      expect(find.text('Upgrade to Premium'), findsNothing);
 
       // Should show the Add Line Item button
       expect(find.text('Add Line Item'), findsOneWidget);
@@ -238,7 +238,7 @@ void main() {
 
       // Free user on edit screen should see the locked placeholder and CTA chip
       expect(find.byIcon(Icons.lock_outline_rounded), findsOneWidget);
-      expect(find.text('Upgrade for full itemised breakdown'), findsOneWidget);
+      expect(find.text('Upgrade to Premium'), findsOneWidget);
       expect(find.text('Add Line Item'), findsNothing);
 
       // Thumbnail is rendered
@@ -263,7 +263,7 @@ void main() {
 
       // Premium user on edit screen should see full line items and Add Line Item button
       expect(find.byIcon(Icons.lock_outline_rounded), findsNothing);
-      expect(find.text('Upgrade for full itemised breakdown'), findsNothing);
+      expect(find.text('Upgrade to Premium'), findsNothing);
       expect(find.text('Add Line Item'), findsOneWidget);
       expect(find.text('Fish & Chips'), findsOneWidget);
 

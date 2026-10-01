@@ -184,7 +184,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     // ── Header Bar ──────────────────────────────────────────
                     Row(
                       children: [
-                        NeumorphicIconBadge(
+                        NeumorphicCircularButton(
                           icon: Icons.arrow_back_rounded,
                           iconSize: 20,
                           onTap: () => context.pop(),
@@ -660,10 +660,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     const SizedBox(height: 12),
 
                     if (matchingReceipts.isEmpty) ...[
-                      NeumorphicCardWidget(
-                        padding: const EdgeInsets.all(24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 200,
                         child: Center(
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
                                 Icons.receipt_long_outlined,
@@ -673,6 +675,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               const SizedBox(height: 8),
                               Text(
                                 'No transactions recorded for this period.',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: textSecondary,
@@ -687,7 +690,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: matchingReceipts.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        separatorBuilder: (_, __) => const SizedBox(height: 15),
                         itemBuilder: (context, index) {
                           final receipt = matchingReceipts[index];
                           final formattedPrice = CurrencyService.instance

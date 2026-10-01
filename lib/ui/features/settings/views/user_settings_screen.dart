@@ -12,6 +12,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
@@ -729,14 +730,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
         DateTime.now().toUtc().isBefore(trialEnd.toUtc());
 
     return PopScope(
-      canPop: context.canPop(),
+      canPop: GoRouter.maybeOf(context)?.canPop() ?? false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           AppLogger.info('UI', 'UserSettingsScreen PopScope handled back -> go /dashboard');
           context.go('/dashboard');
         }
       },
-      child: NeumorphicBackground(
+      child: AppGradientBackground(
         child: Scaffold(
           backgroundColor: Colors.transparent,
           body: SafeArea(
@@ -749,7 +750,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      NeumorphicIconBadge(
+                      NeumorphicCircularButton(
                         icon: Icons.arrow_back_rounded,
                         iconSize: 20,
                         onTap: () {
@@ -770,46 +771,22 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                         color: textPrimary,
                       ),
                     ),
-                    // Quick Sync Icon Badge
-                    Tooltip(
-                      message: !_isOnline
+                    // Quick Sync Icon Button (identical protrusion to back button)
+                    NeumorphicCircularButton(
+                      icon: !_isOnline
+                          ? Icons.sync_disabled_rounded
+                          : Icons.sync_rounded,
+                      iconColor: !_isOnline
+                          ? textSecondary.withValues(alpha: 0.4)
+                          : accent,
+                      iconSize: 20,
+                      tooltip: !_isOnline
                           ? "Sync requires an internet connection"
                           : "Sync all data",
-                      triggerMode: TooltipTriggerMode.tap,
-                      child: GestureDetector(
-                        onTap: (!_isOnline || _isManualSyncing)
-                            ? null
-                            : _onManualSync,
-                        child: Neumorphic(
-                          style: NeumorphicStyle(
-                            depth: !_isOnline ? -2 : 3,
-                            intensity: 0.85,
-                            boxShape: const NeumorphicBoxShape.circle(),
-                            color: controller.currentBaseColor,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(9),
-                            child: _isManualSyncing
-                                ? SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: accent,
-                                    ),
-                                  )
-                                : Icon(
-                                    !_isOnline
-                                        ? Icons.sync_disabled_rounded
-                                        : Icons.sync_rounded,
-                                    size: 18,
-                                    color: !_isOnline
-                                        ? textSecondary.withValues(alpha: 0.4)
-                                        : accent,
-                                  ),
-                          ),
-                        ),
-                      ),
+                      isLoading: _isManualSyncing,
+                      onTap: (!_isOnline || _isManualSyncing)
+                          ? null
+                          : _onManualSync,
                     ),
                   ],
                 ),
@@ -1337,9 +1314,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.devices_rounded,
-                                    size: 20, color: accent),
-                                const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
                                     "Physical Hardware Identity",
@@ -1408,17 +1382,25 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                       horizontal: 16, vertical: 14),
                                   child: Row(
                                     children: [
-                                      Icon(
-                                        !_isOnline
-                                            ? Icons.cloud_off_outlined
-                                            : Icons.cloud_upload_outlined,
-                                        color: !_isOnline
-                                            ? textSecondary.withValues(
-                                                alpha: 0.4)
-                                            : accent,
-                                        size: 20,
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: accent.withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(
+                                          !_isOnline
+                                              ? Icons.cloud_off_outlined
+                                              : Icons.cloud_upload_outlined,
+                                          color: !_isOnline
+                                              ? textSecondary.withValues(
+                                                  alpha: 0.4)
+                                              : accent,
+                                          size: 20,
+                                        ),
                                       ),
-                                      const SizedBox(width: 12),
+                                      const SizedBox(width: 14),
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment:
@@ -1479,9 +1461,20 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                     horizontal: 16, vertical: 14),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.file_download_outlined,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: accent.withValues(alpha: 0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        Icons.file_download_outlined,
+                                        color: accent,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
@@ -1528,183 +1521,56 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                       const SizedBox(height: 8),
                       NeumorphicCardWidget(
                         padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            // Privacy Policy
-                            InkWell(
-                              onTap: () => context.push('/legal/privacy'),
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(18)),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.security_rounded,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Privacy Policy",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "GDPR, CCPA/CPRA & Zero AI Training",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                        color: textSecondary, size: 14),
-                                  ],
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => context.push('/settings/policies-tour'),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.policy_outlined,
+                                      size: 18, color: accent),
                                 ),
-                              ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Terms of Service
-                            InkWell(
-                              onTap: () => context.push('/legal/terms'),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.gavel_rounded,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Terms of Service",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "Acceptable use & governing law",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "View Policies & Tour",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
                                       ),
-                                    ),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                        color: textSecondary, size: 14),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Cookie Policy
-                            InkWell(
-                              onTap: () => context.push('/legal/cookies'),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.cookie_outlined,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Cookie & Storage Policy",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "Secure tokens, cache & local database",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Read our legal documents or play the app's walkthrough",
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: textSecondary,
+                                        ),
                                       ),
-                                    ),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                        color: textSecondary, size: 14),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Accessibility Statement
-                            InkWell(
-                              onTap: () => context.push('/legal/accessibility'),
-                              borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(18)),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.accessibility_new_rounded,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Accessibility Statement",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "ADA Title III & WCAG 2.1 AA",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                        color: textSecondary, size: 14),
-                                  ],
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 20,
+                                  color: textSecondary,
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -1915,8 +1781,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                   children: [
                     // Deepened Indented Tier Icon
                     Container(
-                      margin: const EdgeInsets.only(left: 10),
-                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: tierColor.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
@@ -1927,11 +1793,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                             : (tierName == 'DEV'
                                 ? Icons.developer_mode_rounded
                                 : Icons.bolt_rounded),
-                        size: 18,
+                        size: 28,
                         color: tierColor,
                       ),
                     ),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1939,7 +1804,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                           Text(
                             tierName,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: textPrimary,
                             ),
@@ -1996,7 +1861,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                   ),
                   child: Neumorphic(
                     style: NeumorphicStyle(
-                      depth: 3,
+                      depth: controller.neuDepth,
                       intensity: 0.9,
                       boxShape: NeumorphicBoxShape.roundRect(
                         BorderRadius.circular(10),
@@ -2008,26 +1873,15 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                       ),
                     ),
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.keyboard_double_arrow_up_rounded,
-                          size: 15,
-                          color: amberColor,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          "Upgrade",
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            color: amberColor,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    child: Text(
+                      "Upgrade",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: amberColor,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ),
@@ -2037,7 +1891,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                   onTap: () => _onManageTap(context),
                   child: Neumorphic(
                     style: NeumorphicStyle(
-                      depth: 3,
+                      depth: controller.neuDepth,
                       intensity: 0.9,
                       boxShape: NeumorphicBoxShape.roundRect(
                         BorderRadius.circular(10),
@@ -2273,7 +2127,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
     return Expanded(
       child: Neumorphic(
         style: NeumorphicStyle(
-          depth: 3,
+          depth: controller.neuDepth,
           intensity: 0.85,
           color: controller.currentBaseColor,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),

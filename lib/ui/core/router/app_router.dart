@@ -21,6 +21,7 @@ import '../../features/scanner/views/scanner_screen.dart';
 import '../../features/ai_assistant/views/chat_detail_screen.dart';
 import '../../features/onboarding/views/onboarding_screen.dart';
 import '../../features/settings/views/legal_document_screen.dart';
+import '../../features/settings/views/policies_tour_screen.dart';
 import '../../../../domain/models/conversation.dart';
 
 import '../../../cloud/services/auth_service.dart';
@@ -245,6 +246,11 @@ final GoRouter appRouter = GoRouter(
       path: '/legal',
       pageBuilder: (context, state) =>
           _buildInstantPage(state: state, child: const LegalDocumentScreen()),
+    ),
+    GoRoute(
+      path: '/settings/policies-tour',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const PoliciesTourScreen()),
     ),
   ],
 );
