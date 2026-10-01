@@ -7,6 +7,7 @@ import '../../../../services/currency_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/category_utils.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../../../core/widgets/spending_line_graph.dart';
 import '../../dashboard/view_models/dashboard_view_model.dart';
 import '../../dashboard/views/widgets/spending_summary_card.dart';
@@ -175,10 +176,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             extendBody: true,
             body: SafeArea(
               bottom: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(
-                    left: 20, right: 20, top: 16, bottom: 120),
-                child: Column(
+              child: FadingEdgeScrollView(
+                fadeHeightTop: 20,
+                fadeHeightBottom: 28,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(
+                      left: 20, right: 20, top: 16, bottom: 120),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Header Bar ──────────────────────────────────────────
@@ -714,7 +718,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
             ),
           ),
-        );
+        ),
+      );
       },
     );
   }

@@ -12,9 +12,12 @@ import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/quota_service.dart';
 import '../../../../services/currency_service.dart';
 import '../../../../services/local_image_cache_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/category_utils.dart';
+import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../../../core/widgets/receipt_image_thumbnail.dart';
 
 enum _MenuAction { copyId, copyJson, delete }
@@ -275,36 +278,45 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
         final baseColor = controller.currentBaseColor;
 
         if (_receipt == null) {
-          return NeumorphicBackground(
+          return AppGradientBackground(
             child: Scaffold(
               backgroundColor: Colors.transparent,
-              appBar: AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: Center(
-                  child: NeumorphicButton(
-                    onPressed: () => context.pop(),
-                    style: NeumorphicStyle(
-                      depth: 3,
-                      boxShape: const NeumorphicBoxShape.circle(),
-                      color: baseColor,
+              body: SafeArea(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          NeumorphicCircularButton(
+                            icon: Icons.arrow_back_rounded,
+                            iconSize: 20,
+                            onTap: () => context.pop(),
+                          ),
+                          Text(
+                            'Receipt Details',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 40),
+                        ],
+                      ),
                     ),
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 16, color: textPrimary),
-                  ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'No receipt selected.',
+                          style: TextStyle(color: textSecondary),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                title: Text(
-                  'Receipt Details',
-                  style: TextStyle(
-                      color: textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18),
-                ),
-              ),
-              body: Center(
-                child: Text('No receipt selected.',
-                    style: TextStyle(color: textSecondary)),
               ),
             ),
           );
@@ -322,112 +334,108 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
             .toSet()
             .toList();
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: Center(
-                child: NeumorphicButton(
-                  onPressed: () => context.pop(),
-                  style: NeumorphicStyle(
-                    depth: 3,
-                    boxShape: const NeumorphicBoxShape.circle(),
-                    color: baseColor,
-                  ),
-                  padding: const EdgeInsets.all(8),
-                  child: Icon(Icons.arrow_back_ios_new_rounded,
-                      size: 16, color: textPrimary),
-                ),
-              ),
-              title: Text(
-                'Receipt Details',
-                style: TextStyle(
-                    color: textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18),
-              ),
-              centerTitle: true,
-              actions: [
-                // Top-Right 3-Dot Overflow Menu Button
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Center(
-                    child: PopupMenuButton<_MenuAction>(
-                      onSelected: (action) => _handleMenuAction(action, r),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      color: baseColor,
-                      elevation: 6,
-                      icon: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          boxShape: const NeumorphicBoxShape.circle(),
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // Standardized Custom Top Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () => context.pop(),
+                        ),
+                        Text(
+                          'Receipt Details',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
+                          ),
+                        ),
+                        // Top-Right 3-Dot Overflow Menu Button
+                        PopupMenuButton<_MenuAction>(
+                          onSelected: (action) => _handleMenuAction(action, r),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                           color: baseColor,
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: Icon(Icons.more_vert_rounded,
-                            color: textPrimary, size: 18),
-                      ),
-                      itemBuilder: (ctx) => [
-                        PopupMenuItem<_MenuAction>(
-                          value: _MenuAction.copyId,
-                          child: Row(
-                            children: [
-                              Icon(Icons.content_copy_rounded,
-                                  size: 16, color: accent),
-                              const SizedBox(width: 10),
-                              Text('Copy Receipt ID',
-                                  style: TextStyle(
-                                      color: textPrimary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600)),
-                            ],
+                          elevation: 6,
+                          child: const IgnorePointer(
+                            child: NeumorphicCircularButton(
+                              icon: Icons.more_vert_rounded,
+                              iconSize: 20,
+                              padding: 8,
+                              depth: 3.0,
+                            ),
                           ),
-                        ),
-                        PopupMenuItem<_MenuAction>(
-                          value: _MenuAction.copyJson,
-                          child: Row(
-                            children: [
-                              Icon(Icons.code_rounded, size: 16, color: accent),
-                              const SizedBox(width: 10),
-                              Text('Copy as JSON',
-                                  style: TextStyle(
-                                      color: textPrimary,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem<_MenuAction>(
-                          value: _MenuAction.delete,
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline_rounded,
-                                  size: 16, color: Colors.red.shade400),
-                              const SizedBox(width: 10),
-                              Text('Delete Receipt',
-                                  style: TextStyle(
-                                      color: Colors.red.shade400,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold)),
-                            ],
-                          ),
+                          itemBuilder: (ctx) => [
+                            PopupMenuItem<_MenuAction>(
+                              value: _MenuAction.copyId,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.content_copy_rounded,
+                                      size: 16, color: accent),
+                                  const SizedBox(width: 10),
+                                  Text('Copy Receipt ID',
+                                      style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<_MenuAction>(
+                              value: _MenuAction.copyJson,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.code_rounded,
+                                      size: 16, color: accent),
+                                  const SizedBox(width: 10),
+                                  Text('Copy as JSON',
+                                      style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            PopupMenuItem<_MenuAction>(
+                              value: _MenuAction.delete,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline_rounded,
+                                      size: 16, color: Colors.red.shade400),
+                                  const SizedBox(width: 10),
+                                  Text('Delete Receipt',
+                                      style: TextStyle(
+                                          color: Colors.red.shade400,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            body: SafeArea(
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Column(
-                  children: [
+                  Expanded(
+                    child: FadingEdgeScrollView(
+                      fadeHeightTop: 20,
+                      fadeHeightBottom: 28,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        child: Column(
+                          children: [
                     // ── Header Card ─────────────────────────────────────────
                     Neumorphic(
                       style: NeumorphicStyle(
@@ -775,8 +783,12 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
               ),
             ),
           ),
-        );
-      },
+        ],
+      ),
+    ),
+  ),
+);
+},
     );
   }
 

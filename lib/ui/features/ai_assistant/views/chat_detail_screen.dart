@@ -18,7 +18,9 @@ import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/services/quota_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 
 enum _ChatMenuAction { editTitle, copyId, copyJson, delete }
 
@@ -629,7 +631,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         final displayTimestamp =
             _formatHeaderTimestamp(_conversation?.updatedAt ?? DateTime.now());
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             resizeToAvoidBottomInset: true,
@@ -687,18 +689,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               borderRadius: BorderRadius.circular(16)),
                           color: baseColor,
                           elevation: 6,
-                          icon: Neumorphic(
-                            style: NeumorphicStyle(
-                              depth: 2,
-                              intensity: 0.8,
-                              boxShape: const NeumorphicBoxShape.circle(),
-                              color: baseColor,
-                            ),
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.more_vert_rounded,
-                              color: textSecondary,
-                              size: 18,
+                          child: const IgnorePointer(
+                            child: NeumorphicCircularButton(
+                              icon: Icons.more_vert_rounded,
+                              iconSize: 20,
+                              padding: 8,
+                              depth: 3.0,
                             ),
                           ),
                           itemBuilder: (ctx) => [
@@ -789,11 +785,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               strokeWidth: 2.5,
                             ),
                           )
-                        : _buildMessageList(
-                            textPrimary: textPrimary,
-                            textSecondary: textSecondary,
-                            accent: accent,
-                            baseColor: baseColor,
+                        : FadingEdgeScrollView(
+                            fadeHeightTop: 20,
+                            fadeHeightBottom: 28,
+                            child: _buildMessageList(
+                              textPrimary: textPrimary,
+                              textSecondary: textSecondary,
+                              accent: accent,
+                              baseColor: baseColor,
+                            ),
                           ),
                   ),
 

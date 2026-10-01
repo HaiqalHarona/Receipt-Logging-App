@@ -4,6 +4,8 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 
 class CustomizationScreen extends StatefulWidget {
   const CustomizationScreen({super.key});
@@ -46,48 +48,63 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
             body: SafeArea(
               bottom: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(top: 16, bottom: 120),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Header ──────────────────────────────────────────
-                          Row(
-                            children: [
-                              NeumorphicIconBadge(
-                                icon: Icons.arrow_back_rounded,
-                                iconSize: 20,
-                                onTap: () => context.pop(),
-                              ),
-                              const SizedBox(width: 16),
-                              Text(
-                                'Theme Customization',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
-                                ),
-                              ),
-                            ],
+              child: Column(
+                children: [
+                  // Standardized Custom Top Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/dashboard');
+                            }
+                          },
+                        ),
+                        Text(
+                          'Theme Customization',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
                           ),
-                          const SizedBox(height: 28),
-
-                          // ── Section: Theme Mode ──────────────────────────────
-                          _SectionLabel(
-                              label: 'APPEARANCE MODE',
-                              textSecondary: textSecondary),
-                          const SizedBox(height: 12),
+                        ),
+                        const SizedBox(width: 40),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: FadingEdgeScrollView(
+                      fadeHeightTop: 20,
+                      fadeHeightBottom: 28,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(top: 8, bottom: 120),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // ── Section: Theme Mode ──────────────────────────────
+                                  _SectionLabel(
+                                      label: 'APPEARANCE MODE',
+                                      textSecondary: textSecondary),
+                                  const SizedBox(height: 12),
                           NeumorphicCardWidget(
                             padding: const EdgeInsets.all(16),
                             child: Row(
@@ -501,7 +518,11 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
               ),
             ),
           ),
-        );
+        ],
+      ),
+    ),
+  ),
+);
       },
     );
   }

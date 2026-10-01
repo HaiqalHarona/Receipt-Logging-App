@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../core/widgets/alpha_breadcrumb_badge.dart';
 import 'package:open_filex/open_filex.dart';
@@ -170,10 +171,13 @@ class _SettingsScreenState extends State<SettingsScreen>
             extendBody: true,
             body: SafeArea(
               bottom: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(
-                    left: 24, right: 24, top: 16, bottom: 120),
-                child: Column(
+              child: FadingEdgeScrollView(
+                fadeHeightTop: 20,
+                fadeHeightBottom: 28,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(
+                      left: 24, right: 24, top: 16, bottom: 120),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -856,7 +860,8 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
             ),
           ),
-        );
+        ),
+      );
       },
     );
   }
@@ -935,10 +940,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                   ],
                 ),
               ),
-              Switch(
+              NeumorphicToggleSwitch(
                 key: const Key('master_notification_switch'),
                 value: svc.notificationsEnabled,
-                activeThumbColor: accent,
                 onChanged: (val) async {
                   await svc.setNotificationsEnabled(val);
                 },
@@ -979,10 +983,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ],
                   ),
                 ),
-                Switch(
+                NeumorphicToggleSwitch(
                   key: const Key('weekly_notification_switch'),
                   value: svc.weeklySpendingEnabled,
-                  activeThumbColor: accent,
                   onChanged: (val) async {
                     await svc.setWeeklySpendingEnabled(val);
                   },
@@ -1071,10 +1074,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ],
                   ),
                 ),
-                Switch(
+                NeumorphicToggleSwitch(
                   key: const Key('monthly_notification_switch'),
                   value: svc.monthlySpendingEnabled,
-                  activeThumbColor: accent,
                   onChanged: (val) async {
                     await svc.setMonthlySpendingEnabled(val);
                   },

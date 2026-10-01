@@ -331,31 +331,48 @@ class NeumorphicCircularButton extends StatelessWidget {
     final textPrimary = controller.textColor;
     final baseColor = color ?? controller.currentBaseColor;
 
-    Widget button = NeumorphicButton(
-      onPressed: isLoading ? null : onTap,
-      style: NeumorphicStyle(
-        shape: NeumorphicShape.convex,
-        boxShape: const NeumorphicBoxShape.circle(),
-        depth: depth,
-        intensity: 0.8,
-        color: baseColor,
-      ),
-      padding: EdgeInsets.all(padding),
-      child: isLoading
-          ? SizedBox(
-              width: iconSize,
-              height: iconSize,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: iconColor ?? controller.accentColor,
-              ),
-            )
-          : Icon(
-              icon,
-              color: iconColor ?? textPrimary,
-              size: iconSize,
+    final Widget content = isLoading
+        ? SizedBox(
+            width: iconSize,
+            height: iconSize,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: iconColor ?? controller.accentColor,
             ),
-    );
+          )
+        : Icon(
+            icon,
+            color: iconColor ?? textPrimary,
+            size: iconSize,
+          );
+
+    final Widget button;
+    if (onTap == null && !isLoading) {
+      button = Neumorphic(
+        style: NeumorphicStyle(
+          shape: NeumorphicShape.convex,
+          boxShape: const NeumorphicBoxShape.circle(),
+          depth: depth,
+          intensity: 0.8,
+          color: baseColor,
+        ),
+        padding: EdgeInsets.all(padding),
+        child: content,
+      );
+    } else {
+      button = NeumorphicButton(
+        onPressed: isLoading ? null : onTap,
+        style: NeumorphicStyle(
+          shape: NeumorphicShape.convex,
+          boxShape: const NeumorphicBoxShape.circle(),
+          depth: depth,
+          intensity: 0.8,
+          color: baseColor,
+        ),
+        padding: EdgeInsets.all(padding),
+        child: content,
+      );
+    }
 
     if (tooltip != null) {
       return Tooltip(
@@ -365,6 +382,107 @@ class NeumorphicCircularButton extends StatelessWidget {
       );
     }
     return button;
+  }
+}
+
+/// Reusable Neumorphic Toggle Switch
+///
+/// Features an embossed indented track (depth: -2.0) with a smooth sliding
+/// protruded circular thumb (depth: 2.0) that illuminates with the theme
+/// accent color when active.
+class NeumorphicToggleSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final double width;
+  final double height;
+  final Color? activeTrackColor;
+  final Color? inactiveTrackColor;
+  final Color? activeThumbColor;
+  final Color? inactiveThumbColor;
+
+  const NeumorphicToggleSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.width = 52.0,
+    this.height = 28.0,
+    this.activeTrackColor,
+    this.inactiveTrackColor,
+    this.activeThumbColor,
+    this.inactiveThumbColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppThemeController.instance;
+    final isDark = controller.isDarkMode;
+    final base = controller.currentBaseColor;
+    final accent = controller.accentColor;
+    final isEnabled = onChanged != null;
+
+    final trackColor = value
+        ? (activeTrackColor ?? accent.withValues(alpha: isDark ? 0.35 : 0.25))
+        : (inactiveTrackColor ?? base);
+
+    final thumbColor = value
+        ? (activeThumbColor ?? accent)
+        : (inactiveThumbColor ?? (isDark ? Colors.grey.shade400 : Colors.white));
+
+    final thumbSize = height - 6.0;
+
+    return Semantics(
+      toggled: value,
+      enabled: isEnabled,
+      child: GestureDetector(
+        onTap: isEnabled ? () => onChanged!(!value) : null,
+        behavior: HitTestBehavior.opaque,
+        child: Opacity(
+          opacity: isEnabled ? 1.0 : 0.45,
+          child: Neumorphic(
+            style: NeumorphicStyle(
+              depth: -2.0,
+              intensity: 0.85,
+              color: trackColor,
+              boxShape: NeumorphicBoxShape.roundRect(
+                BorderRadius.circular(height / 2),
+              ),
+              border: NeumorphicBorder(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.black.withValues(alpha: 0.04),
+                width: 0.8,
+              ),
+            ),
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                  child: Neumorphic(
+                    style: NeumorphicStyle(
+                      shape: NeumorphicShape.convex,
+                      depth: 2.0,
+                      intensity: 0.85,
+                      color: thumbColor,
+                      boxShape: const NeumorphicBoxShape.circle(),
+                      shadowLightColor: isDark ? Colors.white12 : Colors.white,
+                    ),
+                    child: SizedBox(
+                      width: thumbSize,
+                      height: thumbSize,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

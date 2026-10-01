@@ -4,7 +4,9 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../cloud/services/quota_service.dart';
@@ -71,87 +73,102 @@ class _EditReceiptScreenState extends State<EditReceiptScreen> {
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: Center(
-                child: NeumorphicCircularButton(
-                  icon: Icons.arrow_back_rounded,
-                  iconSize: 20,
-                  onTap: () => context.pop(),
-                ),
-              ),
-              title: Text(
-                'Edit Receipt',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: textPrimary,
-                ),
-              ),
-              centerTitle: true,
-            ),
             body: SafeArea(
-              child: _receipt == null
-                  ? Center(
-                      child: Text(
-                        'No receipt data to edit.',
-                        style: TextStyle(fontSize: 14, color: textSecondary),
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 16),
-                      child: Column(
-                        children: [
-                          // Editable Receipt Card
-                          VerificationCardWidget(
-                            key: ValueKey(_receipt!.id),
-                            receipt: _editedReceipt!,
-                            onChanged: (updated) {
-                              setState(() => _editedReceipt = updated);
-                            },
-                            textPrimary: textPrimary,
-                            textSecondary: textSecondary,
-                            accent: accent,
-                            isPremium: QuotaService.instance.isPremium,
+              child: Column(
+                children: [
+                  // Standardized Custom Top Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () => context.pop(),
+                        ),
+                        Text(
+                          'Edit Receipt',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
                           ),
-                          const SizedBox(height: 32),
+                        ),
+                        const SizedBox(width: 40),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _receipt == null
+                        ? Center(
+                            child: Text(
+                              'No receipt data to edit.',
+                              style: TextStyle(
+                                  fontSize: 14, color: textSecondary),
+                            ),
+                          )
+                        : FadingEdgeScrollView(
+                            fadeHeightTop: 20,
+                            fadeHeightBottom: 28,
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 16),
+                              child: Column(
+                                children: [
+                                  // Editable Receipt Card
+                                  VerificationCardWidget(
+                                    key: ValueKey(_receipt!.id),
+                                    receipt: _editedReceipt!,
+                                    onChanged: (updated) {
+                                      setState(() => _editedReceipt = updated);
+                                    },
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary,
+                                    accent: accent,
+                                    isPremium: QuotaService.instance.isPremium,
+                                  ),
+                                  const SizedBox(height: 32),
 
-                          // Save Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: NeumorphicButtonWidget(
-                              onPressed: _isSaving ? null : _save,
-                              child: Center(
-                                child: _isSaving
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text(
-                                        'Save Receipt',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                  // Save Button
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 52,
+                                    child: NeumorphicButtonWidget(
+                                      onPressed: _isSaving ? null : _save,
+                                      child: Center(
+                                        child: _isSaving
+                                            ? const SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: CircularProgressIndicator(
+                                                  color: Colors.white,
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                            : const Text(
+                                                'Save Receipt',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
                                       ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
-                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );

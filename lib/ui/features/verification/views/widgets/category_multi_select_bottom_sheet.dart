@@ -3,6 +3,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../../data/repositories/receipt_repository.dart';
 import '../../../../../services/category_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/utils/category_utils.dart';
 
@@ -711,13 +712,7 @@ class _CategoryMultiSelectBottomSheetState
               fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
         ),
         const SizedBox(height: 6),
-        Neumorphic(
-          style: NeumorphicStyle(
-            depth: -3,
-            intensity: 0.85,
-            color: baseColor,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          ),
+        NeumorphicInputFieldWidget(
           child: TextField(
             controller: _newCatNameController,
             style: TextStyle(
@@ -726,8 +721,7 @@ class _CategoryMultiSelectBottomSheetState
               hintText: 'e.g., Subscriptions, Books, Pet Care',
               hintStyle: TextStyle(
                   color: textSecondary.withValues(alpha: 0.5), fontSize: 13),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: EdgeInsets.zero,
               border: InputBorder.none,
             ),
             onChanged: (_) {
@@ -762,15 +756,6 @@ class _CategoryMultiSelectBottomSheetState
                   shape: BoxShape.circle,
                   border: isSelected
                       ? Border.all(color: textPrimary, width: 3)
-                      : null,
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.5),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          )
-                        ]
                       : null,
                 ),
                 child: isSelected

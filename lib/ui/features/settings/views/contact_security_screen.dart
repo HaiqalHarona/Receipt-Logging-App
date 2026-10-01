@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../core/widgets/trial_ineligible_dialog.dart';
 import '../../../core/widgets/two_factor_otp_sheet.dart';
@@ -190,7 +191,7 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
         final countryCode = _profile?.countryCode;
         final mobileNumber = _profile?.mobileNumber;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
@@ -205,22 +206,10 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                     // Header Bar with Back Button
                     Row(
                       children: [
-                        NeumorphicButton(
-                          style: NeumorphicStyle(
-                            shape: NeumorphicShape.flat,
-                            boxShape: NeumorphicBoxShape.roundRect(
-                                BorderRadius.circular(10)),
-                            depth: 2.5,
-                            intensity: 0.8,
-                            color: NeumorphicTheme.baseColor(context),
-                          ),
-                          padding: const EdgeInsets.all(8),
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: Icon(
-                            Icons.arrow_back_rounded,
-                            size: 18,
-                            color: textPrimary,
-                          ),
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () => Navigator.of(context).pop(),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -281,31 +270,18 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        "EMAIL ADDRESS",
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: textSecondary,
-                                          letterSpacing: 0.6,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
                                       Row(
                                         children: [
-                                          Flexible(
-                                            child: Text(
-                                              email,
-                                              style: TextStyle(
-                                                fontSize: 13.5,
-                                                fontWeight: FontWeight.w600,
-                                                color: textPrimary,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                          Text(
+                                            "EMAIL ADDRESS",
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: textSecondary,
+                                              letterSpacing: 0.6,
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 6),
                                           Tooltip(
                                             message: "Edit Email Address",
                                             child: GestureDetector(
@@ -327,13 +303,24 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                                 ),
                                                 child: Icon(
                                                   Icons.edit_rounded,
-                                                  size: 14,
+                                                  size: 13,
                                                   color: accent,
                                                 ),
                                               ),
                                             ),
                                           ),
                                         ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        email,
+                                        style: TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
@@ -344,12 +331,6 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
-                                        Icons.check_circle_rounded,
-                                        color: Colors.green,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 4),
                                       const Text(
                                         "Verified",
                                         style: TextStyle(
@@ -573,7 +554,8 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                     triggerMode: TooltipTriggerMode.tap,
                                     child: Neumorphic(
                                       style: NeumorphicStyle(
-                                        depth: -2,
+                                        depth: 1.0,
+                                        intensity: 0.4,
                                         boxShape: NeumorphicBoxShape.roundRect(
                                             BorderRadius.circular(8)),
                                         color: NeumorphicTheme.baseColor(
@@ -600,7 +582,8 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                     triggerMode: TooltipTriggerMode.tap,
                                     child: Neumorphic(
                                       style: NeumorphicStyle(
-                                        depth: -2,
+                                        depth: 1.0,
+                                        intensity: 0.4,
                                         boxShape: NeumorphicBoxShape.roundRect(
                                             BorderRadius.circular(8)),
                                         color: NeumorphicTheme.baseColor(
@@ -622,31 +605,29 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                     ),
                                   )
                                 else
-                                  GestureDetector(
-                                    onTap: () =>
+                                  NeumorphicButton(
+                                    onPressed: () =>
                                         _showChangePasswordBottomSheet(
                                       context,
                                       accent,
                                       textPrimary,
                                       textSecondary,
                                     ),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                            color: accent.withValues(alpha: 0.5),
-                                            width: 1),
-                                        color: accent.withValues(alpha: 0.08),
-                                      ),
-                                      child: Text(
-                                        "Reset",
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: accent),
-                                      ),
+                                    style: NeumorphicStyle(
+                                      depth: 2.5,
+                                      intensity: 0.85,
+                                      boxShape: NeumorphicBoxShape.roundRect(
+                                          BorderRadius.circular(8)),
+                                      color: NeumorphicTheme.baseColor(context),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    child: Text(
+                                      "Reset",
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: accent),
                                     ),
                                   ),
                               ],
@@ -704,10 +685,9 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 if (isEmailVerified)
-                                  Switch(
+                                  NeumorphicToggleSwitch(
                                     key: const Key('2fa_switch'),
                                     value: _is2FAEnabled,
-                                    activeThumbColor: accent,
                                     onChanged: (val) => _onToggle2FA(val),
                                   )
                                 else
@@ -715,15 +695,10 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                     message:
                                         "Email verification required to enable 2FA",
                                     triggerMode: TooltipTriggerMode.tap,
-                                    child: Opacity(
-                                      opacity: 0.4,
-                                      child: IgnorePointer(
-                                        child: Switch(
-                                          key: const Key('2fa_switch_disabled'),
-                                          value: false,
-                                          onChanged: null,
-                                        ),
-                                      ),
+                                    child: const NeumorphicToggleSwitch(
+                                      key: Key('2fa_switch_disabled'),
+                                      value: false,
+                                      onChanged: null,
                                     ),
                                   ),
                               ],

@@ -14,6 +14,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../cloud/api/api_config.dart';
@@ -794,10 +795,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
 
               // Scrollable Dynamic Content
               Expanded(
-                child: SingleChildScrollView(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Column(
+                child: FadingEdgeScrollView(
+                  fadeHeightTop: 20,
+                  fadeHeightBottom: 28,
+                  child: SingleChildScrollView(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ── 1. HERO PROFILE CARD ──────────────────────────────
@@ -1693,12 +1697,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     ),
-  );
+  ),
+);
 }
 
   Widget _buildSectionHeader(String label, Color textSecondary) {

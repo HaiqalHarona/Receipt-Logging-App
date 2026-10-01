@@ -27,40 +27,46 @@ class PoliciesTourScreen extends StatelessWidget {
         return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              centerTitle: true,
-              leading: Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: NeumorphicCircularButton(
-                    icon: Icons.arrow_back_rounded,
-                    iconSize: 20,
-                    onTap: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.go('/settings');
-                      }
-                    },
-                  ),
-                ),
-              ),
-              title: Text(
-                "Policies & Tour",
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 18 * fontScale,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            body: SafeArea(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Top Navigation Bar (aligned to 20px margin matching UserSettingsScreen)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/settings');
+                            }
+                          },
+                        ),
+                        Text(
+                          "Policies & Tour",
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 18 * fontScale,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 40), // Balance back button
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                   // ── 1. LEGAL DOCUMENTS SECTION ─────────────────────────
                   _buildSectionHeader("LEGAL DOCUMENTS", textSecondary),
                   const SizedBox(height: 8),
@@ -170,7 +176,11 @@ class PoliciesTourScreen extends StatelessWidget {
               ),
             ),
           ),
-        );
+        ],
+      ),
+    ),
+  ),
+);
       },
     );
   }

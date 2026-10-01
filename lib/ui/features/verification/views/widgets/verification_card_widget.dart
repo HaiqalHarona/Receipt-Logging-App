@@ -388,14 +388,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                   ),
                 ],
               ),
-              NeumorphicSwitch(
+              NeumorphicToggleSwitch(
                 value: _isAutoCalculate,
-                style: NeumorphicSwitchStyle(
-                  activeTrackColor: widget.accent.withValues(alpha: 0.3),
-                  activeThumbColor: widget.accent,
-                  inactiveThumbColor:
-                      widget.textSecondary.withValues(alpha: 0.5),
-                ),
                 onChanged: (val) {
                   setState(() {
                     _isAutoCalculate = val;
