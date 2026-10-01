@@ -7,6 +7,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../data/repositories/receipt_repository.dart';
+import '../../../../cloud/services/quota_service.dart';
 import '../../verification/views/widgets/verification_card_widget.dart';
 
 /// A dedicated screen for editing an existing saved receipt.
@@ -116,6 +117,7 @@ class _EditReceiptScreenState extends State<EditReceiptScreen> {
                             textPrimary: textPrimary,
                             textSecondary: textSecondary,
                             accent: accent,
+                            isPremium: QuotaService.instance.isPremium,
                           ),
                           const SizedBox(height: 32),
 

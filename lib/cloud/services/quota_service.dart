@@ -21,6 +21,9 @@ class QuotaService extends ChangeNotifier {
 
   String get tier => _status?.tier.toLowerCase() ?? 'free';
 
+  /// True if the user is on Premium or Dev tier (unlimited access to line items and higher quotas).
+  bool get isPremium => tier != 'free';
+
   /// Whether the user has exhausted their daily scan quota.
   bool get isScanQuotaExhausted => _status?.scan.isExhausted ?? false;
 

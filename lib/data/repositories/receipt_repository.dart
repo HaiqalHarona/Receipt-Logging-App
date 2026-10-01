@@ -462,7 +462,14 @@ class ReceiptRepository extends ChangeNotifier {
                     .where()
                     .receiptIdEqualTo(receipt.id)
                     .findFirst();
-                if (existing != null) model.id = existing.id;
+                if (existing != null) {
+                  model.id = existing.id;
+                  if (updatedWithCloudPath.lineItems.isEmpty &&
+                      existing.lineItems.isNotEmpty) {
+                    model.lineItems = existing.lineItems;
+                    model.items = existing.items;
+                  }
+                }
                 await isar.receiptIsarModels.put(model);
               });
             }
@@ -528,6 +535,11 @@ class ReceiptRepository extends ChangeNotifier {
           if (receipt.createdAt == null) {
             model.createdAt = existing.createdAt;
           }
+          if (receiptToSave.lineItems.isEmpty &&
+              existing.lineItems.isNotEmpty) {
+            model.lineItems = existing.lineItems;
+            model.items = existing.items;
+          }
         }
         await isar.receiptIsarModels.put(model);
       });
@@ -537,6 +549,13 @@ class ReceiptRepository extends ChangeNotifier {
     } else {
       final index = _receipts.indexWhere((r) => r.id == receiptToSave.id);
       if (index >= 0) {
+        final existing = _receipts[index];
+        if (receiptToSave.lineItems.isEmpty && existing.lineItems.isNotEmpty) {
+          receiptToSave = receiptToSave.copyWith(
+            lineItems: existing.lineItems,
+            items: existing.items,
+          );
+        }
         _receipts[index] = receiptToSave;
       } else {
         _receipts.insert(0, receiptToSave);

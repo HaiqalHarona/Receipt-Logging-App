@@ -2,17 +2,20 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../cloud/services/quota_service.dart';
 import '../../../../services/currency_service.dart';
 import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/category_utils.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/receipt_image_thumbnail.dart';
 
 enum _MenuAction { copyId, copyJson, delete }
 
@@ -626,7 +629,10 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: 14),
-                          if (r.lineItems.isEmpty)
+                          if (!QuotaService.instance.isPremium)
+                            _buildLockedLineItemsPlaceholder(
+                                context, accent, textSecondary)
+                          else if (r.lineItems.isEmpty)
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               child: Center(
@@ -781,274 +787,14 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
     Color accent,
     Color baseColor,
   ) {
-    if (r.imagePath == null || r.imagePath!.isEmpty) {
-      return Neumorphic(
-        style: NeumorphicStyle(
-          depth: -2,
-          intensity: 0.8,
-          color: categoryColor.withValues(alpha: 0.08),
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-        ),
-        child: SizedBox(
-          width: 90,
-          height: 90,
-          child: _buildNoImageFallback(categoryColor, textSecondary),
-        ),
-      );
-    }
-
-    if (File(r.imagePath!).existsSync()) {
-      return _buildReceiptImageCard(
-        FileImage(File(r.imagePath!)),
-        r.merchant,
-        categoryColor,
-        textSecondary,
-        accent,
-        baseColor,
-      );
-    }
-
-    // In guest mode, if the local file is not found, fallback to 'No image' immediately
-    if (!AuthService.instance.isLoggedIn) {
-      return Neumorphic(
-        style: NeumorphicStyle(
-          depth: -2,
-          intensity: 0.8,
-          color: categoryColor.withValues(alpha: 0.08),
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-        ),
-        child: SizedBox(
-          width: 90,
-          height: 90,
-          child: _buildNoImageFallback(categoryColor, textSecondary),
-        ),
-      );
-    }
-
-    return FutureBuilder<File?>(
-      future: LocalImageCacheService.instance.getOrFetchReceiptImage(
-        receiptId: r.id,
-        localOrCloudPath: r.imagePath,
-      ),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          return _buildReceiptImageCard(
-            FileImage(snapshot.data!),
-            r.merchant,
-            categoryColor,
-            textSecondary,
-            accent,
-            baseColor,
-          );
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Neumorphic(
-            style: NeumorphicStyle(
-              depth: -2,
-              intensity: 0.8,
-              color: categoryColor.withValues(alpha: 0.08),
-              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-            ),
-            child: SizedBox(
-              width: 90,
-              height: 90,
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: accent,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-        return Neumorphic(
-          style: NeumorphicStyle(
-            depth: -2,
-            intensity: 0.8,
-            color: categoryColor.withValues(alpha: 0.08),
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-          ),
-          child: SizedBox(
-            width: 90,
-            height: 90,
-            child: _buildNoImageFallback(categoryColor, textSecondary),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildReceiptImageCard(
-    ImageProvider imageProvider,
-    String merchant,
-    Color categoryColor,
-    Color textSecondary,
-    Color accent,
-    Color baseColor,
-  ) {
-    return GestureDetector(
-      onTap: () => _showEnlargedReceiptDialog(context, imageProvider, merchant),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: 3,
-              intensity: 0.85,
-              color: baseColor,
-              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-              border: NeumorphicBorder(
-                color: accent.withValues(alpha: 0.3),
-                width: 1.2,
-              ),
-            ),
-            child: SizedBox(
-              width: 90,
-              height: 90,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image(
-                  image: imageProvider,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      _buildNoImageFallback(categoryColor, textSecondary),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -4,
-            right: -4,
-            child: Neumorphic(
-              style: NeumorphicStyle(
-                depth: 2,
-                boxShape: const NeumorphicBoxShape.circle(),
-                color: baseColor,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: accent.withValues(alpha: 0.15),
-                ),
-                child: Icon(Icons.zoom_in_rounded, size: 14, color: accent),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoImageFallback(Color categoryColor, Color textSecondary) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 32,
-            color: categoryColor.withValues(alpha: 0.6),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "No image",
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: textSecondary.withValues(alpha: 0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showEnlargedReceiptDialog(
-    BuildContext context,
-    ImageProvider imageProvider,
-    String merchant,
-  ) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.88),
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Stack(
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Title Bar
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12, top: 8),
-                    child: Text(
-                      merchant,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // Interactive Zoomable / Pannable Image
-                  Flexible(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: InteractiveViewer(
-                        minScale: 0.5,
-                        maxScale: 4.0,
-                        clipBehavior: Clip.none,
-                        child: Image(
-                          image: imageProvider,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "Pinch or double tap to zoom • Drag to pan",
-                    style: TextStyle(
-                      color: Colors.white60,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              // Close Button Top-Right
-              Positioned(
-                top: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(ctx).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+    return ReceiptImageThumbnail(
+      imagePath: r.imagePath,
+      receiptId: r.id,
+      merchant: r.merchant,
+      categoryColor: categoryColor,
+      textSecondary: textSecondary,
+      accent: accent,
+      baseColor: baseColor,
     );
   }
 
@@ -1092,6 +838,143 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
             fontSize: fontSize,
             fontWeight: isBold ? FontWeight.w900 : FontWeight.bold,
             color: valueColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLockedLineItemsPlaceholder(
+      BuildContext context, Color accent, Color textSecondary) {
+    final baseColor = NeumorphicTheme.baseColor(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 4.5, sigmaY: 4.5),
+              child: IgnorePointer(
+                child: Column(
+                  children: [
+                    Table(
+                      border: const TableBorder(),
+                      columnWidths: const {
+                        0: FlexColumnWidth(3.0),
+                        1: FlexColumnWidth(1.0),
+                        2: FlexColumnWidth(1.8),
+                        3: FlexColumnWidth(1.8),
+                      },
+                      children: [
+                        TableRow(
+                          children: [
+                            _buildTableHeader('Item', textSecondary, TextAlign.left),
+                            _buildTableHeader('Qty', textSecondary, TextAlign.center),
+                            _buildTableHeader('Unit', textSecondary, TextAlign.right),
+                            _buildTableHeader('Total', textSecondary, TextAlign.right),
+                          ],
+                        ),
+                        TableRow(
+                          children: List.generate(4, (_) => const SizedBox(height: 8)),
+                        ),
+                      ],
+                    ),
+                    ...List.generate(
+                      3,
+                      (idx) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              width: 24,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Container(
+                              width: 44,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Container(
+                              width: 44,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: 3,
+                intensity: 0.85,
+                color: baseColor,
+                boxShape: const NeumorphicBoxShape.circle(),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Icon(
+                Icons.lock_outline_rounded,
+                size: 24,
+                color: textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Center(
+          child: GestureDetector(
+            onTap: () => context.push('/paywall'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: accent.withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome_rounded, size: 14, color: accent),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Upgrade to Premium',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],
