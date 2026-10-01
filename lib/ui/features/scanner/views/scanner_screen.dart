@@ -166,22 +166,14 @@ class _ScannerScreenState extends State<ScannerScreen>
 
     try {
       if (_isBulkMode) {
-        final remaining = 10 - _queuedImages.length;
-        if (remaining <= 0) {
-          _showToast("Maximum of 10 receipts reached for bulk scan.");
-          return;
-        }
-
-        final List<XFile> pickedFiles = await _picker.pickMultiImage(
-          limit: remaining,
-        );
+        final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
         if (pickedFiles.isNotEmpty) {
           setState(() {
-            _queuedImages.addAll(pickedFiles.take(remaining));
+            _queuedImages.addAll(pickedFiles);
           });
           AppLogger.info(
-              'UI', 'Imported ${pickedFiles.length} image(s) into bulk queue');
+              'UI', 'Imported ${pickedFiles.length} image(s) into bulk queue (total: ${_queuedImages.length})');
         }
       } else {
         final XFile? image = await _picker.pickImage(
@@ -224,7 +216,7 @@ class _ScannerScreenState extends State<ScannerScreen>
       if (TutorialService.instance.currentStep == 2) {
         TutorialService.instance.advanceStep();
       }
-      await ScanBatchController.instance.startBatchScan(_queuedImages);
+      await ScanBatchController.instance.startBatchScan(_queuedImages, context);
     } finally {
       if (mounted) {
         setState(() {
@@ -530,7 +522,7 @@ class _ScanModeToggleBar extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      "Bulk Mode (Max 10)",
+                      "Bulk Scan",
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,

@@ -13,10 +13,216 @@ import '../cloud/services/quota_service.dart';
 import '../data/mappers/line_item_mapper.dart';
 import '../domain/models/receipt.dart';
 import '../ui/core/router/app_router.dart';
+import '../ui/core/theme/theme_controller.dart';
 import '../ui/core/widgets/scan_progress_snack_bar.dart';
 import 'app_logger_service.dart';
 import 'image_compression_service.dart';
 import 'tutorial_service.dart';
+
+enum BatchLimitAction { upgrade, trim, cancel }
+
+/// Displays an intercept bottom sheet when a user exceeds their tier batch limit
+/// (Free tier > 5 receipts, Premium tier > 10 receipts).
+Future<BatchLimitAction> _showBatchLimitSheet(
+  BuildContext context,
+  int totalCount, {
+  required bool isFreeTier,
+}) async {
+  final action = await showModalBottomSheet<BatchLimitAction>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (ctx) => BatchLimitSheetContent(
+      totalCount: totalCount,
+      isFreeTier: isFreeTier,
+    ),
+  );
+  return action ?? BatchLimitAction.cancel;
+}
+
+class BatchLimitSheetContent extends StatelessWidget {
+  const BatchLimitSheetContent({
+    super.key,
+    required this.totalCount,
+    this.isFreeTier = true,
+  });
+
+  final int totalCount;
+  final bool isFreeTier;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppThemeController.instance;
+    final bg = theme.currentBaseColor;
+    final textPrimary = theme.textColor;
+    final textSecondary = theme.secondaryTextColor;
+    final accent = theme.accentColor;
+
+    final title = isFreeTier ? 'Bulk Scan Limit (Free Tier)' : 'Bulk Scan Limit';
+    final subtitle = isFreeTier ? '5 receipts maximum on Free' : '10 receipts maximum per batch';
+    final body = isFreeTier
+        ? 'Free tier supports scanning up to 5 receipts at a time. Upgrade to Premium to scan all $totalCount receipts at once with 4x faster parallel processing!'
+        : 'Bulk scanning supports up to 10 receipts at a time to ensure optimal processing speed and reliability. You have selected $totalCount receipts.';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (isFreeTier ? Colors.amber : accent).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isFreeTier ? Icons.bolt : Icons.layers_outlined,
+                  color: isFreeTier ? Colors.amber : accent,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            body,
+            style: TextStyle(
+              fontSize: 14.5,
+              height: 1.45,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (isFreeTier) ...[
+            // Free Tier: Primary Upgrade CTA
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.upgrade),
+              icon: const Icon(Icons.star, size: 18),
+              label: Text('Upgrade to Premium ($totalCount receipts)'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.amber.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Trim to 5 option
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.trim),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                side: BorderSide(color: textSecondary.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Scan First 5 Receipts for Free',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.cancel),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: textSecondary),
+              ),
+            ),
+          ] else ...[
+            // Premium Tier: Trim to 10 option (Primary CTA, no paywall)
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.trim),
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text('Scan First 10 Receipts'),
+              style: FilledButton.styleFrom(
+                backgroundColor: accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.cancel),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                side: BorderSide(color: textSecondary.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 /// Singleton controller that manages one active scan batch at a time.
 ///
@@ -66,6 +272,36 @@ class ScanBatchController extends ChangeNotifier {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
+  Future<List<XFile>?> _enforceBatchLimit(
+      List<XFile> images, BuildContext? context) async {
+    final isPremium = QuotaService.instance.isPremium;
+    final limit = isPremium ? 10 : 5;
+
+    if (images.length <= limit) {
+      return images;
+    }
+
+    final navContext = context ?? rootNavigatorKey.currentContext;
+    if (navContext == null || !navContext.mounted) {
+      return images.take(limit).toList();
+    }
+
+    final action = await _showBatchLimitSheet(
+      navContext,
+      images.length,
+      isFreeTier: !isPremium,
+    );
+
+    if (action == BatchLimitAction.upgrade) {
+      appRouter.push('/paywall');
+      return null;
+    }
+    if (action == BatchLimitAction.trim) {
+      return images.take(limit).toList();
+    }
+    return null;
+  }
+
   /// Submits [images] to POST /scan/parse-many (1–10 files), navigates the user
   /// to /dashboard, and opens an SSE stream for real-time progress updates.
   ///
@@ -73,6 +309,10 @@ class ScanBatchController extends ChangeNotifier {
   Future<void> startBatchScan(List<XFile> images,
       [BuildContext? context]) async {
     if (images.isEmpty) return;
+
+    final resolvedImages = await _enforceBatchLimit(images, context);
+    if (resolvedImages == null || resolvedImages.isEmpty) return;
+    images = resolvedImages;
 
     AppLogger.info(
         'ScanBatch', 'Starting batch scan for ${images.length} image(s)');
@@ -204,9 +444,14 @@ class ScanBatchController extends ChangeNotifier {
     await Future.delayed(const Duration(milliseconds: 250));
 
     // ── Show persistent progress SnackBar ────────────────────────────────
+    final isPremium = QuotaService.instance.isPremium;
+    final progressMsg = 'Scanning receipts (0/$total)…';
+
     ScanProgressSnackBar.show(
-      message: 'Scanning receipt${total > 1 ? 's' : ''} (0/$total)…',
+      message: progressMsg,
+      badgeText: isPremium ? 'Parallel' : 'Sequential',
       onCancel: () => _cancel(),
+      onUpgrade: !isPremium ? () => appRouter.push('/paywall') : null,
     );
 
     // ── Open SSE stream ───────────────────────────────────────────────────
@@ -391,10 +636,14 @@ class ScanBatchController extends ChangeNotifier {
         final totalJobs = (json['total_jobs'] as int?) ?? total;
         AppLogger.info('ScanBatch',
             'Batch $batchId progress: $completed/$totalJobs completed');
+        final isPremium = QuotaService.instance.isPremium;
+        final progressMsg = 'Scanning receipts ($completed/$totalJobs)…';
+
         ScanProgressSnackBar.show(
-          message:
-              'Scanning receipt${totalJobs > 1 ? 's' : ''} ($completed/$totalJobs)…',
+          message: progressMsg,
+          badgeText: isPremium ? 'Parallel' : 'Sequential',
           onCancel: () => _cancel(),
+          onUpgrade: !isPremium ? () => appRouter.push('/paywall') : null,
         );
       } catch (e) {
         AppLogger.warning('ScanBatch', 'Failed to parse progress event: $e');
