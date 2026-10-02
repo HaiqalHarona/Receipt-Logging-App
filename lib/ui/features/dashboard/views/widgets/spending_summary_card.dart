@@ -1,7 +1,6 @@
 // File: lib/ui/features/dashboard/views/widgets/spending_summary_card.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
-import '../../../../core/theme/theme_controller.dart';
 import '../../view_models/dashboard_view_model.dart';
 
 /// Neumorphic spending summary card bound to active graph timeline option.
@@ -97,7 +96,6 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
       }
     }
 
-    final controller = AppThemeController.instance;
     final baseBg = NeumorphicTheme.baseColor(context);
 
     return Neumorphic(

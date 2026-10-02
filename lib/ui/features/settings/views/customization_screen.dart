@@ -186,68 +186,61 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                               ? preset.darkTextColor
                               : preset.lightTextColor;
 
-                          return GestureDetector(
+                          return NeumorphicFilterChip(
+                            isSelected: isSelected,
                             onTap: () {
                               controller.selectPreset(index);
                               _syncHslFromController();
                               setState(() {});
                             },
-                            child: Neumorphic(
-                              style: NeumorphicStyle(
-                                depth: isSelected ? -3 : 4,
-                                intensity: 0.85,
-                                color: previewBase,
-                                boxShape: NeumorphicBoxShape.roundRect(
-                                  BorderRadius.circular(14),
-                                ),
-                                border: NeumorphicBorder(
-                                  color: isSelected
-                                      ? previewAccent
-                                      : previewAccent.withValues(alpha: 0.4),
-                                  width: isSelected ? 2.5 : 1.0,
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 10),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                            restDepth: 4.0,
+                            selectedDepth: -3.0,
+                            selectedColor: previewBase,
+                            borderRadius: BorderRadius.circular(14),
+                            border: NeumorphicBorder(
+                              color: isSelected
+                                  ? previewAccent
+                                  : previewAccent.withValues(alpha: 0.4),
+                              width: isSelected ? 2.5 : 1.0,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 14,
-                                          height: 14,
-                                          decoration: BoxDecoration(
-                                            color: previewAccent,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          preset.name,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: isSelected
-                                                ? FontWeight.bold
-                                                : FontWeight.w500,
-                                            color: previewText,
-                                          ),
-                                        ),
-                                        if (isSelected) ...[
-                                          const SizedBox(width: 4),
-                                          Icon(
-                                            Icons.check_circle_rounded,
-                                            color: previewAccent,
-                                            size: 13,
-                                          ),
-                                        ],
-                                      ],
+                                    Container(
+                                      width: 14,
+                                      height: 14,
+                                      decoration: BoxDecoration(
+                                        color: previewAccent,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      preset.name,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: previewText,
+                                      ),
+                                    ),
+                                    if (isSelected) ...[
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        color: previewAccent,
+                                        size: 13,
+                                      ),
+                                    ],
                                   ],
                                 ),
-                              ),
+                              ],
                             ),
                           );
                         },
@@ -581,47 +574,38 @@ class _ModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return NeumorphicFilterChip(
+      isSelected: isSelected,
       onTap: onTap,
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isSelected ? -3 : 4,
-          intensity: 0.85,
-          color: isSelected ? accent.withValues(alpha: 0.12) : null,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          border: isSelected
-              ? NeumorphicBorder(
-                  color: accent.withValues(alpha: 0.4), width: 1.0)
-              : const NeumorphicBorder.none(),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? accent
-                        : textPrimary.withValues(alpha: 0.6),
-                  ),
-                ),
-              ),
-            ],
+      restDepth: 4.0,
+      selectedDepth: -3.0,
+      selectedColor: accent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
           ),
-        ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? accent
+                    : textPrimary.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -647,32 +631,23 @@ class _FontScaleChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = (controller.fontScale - scale).abs() < 0.01;
-    return GestureDetector(
+    return NeumorphicFilterChip(
+      isSelected: isSelected,
       onTap: () => controller.setFontScale(scale),
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isSelected ? -3 : 4,
-          intensity: 0.85,
-          color: isSelected ? accent.withValues(alpha: 0.12) : null,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          border: isSelected
-              ? NeumorphicBorder(
-                  color: accent.withValues(alpha: 0.4), width: 1.0)
-              : const NeumorphicBorder.none(),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Center(
-            child: MediaQuery.withNoTextScaling(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color:
-                      isSelected ? accent : textPrimary.withValues(alpha: 0.6),
-                ),
-              ),
+      restDepth: 4.0,
+      selectedDepth: -3.0,
+      selectedColor: accent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Center(
+        child: MediaQuery.withNoTextScaling(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color:
+                  isSelected ? accent : textPrimary.withValues(alpha: 0.6),
             ),
           ),
         ),

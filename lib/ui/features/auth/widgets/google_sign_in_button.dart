@@ -1,4 +1,5 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 
 class GoogleSignInButton extends StatelessWidget {
@@ -22,46 +23,45 @@ class GoogleSignInButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: 52,
-      child: GestureDetector(
-        onTap: isLoading ? null : onPressed,
-        child: Neumorphic(
-          style: NeumorphicStyle(
-            depth: 4,
-            intensity: 0.85,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-            color: baseColor,
-            border: NeumorphicBorder(
-              color: textPrimary.withValues(alpha: 0.12),
-              width: 1,
-            ),
-          ),
-          child: Center(
-            child: isLoading
-                ? SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: controller.accentColor,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const _GoogleLogoWidget(size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          color: textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.1,
-                        ),
-                      ),
-                    ],
+      child: NeumorphicTactileButton(
+        onPressed: isLoading ? null : onPressed,
+        depth: 4,
+        pressedDepth: 0.0,
+        pressedScale: 0.98,
+        color: baseColor,
+        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
+        border: NeumorphicBorder(
+          color: textPrimary.withValues(alpha: 0.12),
+          width: 1,
+        ),
+        padding: EdgeInsets.zero,
+        isLoading: isLoading,
+        child: Center(
+          child: isLoading
+              ? SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: controller.accentColor,
                   ),
-          ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const _GoogleLogoWidget(size: 20),
+                    const SizedBox(width: 12),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );

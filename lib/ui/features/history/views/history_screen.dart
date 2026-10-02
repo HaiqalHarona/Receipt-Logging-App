@@ -2,6 +2,7 @@
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/bottom_nav_bar.dart';
@@ -183,45 +184,39 @@ class _HistoryScreenState extends State<HistoryScreen>
                           children: [
                             // Category Filter Button
                             Expanded(
-                              child: GestureDetector(
+                              child: NeumorphicFilterChip(
+                                isSelected: selectedCats.isNotEmpty,
                                 onTap: _openFilterModal,
-                                child: Neumorphic(
-                                  style: NeumorphicStyle(
-                                    depth: selectedCats.isNotEmpty ? -2 : 3,
-                                    intensity: 0.8,
-                                    color: selectedCats.isNotEmpty
-                                        ? accent
-                                        : NeumorphicTheme.baseColor(context),
-                                    boxShape: NeumorphicBoxShape.roundRect(
-                                        BorderRadius.circular(12)),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 10),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.filter_list_rounded,
-                                        size: 16,
+                                restDepth: 3.0,
+                                selectedDepth: -2.0,
+                                selectedColor: accent,
+                                borderRadius: BorderRadius.circular(12),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 10),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.filter_list_rounded,
+                                      size: 16,
+                                      color: selectedCats.isNotEmpty
+                                          ? Colors.white
+                                          : textPrimary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      selectedCats.isEmpty
+                                          ? "Category"
+                                          : "Filter (${selectedCats.length})",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
                                         color: selectedCats.isNotEmpty
                                             ? Colors.white
                                             : textPrimary,
                                       ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        selectedCats.isEmpty
-                                            ? "Category"
-                                            : "Filter (${selectedCats.length})",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: selectedCats.isNotEmpty
-                                              ? Colors.white
-                                              : textPrimary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -300,9 +295,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                                 left: 24,
                                 right: 24,
                                 top: 8,
-                                bottom: AppBottomNavBar.contentBottomPadding(
-                                    context,
-                                    extraMargin: 24.0),
+                                bottom: 130,
                               ),
                               itemCount: list.length,
                               separatorBuilder: (_, __) =>
@@ -351,41 +344,38 @@ class _HistoryScreenState extends State<HistoryScreen>
   }) {
     final isActive = currentField == field;
 
-    return GestureDetector(
+    return NeumorphicFilterChip(
+      isSelected: isActive,
       onTap: () => _viewModel.toggleSort(field),
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isActive ? -2 : 3,
-          intensity: 0.8,
-          color: isActive ? accent : NeumorphicTheme.baseColor(context),
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        child: SizedBox(
-          height: 18,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: isActive ? Colors.white : textPrimary,
-                ),
+      restDepth: 3.0,
+      selectedDepth: -2.0,
+      selectedColor: accent,
+      borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: SizedBox(
+        height: 18,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: isActive ? Colors.white : textPrimary,
               ),
-              const SizedBox(width: 3),
-              Icon(
-                isActive
-                    ? (sortAsc
-                        ? Icons.arrow_upward_rounded
-                        : Icons.arrow_downward_rounded)
-                    : Icons.unfold_more_rounded,
-                size: 14,
-                color: isActive ? Colors.white : textSecondary,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 3),
+            Icon(
+              isActive
+                  ? (sortAsc
+                      ? Icons.arrow_upward_rounded
+                      : Icons.arrow_downward_rounded)
+                  : Icons.unfold_more_rounded,
+              size: 14,
+              color: isActive ? Colors.white : textSecondary,
+            ),
+          ],
         ),
       ),
     );

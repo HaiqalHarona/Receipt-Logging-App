@@ -1,6 +1,7 @@
 // File: lib/ui/features/history/views/widgets/receipt_list_item_widget.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../../domain/models/receipt.dart';
 import '../../../../core/utils/category_utils.dart';
 
@@ -41,19 +42,16 @@ class ReceiptListItemWidget extends StatelessWidget {
     final primaryColor = CategoryUtils.getCategoryColor(primaryTag);
     final categoryIcon = CategoryUtils.getCategoryIcon(primaryTag);
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: 3,
-          intensity: 0.8,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-        ),
-        child: ConstrainedBox(
+    return NeumorphicTactileButton(
+      onPressed: onTap,
+      depth: 3.0,
+      pressedDepth: 0.0,
+      pressedScale: 0.98,
+      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+      child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 76),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
             child: Row(
               children: [
                 // Uniquely colour-coded primary category icon badge (Left)
@@ -126,8 +124,7 @@ class ReceiptListItemWidget extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildCategoryTags(List<String> allTags) {

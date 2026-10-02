@@ -6,6 +6,7 @@ import '../../../../cloud/models/subscription_models.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../services/local_image_cache_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/bottom_nav_bar.dart';
@@ -122,8 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     left: 24,
                     right: 24,
                     top: 16,
-                    bottom: AppBottomNavBar.contentBottomPadding(context,
-                        extraMargin: 12.0),
+                    bottom: 20,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,40 +187,36 @@ class _DashboardScreenState extends State<DashboardScreen>
                           ),
                           const SizedBox(width: 12),
                           if (_viewModel.isLoggedIn)
-                            GestureDetector(
-                              onTap: () => context.push('/user-settings'),
-                              child: _buildAvatarWidget(
-                                  _viewModel.avatarImagePath,
-                                  _viewModel.username ?? 'User',
-                                  accent,
-                                  textSecondary,
-                                  controller),
+                            _buildAvatarWidget(
+                                _viewModel.avatarImagePath,
+                                _viewModel.username ?? 'User',
+                                accent,
+                                textSecondary,
+                                controller,
+                                () => context.push('/user-settings'),
                             )
                           else
-                            GestureDetector(
-                              onTap: () => context.push('/auth'),
-                              child: Neumorphic(
-                                style: NeumorphicStyle(
-                                  depth: 4,
-                                  intensity: 0.85,
-                                  boxShape: const NeumorphicBoxShape.circle(),
-                                  color: controller.currentBaseColor,
-                                  border: NeumorphicBorder(
-                                    color: controller.isDarkMode
-                                        ? Colors.white.withValues(alpha: 0.05)
-                                        : Colors.white.withValues(alpha: 0.6),
-                                    width: 0.8,
-                                  ),
-                                ),
-                                child: SizedBox(
-                                  width: 38,
-                                  height: 38,
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.person_outline_rounded,
-                                      size: 20,
-                                      color: accent,
-                                    ),
+                            NeumorphicTactileButton(
+                              onPressed: () => context.push('/auth'),
+                              depth: 4.0,
+                              pressedDepth: 0.0,
+                              pressedScale: 0.96,
+                              boxShape: const NeumorphicBoxShape.circle(),
+                              color: controller.currentBaseColor,
+                              border: NeumorphicBorder(
+                                color: controller.isDarkMode
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.white.withValues(alpha: 0.6),
+                                width: 0.8,
+                              ),
+                              child: SizedBox(
+                                width: 38,
+                                height: 38,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.person_outline_rounded,
+                                    size: 20,
+                                    color: accent,
                                   ),
                                 ),
                               ),
@@ -304,19 +300,21 @@ class _DashboardScreenState extends State<DashboardScreen>
     Color accent,
     Color fallbackColor,
     AppThemeController controller,
+    VoidCallback onTap,
   ) {
     final base = controller.currentBaseColor;
 
-    return Neumorphic(
-      style: NeumorphicStyle(
-        depth: 4,
-        intensity: 0.85,
-        boxShape: const NeumorphicBoxShape.circle(),
-        color: base,
-        border: NeumorphicBorder(
-          color: accent.withValues(alpha: 0.8),
-          width: 1.5,
-        ),
+    return NeumorphicTactileButton(
+      onPressed: onTap,
+      depth: 4.0,
+      pressedDepth: 0.0,
+      pressedScale: 0.96,
+      boxShape: const NeumorphicBoxShape.circle(),
+      padding: EdgeInsets.zero,
+      color: base,
+      border: NeumorphicBorder(
+        color: accent.withValues(alpha: 0.8),
+        width: 1.5,
       ),
       child: SizedBox(
         width: 50,

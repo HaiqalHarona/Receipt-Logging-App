@@ -2,6 +2,7 @@
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 
 /// A modal dialog presented to unauthenticated guest users when they attempt
@@ -104,19 +105,13 @@ class AccountRequiredDialog extends StatelessWidget {
               // ── Sign In / Register Button ──
               SizedBox(
                 width: double.infinity,
-                child: NeumorphicButton(
+                child: NeumorphicButtonWidget(
                   onPressed: () {
                     Navigator.of(context).pop();
                     context.push('/auth');
                   },
-                  style: NeumorphicStyle(
-                    color: accent,
-                    depth: 4,
-                    intensity: 0.8,
-                    boxShape: NeumorphicBoxShape.roundRect(
-                      BorderRadius.circular(12),
-                    ),
-                  ),
+                  color: accent,
+                  borderRadius: 12,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   child: const Center(
                     child: Text(
@@ -135,17 +130,11 @@ class AccountRequiredDialog extends StatelessWidget {
               // ── Cancel / Dismiss Button ──
               SizedBox(
                 width: double.infinity,
-                child: NeumorphicButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: NeumorphicStyle(
-                    color: controller.currentBaseColor,
-                    depth: 2,
-                    boxShape: NeumorphicBoxShape.roundRect(
-                      BorderRadius.circular(12),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
                     child: Text(
                       'Maybe Later',
                       style: TextStyle(

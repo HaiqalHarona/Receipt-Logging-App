@@ -67,7 +67,7 @@ void main() {
       expect(find.text('3 MONTHS FREE'), findsOneWidget);
       expect(find.text('Annual · 3 Months Free'), findsOneWidget);
       expect(find.text(r'$1.50*'), findsOneWidget);
-      expect(find.text('FIRST MONTH OFF'), findsOneWidget);
+      expect(find.text('1 MONTH DISCOUNT'), findsOneWidget);
       expect(find.text('Monthly Plan'), findsOneWidget);
       expect(find.text(r'$1.99*'), findsOneWidget);
       expect(find.text('* Prices shown in USD'), findsOneWidget);
@@ -104,7 +104,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       // Header
-      expect(find.text('SancFund Premium'), findsOneWidget);
+      expect(find.text('Premium'), findsOneWidget);
       expect(find.text('PRO'), findsOneWidget);
 
       // Annual plan recommended badge & subtext during loading state
@@ -114,7 +114,7 @@ void main() {
       expect(find.text('—'), findsAtLeastNWidgets(1));
       expect(find.text(r'$3.99'), findsNothing);
       expect(find.text(r'$3.00'), findsNothing);
-      expect(find.text('* Prices shown in USD'), findsOneWidget);
+      expect(find.text('* Prices shown in USD.'), findsOneWidget);
 
       // In loading state (no RC products mocked), CTA button is disabled with Loading prices...
       expect(find.text('Loading prices…'), findsOneWidget);

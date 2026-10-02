@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../services/isar_service.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../data/seeders/receipt_seeder.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 
@@ -58,17 +59,11 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Row(
                   children: [
-                    NeumorphicButton(
-                      style: NeumorphicStyle(
-                        depth: 3,
-                        intensity: 0.8,
-                        boxShape: const NeumorphicBoxShape.circle(),
-                        color: NeumorphicTheme.baseColor(context),
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      onPressed: () => context.pop(),
-                      child: Icon(Icons.arrow_back_rounded,
-                          color: textPrimary, size: 20),
+                    NeumorphicCircularButton(
+                      icon: Icons.arrow_back_rounded,
+                      iconSize: 20,
+                      depth: 3.0,
+                      onTap: () => context.pop(),
                     ),
                     const SizedBox(width: 16),
                     Text(
@@ -80,17 +75,12 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                       ),
                     ),
                     const Spacer(),
-                    NeumorphicButton(
-                      style: NeumorphicStyle(
-                        depth: 3,
-                        intensity: 0.8,
-                        boxShape: const NeumorphicBoxShape.circle(),
-                        color: NeumorphicTheme.baseColor(context),
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      onPressed: () => ReceiptRepository.instance.init(),
-                      child:
-                          Icon(Icons.refresh_rounded, color: accent, size: 20),
+                    NeumorphicCircularButton(
+                      icon: Icons.refresh_rounded,
+                      iconColor: accent,
+                      iconSize: 20,
+                      depth: 3.0,
+                      onTap: () => ReceiptRepository.instance.init(),
                     ),
                   ],
                 ),
@@ -199,13 +189,13 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                           ),
                           Row(
                             children: [
-                              NeumorphicButton(
-                                style: NeumorphicStyle(
-                                  depth: 2,
-                                  boxShape: NeumorphicBoxShape.roundRect(
-                                      BorderRadius.circular(8)),
-                                  color: accent.withValues(alpha: 0.15),
-                                ),
+                              NeumorphicTactileButton(
+                                depth: 2.5,
+                                pressedDepth: 0.0,
+                                pressedScale: 0.97,
+                                color: accent.withValues(alpha: 0.15),
+                                boxShape: NeumorphicBoxShape.roundRect(
+                                    BorderRadius.circular(8)),
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 6),
                                 onPressed: () async {
@@ -229,14 +219,14 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                               ),
                               if (receipts.isNotEmpty) ...[
                                 const SizedBox(width: 8),
-                                NeumorphicButton(
-                                  style: NeumorphicStyle(
-                                    depth: 2,
-                                    boxShape: NeumorphicBoxShape.roundRect(
-                                        BorderRadius.circular(8)),
-                                    color:
-                                        Colors.redAccent.withValues(alpha: 0.1),
-                                  ),
+                                NeumorphicTactileButton(
+                                  depth: 2.5,
+                                  pressedDepth: 0.0,
+                                  pressedScale: 0.97,
+                                  color:
+                                      Colors.redAccent.withValues(alpha: 0.1),
+                                  boxShape: NeumorphicBoxShape.roundRect(
+                                      BorderRadius.circular(8)),
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 6),
                                   onPressed: () {

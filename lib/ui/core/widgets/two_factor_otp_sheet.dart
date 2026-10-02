@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 
@@ -448,16 +449,14 @@ class _TwoFactorOtpSheetState extends State<TwoFactorOtpSheet> {
               SizedBox(
                 width: double.infinity,
                 height: 48,
-                child: NeumorphicButton(
+                child: NeumorphicButtonWidget(
                   key: const Key('2fa_verify_button'),
-                  style: NeumorphicStyle(
-                    depth: isOtpComplete && !_isVerifying ? 4 : -2,
-                    color: isOtpComplete && !_isVerifying
-                        ? accent
-                        : baseColor,
-                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-                  ),
-                  onPressed: isOtpComplete && !_isVerifying ? _handleVerify : null,
+                  borderRadius: 14,
+                  color: accent,
+                  isLoading: _isVerifying,
+                  onPressed:
+                      isOtpComplete && !_isVerifying ? _handleVerify : null,
+                  padding: EdgeInsets.zero,
                   child: Center(
                     child: _isVerifying
                         ? const SizedBox(

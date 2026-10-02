@@ -409,23 +409,16 @@ class _ScannerTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Row(
         children: [
-          NeumorphicButton(
-            onPressed: () {
+          NeumorphicCircularButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            iconSize: 18,
+            padding: 12,
+            depth: 4,
+            iconColor: textPrimary,
+            onTap: () {
               AppLogger.info('UI', 'User tapped Back on ScannerScreen');
               context.pop();
             },
-            style: NeumorphicStyle(
-              depth: 4,
-              intensity: 0.8,
-              boxShape: const NeumorphicBoxShape.circle(),
-              color: controller.currentBaseColor,
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 18,
-              color: textPrimary,
-            ),
           ),
           const Expanded(
             child: Center(
@@ -438,20 +431,19 @@ class _ScannerTopBar extends StatelessWidget {
               ),
             ),
           ),
-          NeumorphicButton(
+          NeumorphicTactileButton(
             onPressed: onToggleFlash,
-            style: NeumorphicStyle(
-              depth: isFlashOn ? -4 : 4,
-              intensity: 0.85,
-              boxShape: const NeumorphicBoxShape.circle(),
-              color: controller.currentBaseColor,
-              border: isFlashOn
-                  ? NeumorphicBorder(
-                      color: accent.withValues(alpha: 0.5),
-                      width: 1.5,
-                    )
-                  : const NeumorphicBorder.none(),
-            ),
+            depth: isFlashOn ? -4.0 : 4.0,
+            pressedDepth: 0.0,
+            pressedScale: 0.96,
+            boxShape: const NeumorphicBoxShape.circle(),
+            color: controller.currentBaseColor,
+            border: isFlashOn
+                ? NeumorphicBorder(
+                    color: accent.withValues(alpha: 0.5),
+                    width: 1.5,
+                  )
+                : const NeumorphicBorder.none(),
             padding: const EdgeInsets.all(12),
             child: Icon(
               isFlashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
@@ -801,53 +793,51 @@ class _ScannerBottomControls extends StatelessWidget {
       );
     }
 
-    Widget captureButton = GestureDetector(
-      onTap: isProcessing
-          ? null
-          : (isScanQuotaExhausted
-              ? () => showAdScanPromptDialog(context)
-              : onCapture),
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: (isScanQuotaExhausted || isProcessing) ? -2 : 8,
-          intensity: 0.9,
-          boxShape: const NeumorphicBoxShape.circle(),
-          color: controller.currentBaseColor,
-          border: NeumorphicBorder(
-            color: isScanQuotaExhausted
-                ? Colors.white12
-                : accent.withValues(alpha: 0.4),
-            width: 2.0,
-          ),
+    final VoidCallback? captureTapHandler = isProcessing
+        ? null
+        : (isScanQuotaExhausted
+            ? () => showAdScanPromptDialog(context)
+            : onCapture);
+
+    Widget captureButton = NeumorphicTactileButton(
+      onPressed: captureTapHandler,
+      depth: (isScanQuotaExhausted || isProcessing) ? 0.0 : 8.0,
+      pressedDepth: 0.0,
+      pressedScale: 0.92,
+      color: controller.currentBaseColor,
+      boxShape: const NeumorphicBoxShape.circle(),
+      border: NeumorphicBorder(
+        color: isScanQuotaExhausted
+            ? Colors.white12
+            : accent.withValues(alpha: 0.4),
+        width: 2.0,
+      ),
+      padding: const EdgeInsets.all(6),
+      isLoading: isProcessing,
+      child: Container(
+        width: 66,
+        height: 66,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: (queuedCount >= 10 || isProcessing || isScanQuotaExhausted)
+              ? Colors.grey
+              : accent,
+          boxShadow: (isScanQuotaExhausted || isProcessing)
+              ? null
+              : [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.4),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Container(
-            width: 66,
-            height: 66,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: (queuedCount >= 10 || isProcessing || isScanQuotaExhausted)
-                  ? Colors.grey
-                  : accent,
-              boxShadow: (isScanQuotaExhausted || isProcessing)
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                      ),
-                    ],
-            ),
-            child: Icon(
-              isScanQuotaExhausted
-                  ? Icons.lock_clock_rounded
-                  : Icons.camera_alt_rounded,
-              color: Colors.white,
-              size: 30,
-            ),
-          ),
+        child: Icon(
+          isScanQuotaExhausted
+              ? Icons.lock_clock_rounded
+              : Icons.camera_alt_rounded,
+          color: Colors.white,
+          size: 30,
         ),
       ),
     );
@@ -872,48 +862,43 @@ class _ScannerBottomControls extends StatelessWidget {
           galleryButton,
           captureButton,
           if (isBulkMode && queuedCount > 0)
-            GestureDetector(
-              onTap: isProcessing ? null : onProcessQueue,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: isProcessing ? -2 : 6,
-                      intensity: isProcessing ? 0.5 : 0.9,
-                      boxShape: const NeumorphicBoxShape.circle(),
-                      color:
-                          isProcessing ? accent.withValues(alpha: 0.7) : accent,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: isProcessing
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                    ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NeumorphicTactileButton(
+                  onPressed: isProcessing ? null : onProcessQueue,
+                  depth: isProcessing ? 0.0 : 6.0,
+                  pressedDepth: 0.0,
+                  pressedScale: 0.96,
+                  color: isProcessing ? accent.withValues(alpha: 0.7) : accent,
+                  boxShape: const NeumorphicBoxShape.circle(),
+                  padding: const EdgeInsets.all(14),
+                  isLoading: isProcessing,
+                  child: isProcessing
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isProcessing ? "Processing…" : "Process ($queuedCount)",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: accent,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isProcessing ? "Processing…" : "Process ($queuedCount)",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: accent,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             )
           else
             _buildSideButton(
@@ -931,34 +916,28 @@ class _ScannerBottomControls extends StatelessWidget {
     required String label,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: 4,
-              intensity: 0.8,
-              boxShape: const NeumorphicBoxShape.circle(),
-              color: controller.currentBaseColor,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Icon(icon, color: textSecondary, size: 22),
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        NeumorphicCircularButton(
+          icon: icon,
+          iconSize: 22,
+          padding: 14,
+          iconColor: textSecondary,
+          color: controller.currentBaseColor,
+          depth: 4,
+          onTap: onTap,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: textSecondary,
           ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: textSecondary,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

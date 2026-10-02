@@ -1,17 +1,14 @@
 // File: lib/ui/features/receipt_detail/views/receipt_detail_screen.dart
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
-import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/quota_service.dart';
 import '../../../../services/currency_service.dart';
-import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/category_utils.dart';
@@ -202,28 +199,25 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: NeumorphicButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: controller.currentBaseColor,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(
-                          'Cancel',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontWeight: FontWeight.bold,
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(ctx).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Cancel',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: NeumorphicButton(
+                      child: NeumorphicButtonWidget(
                         onPressed: () async {
                           Navigator.of(ctx).pop();
                           if (_receipt != null) {
@@ -238,19 +232,17 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                           );
                           context.pop();
                         },
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: Colors.red.shade400,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
+                        color: Colors.red.shade700,
+                        borderRadius: 12,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: const Text(
-                          'Delete',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                        child: const Center(
+                          child: Text(
+                            'Delete',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -564,34 +556,31 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                           // 5. Small Rectangle Edit Button with Icon
                           Align(
                             alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: _openEditor,
-                              child: Neumorphic(
-                                style: NeumorphicStyle(
-                                  depth: 3,
-                                  intensity: 0.8,
-                                  color: baseColor,
-                                  boxShape: NeumorphicBoxShape.roundRect(
-                                      BorderRadius.circular(8)),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.edit_rounded,
-                                        size: 14, color: accent),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Edit',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: accent,
-                                      ),
+                            child: NeumorphicTactileButton(
+                              onPressed: _openEditor,
+                              depth: 3.0,
+                              pressedDepth: 0.0,
+                              pressedScale: 0.97,
+                              color: baseColor,
+                              boxShape: NeumorphicBoxShape.roundRect(
+                                  BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit_rounded,
+                                      size: 14, color: accent),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Edit',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: accent,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -858,7 +847,6 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
 
   Widget _buildLockedLineItemsPlaceholder(
       BuildContext context, Color accent, Color textSecondary) {
-    final baseColor = NeumorphicTheme.baseColor(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

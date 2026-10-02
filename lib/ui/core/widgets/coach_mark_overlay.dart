@@ -2,6 +2,7 @@
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 
 /// Interactive coach mark overlay with a semi-transparent dark backdrop
@@ -271,15 +272,14 @@ class _CoachMarkOverlayState extends State<CoachMarkOverlay>
                       const SizedBox(height: 14),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: NeumorphicButton(
+                        child: NeumorphicTactileButton(
                           onPressed: widget.onNext,
-                          style: NeumorphicStyle(
-                            depth: 3,
-                            intensity: 0.85,
-                            boxShape: NeumorphicBoxShape.roundRect(
-                                BorderRadius.circular(12)),
-                            color: accent,
-                          ),
+                          depth: 3.0,
+                          pressedDepth: 0.0,
+                          pressedScale: 0.98,
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(12)),
+                          color: accent,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 18, vertical: 9),
                           child: Row(

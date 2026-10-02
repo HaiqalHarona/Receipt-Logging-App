@@ -374,8 +374,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 // Top Navigation Back Pill
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () {
+                    NeumorphicTactileButton(
+                      onPressed: () {
                         AppLogger.info(
                             'UI', 'User tapped Back on SignUpScreen');
                         if (GoRouter.of(context).canPop()) {
@@ -384,34 +384,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           context.go('/auth');
                         }
                       },
-                      child: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 4,
-                          intensity: 0.85,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                          color: controller.currentBaseColor,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.arrow_back_rounded,
-                                  color: textPrimary, size: 18),
-                              const SizedBox(width: 6),
-                              Text(
-                                "Back",
-                                style: TextStyle(
-                                  color: textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                      depth: 4.0,
+                      pressedDepth: 0.0,
+                      pressedScale: 0.97,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
+                      color: controller.currentBaseColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_back_rounded,
+                              color: textPrimary, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Back",
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ],

@@ -131,24 +131,12 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
                         final isSelected = _selectedDocType == type;
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: NeumorphicButton(
-                            onPressed: () => _onSelectTab(type),
-                            style: NeumorphicStyle(
-                              shape: isSelected
-                                  ? NeumorphicShape.concave
-                                  : NeumorphicShape.flat,
-                              boxShape: NeumorphicBoxShape.roundRect(
-                                  BorderRadius.circular(12)),
-                              depth: isSelected ? -2 : 3.5,
-                              intensity: 0.85,
-                              color: baseColor,
-                              border: isSelected
-                                  ? NeumorphicBorder(
-                                      color: accent.withValues(alpha: 0.8),
-                                      width: 1.5,
-                                    )
-                                  : const NeumorphicBorder.none(),
-                            ),
+                          child: NeumorphicFilterChip(
+                            isSelected: isSelected,
+                            onTap: () => _onSelectTab(type),
+                            restDepth: 3.5,
+                            selectedDepth: -2.0,
+                            borderRadius: BorderRadius.circular(12),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 15, vertical: 10),
                             child: Text(

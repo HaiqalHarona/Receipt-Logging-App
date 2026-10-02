@@ -270,97 +270,93 @@ class _SettingsScreenState extends State<SettingsScreen>
                       _buildSectionContainer(
                         children: [
                           // Profile Summary Row
-                          InkWell(
+                          NeumorphicPressableRow(
                             onTap: () => context.push('/user-settings'),
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(18)),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              child: Row(
-                                children: [
-                                  // Avatar Initial Badge
-                                  Neumorphic(
-                                    style: NeumorphicStyle(
-                                      depth: 3,
-                                      boxShape:
-                                          const NeumorphicBoxShape.circle(),
-                                      color: accent.withValues(alpha: 0.15),
-                                      border: NeumorphicBorder(
-                                        color: accent.withValues(alpha: 0.3),
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    child: SizedBox(
-                                      width: 40,
-                                      height: 40,
-                                      child:
-                                          _buildAvatarBadge(username, accent),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                // Avatar Initial Badge
+                                Neumorphic(
+                                  style: NeumorphicStyle(
+                                    depth: 3,
+                                    boxShape:
+                                        const NeumorphicBoxShape.circle(),
+                                    color: accent.withValues(alpha: 0.15),
+                                    border: NeumorphicBorder(
+                                      color: accent.withValues(alpha: 0.3),
+                                      width: 1.0,
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
+                                  child: SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child:
+                                        _buildAvatarBadge(username, accent),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        username,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      if (email.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
                                         Text(
-                                          username,
+                                          email,
                                           style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: textPrimary,
+                                            fontSize: 12,
+                                            color: textSecondary,
                                           ),
                                         ),
-                                        if (email.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            email,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
                                       ],
-                                    ),
+                                    ],
                                   ),
-                                  Icon(
-                                    Icons.chevron_right_rounded,
-                                    color: textSecondary,
-                                    size: 22,
-                                  ),
-                                ],
-                              ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: textSecondary,
+                                  size: 22,
+                                ),
+                              ],
                             ),
                           ),
                           _buildDivider(textSecondary),
                           // Log Out Action Row
-                          InkWell(
+                          NeumorphicPressableRow(
                             onTap: () => _onLogout(context),
                             borderRadius: const BorderRadius.vertical(
                                 bottom: Radius.circular(18)),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 13),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.logout_rounded,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 13),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.logout_rounded,
+                                  color: Colors.redAccent.shade200,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  "Log Out",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
                                     color: Colors.redAccent.shade200,
-                                    size: 20,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    "Log Out",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.redAccent.shade200,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -374,46 +370,44 @@ class _SettingsScreenState extends State<SettingsScreen>
                     _buildSectionContainer(
                       children: [
                         // Customization & Theme Row
-                        InkWell(
+                        NeumorphicPressableRow(
                           onTap: () => context.push('/customization'),
                           borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(18)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Customization & Theme",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Customization & Theme",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Adjust app colors, presets & accents",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Adjust app colors, presets & accents",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textSecondary,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: textSecondary,
-                                  size: 22,
-                                ),
-                              ],
-                            ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: textSecondary,
+                                size: 22,
+                              ),
+                            ],
                           ),
                         ),
                         _buildDivider(textSecondary),
@@ -474,63 +468,61 @@ class _SettingsScreenState extends State<SettingsScreen>
                     _buildSectionContainer(
                       children: [
                         // Currency Selector Row
-                        InkWell(
+                        NeumorphicPressableRow(
                           onTap: () => _showCurrencyPicker(
                               context, textPrimary, textSecondary, accent),
                           borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(18)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Default Display Currency",
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Default Display Currency",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "All receipts convert automatically",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: accent.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    "$currentCurrency ($currentSymbol)",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: accent,
                                     ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "All receipts convert automatically",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  "$currentCurrency ($currentSymbol)",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: accent,
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                         _buildDivider(textSecondary),
                         // Export Database Row
-                        InkWell(
+                        NeumorphicPressableRow(
                           onTap: () => _showExportFormatBottomSheet(
                             context,
                             accent,
@@ -539,45 +531,43 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ),
                           borderRadius: const BorderRadius.vertical(
                               bottom: Radius.circular(18)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Export Database (JSON/CSV)",
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: textPrimary,
-                                        ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Export Database (JSON/CSV)",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: textPrimary,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Save receipts & chat backup to device",
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          color: textSecondary,
-                                        ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Save receipts & chat backup to device",
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: textSecondary,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  "Export",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: accent,
-                                  ),
+                              ),
+                              Text(
+                                "Export",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: accent,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -602,7 +592,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     _buildSectionContainer(
                       children: [
                         // Replay Tutorial Guide Row
-                        InkWell(
+                        NeumorphicPressableRow(
                           onTap: () async {
                             await TutorialService.instance.resetForTesting();
                             TutorialService.instance.startTutorial();
@@ -612,60 +602,58 @@ class _SettingsScreenState extends State<SettingsScreen>
                           },
                           borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(18)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: accent.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    Icons.school_outlined,
-                                    color: accent,
-                                    size: 20,
-                                  ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Replay Tutorial",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Walkthrough of adding a receipt",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: textSecondary,
+                                child: Icon(
+                                  Icons.school_outlined,
+                                  color: accent,
                                   size: 20,
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Replay Tutorial",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Walkthrough of adding a receipt",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: textSecondary,
+                                size: 20,
+                              ),
+                            ],
                           ),
                         ),
                         _buildDivider(textSecondary),
                         // Submit Feedback Row
-                        InkWell(
+                        NeumorphicPressableRow(
                           onTap: () => _showFeedbackBottomSheet(
                             context,
                             accent,
@@ -674,55 +662,53 @@ class _SettingsScreenState extends State<SettingsScreen>
                           ),
                           borderRadius: const BorderRadius.vertical(
                               bottom: Radius.circular(18)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: accent.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    Icons.feedback_outlined,
-                                    color: accent,
-                                    size: 20,
-                                  ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Submit Feedback",
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Report an issue directly to our team",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: textSecondary,
+                                child: Icon(
+                                  Icons.feedback_outlined,
+                                  color: accent,
                                   size: 20,
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Submit Feedback",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Report an issue directly to our team",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: textSecondary,
+                                size: 20,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -734,55 +720,53 @@ class _SettingsScreenState extends State<SettingsScreen>
                     const SizedBox(height: 8),
                     _buildSectionContainer(
                       children: [
-                        InkWell(
+                        NeumorphicPressableRow(
                           onTap: () => context.push('/settings/policies-tour'),
                           borderRadius: BorderRadius.circular(18),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: accent.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(Icons.policy_outlined,
-                                      size: 18, color: accent),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "View Policies & Tour",
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: textPrimary,
-                                        ),
+                                child: Icon(Icons.policy_outlined,
+                                    size: 18, color: accent),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "View Policies & Tour",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        "Read our legal documents or play the app's walkthrough",
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          color: textSecondary,
-                                        ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Read our legal documents or play the app's walkthrough",
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: textSecondary,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  size: 20,
-                                  color: textSecondary,
-                                ),
-                              ],
-                            ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: textSecondary,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -795,45 +779,43 @@ class _SettingsScreenState extends State<SettingsScreen>
                       _buildSectionContainer(
                         children: [
                           // Isar Database Viewer Row
-                          InkWell(
+                          NeumorphicPressableRow(
                             onTap: () => context.push('/settings/db-viewer'),
                             borderRadius: BorderRadius.circular(18),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Isar Database Viewer",
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: textPrimary,
-                                          ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Isar Database Viewer",
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          "Inspect stored receipts & live storage",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: textSecondary,
-                                          ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Inspect stored receipts & live storage",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: textSecondary,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                  Icon(
-                                    Icons.storage_rounded,
-                                    color: accent,
-                                    size: 22,
-                                  ),
-                                ],
-                              ),
+                                ),
+                                Icon(
+                                  Icons.storage_rounded,
+                                  color: accent,
+                                  size: 22,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -995,7 +977,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
 
           if (svc.weeklySpendingEnabled) ...[
-            InkWell(
+            NeumorphicPressableRow(
               key: const Key('weekly_schedule_row'),
               onTap: () => _showWeeklyScheduleBottomSheet(
                 context,
@@ -1003,27 +985,25 @@ class _SettingsScreenState extends State<SettingsScreen>
                 textPrimary,
                 textSecondary,
               ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  children: [
-                    Icon(Icons.schedule_rounded, color: accent, size: 18),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        "Every ${svc.weeklyDayName} at ${SpendingNotificationService.formatTimeOfDay(svc.weeklyTime)}",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: textPrimary,
-                        ),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule_rounded, color: accent, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Every ${svc.weeklyDayName} at ${SpendingNotificationService.formatTimeOfDay(svc.weeklyTime)}",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: textPrimary,
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded,
-                        color: textSecondary, size: 18),
-                  ],
-                ),
+                  ),
+                  Icon(Icons.chevron_right_rounded,
+                      color: textSecondary, size: 18),
+                ],
               ),
             ),
             _buildTestNotificationRow(
@@ -1086,7 +1066,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
 
           if (svc.monthlySpendingEnabled) ...[
-            InkWell(
+            NeumorphicPressableRow(
               key: const Key('monthly_schedule_row'),
               onTap: () => _showMonthlyScheduleBottomSheet(
                 context,
@@ -1094,27 +1074,25 @@ class _SettingsScreenState extends State<SettingsScreen>
                 textPrimary,
                 textSecondary,
               ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  children: [
-                    Icon(Icons.calendar_month_rounded, color: accent, size: 18),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        "On the ${svc.monthlyDayName} at ${SpendingNotificationService.formatTimeOfDay(svc.monthlyTime)}",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: textPrimary,
-                        ),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_month_rounded, color: accent, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "On the ${svc.monthlyDayName} at ${SpendingNotificationService.formatTimeOfDay(svc.monthlyTime)}",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: textPrimary,
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded,
-                        color: textSecondary, size: 18),
-                  ],
-                ),
+                  ),
+                  Icon(Icons.chevron_right_rounded,
+                      color: textSecondary, size: 18),
+                ],
               ),
             ),
             _buildTestNotificationRow(
@@ -1147,33 +1125,31 @@ class _SettingsScreenState extends State<SettingsScreen>
     required Color textPrimary,
     required Color textSecondary,
   }) {
-    return InkWell(
+    return NeumorphicPressableRow(
       key: key,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Icon(Icons.notifications_active_outlined,
-                color: accent.withValues(alpha: 0.8), size: 15),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: accent,
-                ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(Icons.notifications_active_outlined,
+              color: accent.withValues(alpha: 0.8), size: 15),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: accent,
               ),
             ),
-            Icon(
-              Icons.send_rounded,
-              color: accent.withValues(alpha: 0.7),
-              size: 14,
-            ),
-          ],
-        ),
+          ),
+          Icon(
+            Icons.send_rounded,
+            color: accent.withValues(alpha: 0.7),
+            size: 14,
+          ),
+        ],
       ),
     );
   }
@@ -1674,47 +1650,38 @@ class _SettingsScreenState extends State<SettingsScreen>
     required Color textPrimary,
   }) {
     final isSelected = controller.themeMode == mode;
-    return GestureDetector(
+    return NeumorphicFilterChip(
+      isSelected: isSelected,
       onTap: () => controller.setThemeMode(mode),
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isSelected ? -3 : 4,
-          intensity: 0.85,
-          color: isSelected ? accent.withValues(alpha: 0.12) : null,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
-          border: isSelected
-              ? NeumorphicBorder(
-                  color: accent.withValues(alpha: 0.4), width: 1.0)
-              : const NeumorphicBorder.none(),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? accent
-                        : textPrimary.withValues(alpha: 0.6),
-                  ),
-                ),
-              ),
-            ],
+      restDepth: 4.0,
+      selectedDepth: -3.0,
+      selectedColor: accent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
           ),
-        ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? accent
+                    : textPrimary.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

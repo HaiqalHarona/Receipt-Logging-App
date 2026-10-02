@@ -121,17 +121,12 @@ void main() {
       expect(richTextFinder, findsAtLeastNWidgets(1));
 
       // 2. "+" button is outlined & protruded with accent color icon
-      final newChatBtnFinder = find.byWidgetPredicate((w) {
-        if (w is NeumorphicButton && w.child is Icon) {
-          final icon = w.child as Icon;
-          return icon.icon == Icons.add_rounded;
-        }
-        return false;
-      });
-      expect(newChatBtnFinder, findsOneWidget);
-      final newChatBtn = tester.widget<NeumorphicButton>(newChatBtnFinder);
-      expect(newChatBtn.style?.border, isNotNull);
-      expect(newChatBtn.style?.color, AppThemeController.instance.currentBaseColor);
+      final circularBtnFinder = find.byType(NeumorphicCircularButton);
+      expect(circularBtnFinder, findsOneWidget);
+      final circularBtn = tester.widget<NeumorphicCircularButton>(circularBtnFinder);
+      expect(circularBtn.icon, Icons.add_rounded);
+      expect(circularBtn.border, isNotNull);
+      expect(circularBtn.color, AppThemeController.instance.currentBaseColor);
 
       // 3. Empty state is rendered when no conversations exist
       expect(find.text('No conversations yet'), findsOneWidget);

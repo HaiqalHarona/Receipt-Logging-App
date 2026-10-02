@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../../data/repositories/conversation_repository.dart';
 import '../../../../../domain/models/conversation.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/widgets/app_snack_bar.dart';
 
@@ -185,15 +186,8 @@ class ConversationListItemWidget extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: NeumorphicButton(
+                      child: TextButton(
                         onPressed: () => Navigator.of(ctx).pop(),
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: baseColor,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
                           'Cancel',
                           textAlign: TextAlign.center,
@@ -207,7 +201,7 @@ class ConversationListItemWidget extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: NeumorphicButton(
+                      child: NeumorphicButtonWidget(
                         onPressed: () async {
                           final newTitle = titleController.text.trim();
                           if (newTitle.isEmpty) return;
@@ -220,13 +214,7 @@ class ConversationListItemWidget extends StatelessWidget {
                             message: 'Conversation title updated.',
                           );
                         },
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: accent,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        borderRadius: 12,
                         child: const Text(
                           'Save',
                           textAlign: TextAlign.center,
@@ -293,15 +281,8 @@ class ConversationListItemWidget extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: NeumorphicButton(
+                      child: TextButton(
                         onPressed: () => Navigator.of(ctx).pop(),
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: baseColor,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
                           'Cancel',
                           textAlign: TextAlign.center,
@@ -315,7 +296,8 @@ class ConversationListItemWidget extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: NeumorphicButton(
+                      child: NeumorphicButtonWidget(
+                        color: Colors.red.shade700,
                         onPressed: () async {
                           Navigator.of(ctx).pop();
                           await ConversationRepository.instance
@@ -327,13 +309,7 @@ class ConversationListItemWidget extends StatelessWidget {
                             isError: true,
                           );
                         },
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: Colors.red.shade400,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        borderRadius: 12,
                         child: const Text(
                           'Delete',
                           textAlign: TextAlign.center,
@@ -363,21 +339,18 @@ class ConversationListItemWidget extends StatelessWidget {
     final accent = controller.accentColor;
     final baseColor = controller.currentBaseColor;
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: 3,
-          intensity: 0.8,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-          color: baseColor,
-        ),
-        child: SizedBox(
+    return NeumorphicTactileButton(
+      onPressed: onTap,
+      depth: 3.0,
+      pressedDepth: 0.0,
+      pressedScale: 0.98,
+      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+      color: baseColor,
+      child: SizedBox(
           height: 76,
           width: double.infinity,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
             child: Row(
               children: [
                 // Leading chat icon badge
@@ -438,18 +411,12 @@ class ConversationListItemWidget extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16)),
                   color: baseColor,
                   elevation: 6,
-                  icon: Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: 2,
-                      intensity: 0.8,
-                      boxShape: const NeumorphicBoxShape.circle(),
-                      color: baseColor,
-                    ),
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.more_vert_rounded,
-                      color: textSecondary,
-                      size: 18,
+                  child: const IgnorePointer(
+                    child: NeumorphicCircularButton(
+                      icon: Icons.more_vert_rounded,
+                      iconSize: 18,
+                      padding: 8,
+                      depth: 4.0,
                     ),
                   ),
                   itemBuilder: (ctx) => [
@@ -529,7 +496,6 @@ class ConversationListItemWidget extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }

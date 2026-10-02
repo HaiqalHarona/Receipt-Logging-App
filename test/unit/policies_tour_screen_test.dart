@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reciept_logging/ui/core/theme/app_theme.dart';
-import 'package:reciept_logging/ui/core/theme/theme_controller.dart';
 import 'package:reciept_logging/ui/core/widgets/fading_edge_scroll_view.dart';
 import 'package:reciept_logging/ui/core/widgets/app_gradient_background.dart';
 import 'package:reciept_logging/ui/features/settings/views/policies_tour_screen.dart';

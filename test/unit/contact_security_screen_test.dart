@@ -114,7 +114,7 @@ void main() {
       expect(find.text('EMAIL ADDRESS'), findsOneWidget);
       expect(find.text('user@example.com'), findsOneWidget);
       expect(find.byTooltip('Edit Email Address'), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+      expect(find.text('Verified'), findsOneWidget);
 
       // Row 2: Mobile Number
       expect(find.text('MOBILE NUMBER'), findsOneWidget);
@@ -128,7 +128,7 @@ void main() {
 
       // Row 4: Two-Factor Authentication
       expect(find.text('TWO-FACTOR AUTHENTICATION (2FA)'), findsOneWidget);
-      expect(find.byType(Switch), findsOneWidget);
+      expect(find.byType(NeumorphicToggleSwitch), findsOneWidget);
     });
 
     testWidgets(
@@ -229,7 +229,7 @@ void main() {
       final tooltipFinder = find.byTooltip('Email verification required to enable 2FA');
       expect(tooltipFinder, findsOneWidget);
 
-      final switchWidget = tester.widget<Switch>(find.byType(Switch));
+      final switchWidget = tester.widget<NeumorphicToggleSwitch>(find.byType(NeumorphicToggleSwitch));
       expect(switchWidget.value, isFalse);
     });
 
@@ -264,8 +264,8 @@ void main() {
       // 2FA requirement tooltip should not be present
       expect(find.byTooltip('Email verification required to enable 2FA'), findsNothing);
 
-      // Tap Switch
-      await tester.tap(find.byType(Switch));
+      // Tap NeumorphicToggleSwitch
+      await tester.tap(find.byType(NeumorphicToggleSwitch));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -279,7 +279,7 @@ void main() {
 
       expect(mockClient.enable2faCalled, isTrue);
 
-      final switchWidget = tester.widget<Switch>(find.byType(Switch));
+      final switchWidget = tester.widget<NeumorphicToggleSwitch>(find.byType(NeumorphicToggleSwitch));
       expect(switchWidget.value, isTrue);
       expect(find.text('Two-factor authentication enabled successfully.'), findsOneWidget);
     });
@@ -487,7 +487,7 @@ void main() {
       // Initially verified and 2FA switch is on
       expect(find.text('Verified'), findsOneWidget);
       final switchInitial =
-          tester.widget<Switch>(find.byKey(const Key('2fa_switch')));
+          tester.widget<NeumorphicToggleSwitch>(find.byKey(const Key('2fa_switch')));
       expect(switchInitial.value, isTrue);
 
       // Tap Reset password
@@ -517,7 +517,7 @@ void main() {
       expect(find.text('Verified'), findsOneWidget);
       expect(find.text('Verify'), findsNothing);
       final switchFinal =
-          tester.widget<Switch>(find.byKey(const Key('2fa_switch')));
+          tester.widget<NeumorphicToggleSwitch>(find.byKey(const Key('2fa_switch')));
       expect(switchFinal.value, isTrue);
       expect(find.byKey(const Key('2fa_switch_disabled')), findsNothing);
     });

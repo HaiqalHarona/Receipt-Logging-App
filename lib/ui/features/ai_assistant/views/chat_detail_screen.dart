@@ -289,15 +289,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: NeumorphicButton(
+                      child: TextButton(
                         onPressed: () => Navigator.of(ctx).pop(),
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: baseColor,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
                           'Cancel',
                           textAlign: TextAlign.center,
@@ -311,7 +304,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: NeumorphicButton(
+                      child: NeumorphicButtonWidget(
                         onPressed: () async {
                           final newTitle = titleController.text.trim();
                           if (newTitle.isEmpty) return;
@@ -338,13 +331,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             message: 'Conversation title updated.',
                           );
                         },
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: accent,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        borderRadius: 12,
                         child: const Text(
                           'Save',
                           textAlign: TextAlign.center,
@@ -412,15 +399,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: NeumorphicButton(
+                      child: TextButton(
                         onPressed: () => Navigator.of(ctx).pop(),
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: baseColor,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
                           'Cancel',
                           textAlign: TextAlign.center,
@@ -434,7 +414,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: NeumorphicButton(
+                      child: NeumorphicButtonWidget(
+                        color: Colors.red.shade700,
                         onPressed: () async {
                           Navigator.of(ctx).pop();
                           if (_conversation != null) {
@@ -452,13 +433,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           );
                           context.pop();
                         },
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: Colors.red.shade400,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        borderRadius: 12,
                         child: const Text(
                           'Delete',
                           textAlign: TextAlign.center,
@@ -868,7 +843,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                         final bool isSendDisabled =
                             _isGenerating || isChatQuotaExhausted;
-                        Widget sendButton = NeumorphicButton(
+                        Widget sendButton = NeumorphicTactileButton(
                           onPressed: _isGenerating
                               ? null
                               : (isChatQuotaExhausted
@@ -876,14 +851,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                       message:
                                           QuotaService.instance.chatTooltip)
                                   : _handleSendMessage),
-                          style: NeumorphicStyle(
-                            depth: isSendDisabled ? -2 : 3,
-                            intensity: 0.85,
-                            color: isSendDisabled
-                                ? baseColor.withValues(alpha: 0.6)
-                                : accent,
-                            boxShape: const NeumorphicBoxShape.circle(),
-                          ),
+                          depth: isSendDisabled ? 0.0 : 3.0,
+                          pressedDepth: 0.0,
+                          pressedScale: 0.94,
+                          color: isSendDisabled
+                              ? baseColor.withValues(alpha: 0.6)
+                              : accent,
+                          boxShape: const NeumorphicBoxShape.circle(),
                           padding: const EdgeInsets.all(12),
                           child: Icon(
                             isChatQuotaExhausted

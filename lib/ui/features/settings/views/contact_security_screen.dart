@@ -605,7 +605,7 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                     ),
                                   )
                                 else
-                                  NeumorphicButton(
+                                  NeumorphicTactileButton(
                                     onPressed: () =>
                                         _showChangePasswordBottomSheet(
                                       context,
@@ -613,13 +613,12 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                       textPrimary,
                                       textSecondary,
                                     ),
-                                    style: NeumorphicStyle(
-                                      depth: 2.5,
-                                      intensity: 0.85,
-                                      boxShape: NeumorphicBoxShape.roundRect(
-                                          BorderRadius.circular(8)),
-                                      color: NeumorphicTheme.baseColor(context),
-                                    ),
+                                    depth: 2.5,
+                                    pressedDepth: 0.0,
+                                    pressedScale: 0.97,
+                                    color: NeumorphicTheme.baseColor(context),
+                                    boxShape: NeumorphicBoxShape.roundRect(
+                                        BorderRadius.circular(8)),
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 12, vertical: 6),
                                     child: Text(
@@ -1035,15 +1034,10 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
-                      child: NeumorphicButton(
-                        style: NeumorphicStyle(
-                          depth: (isStrong && !isSubmitting) ? 3 : -1,
-                          color: (isStrong && !isSubmitting)
-                              ? accent
-                              : NeumorphicTheme.baseColor(modalCtx),
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                        ),
+                      child: NeumorphicButtonWidget(
+                        borderRadius: 12,
+                        color: accent,
+                        isLoading: isSubmitting,
                         onPressed: (isStrong && !isSubmitting)
                             ? () async {
                                 if (newPass != confirmPass) {
@@ -1321,15 +1315,12 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                     // Save Changes Button
                     SizedBox(
                       width: double.infinity,
-                      child: (isEmailChanged && !isSaving)
-                          ? NeumorphicButton(
-                              style: NeumorphicStyle(
-                                depth: 3,
-                                color: accent,
-                                boxShape: NeumorphicBoxShape.roundRect(
-                                    BorderRadius.circular(12)),
-                              ),
-                              onPressed: () {
+                      child: NeumorphicButtonWidget(
+                        borderRadius: 12,
+                        color: accent,
+                        isLoading: isSaving,
+                        onPressed: (isEmailChanged && !isSaving)
+                            ? () {
                                 final clean = emailController.text.trim();
                                 final emailRegExp = RegExp(
                                     r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$');
@@ -1406,51 +1397,33 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                     }
                                   },
                                 );
-                              },
-                              child: const Center(
-                                child: Text(
+                              }
+                            : null,
+                        child: Center(
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(
+                                            Colors.black),
+                                  ),
+                                )
+                              : Text(
                                   "Save Changes",
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.black,
+                                    color: (isEmailChanged && !isSaving)
+                                        ? Colors.black
+                                        : textSecondary.withValues(
+                                            alpha: 0.35),
                                   ),
                                 ),
-                              ),
-                            )
-                          : Neumorphic(
-                              style: NeumorphicStyle(
-                                depth: -2.5,
-                                intensity: 0.7,
-                                boxShape: NeumorphicBoxShape.roundRect(
-                                    BorderRadius.circular(12)),
-                                color: NeumorphicTheme.baseColor(context),
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              child: Center(
-                                child: isSaving
-                                    ? SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  accent),
-                                        ),
-                                      )
-                                    : Text(
-                                        "Save Changes",
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: textSecondary.withValues(
-                                              alpha: 0.35),
-                                        ),
-                                      ),
-                              ),
-                            ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

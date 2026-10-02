@@ -61,6 +61,7 @@ class ReceiptRepository extends ChangeNotifier {
         _isInitialized = true;
         AppLogger.info('Isar',
             '[ReceiptRepository] Initialized successfully with ${_receipts.length} receipts.');
+        notifyListeners();
       } catch (e, stackTrace) {
         AppLogger.error(
             'Isar', '[ReceiptRepository] Init error', e, stackTrace);
@@ -69,7 +70,6 @@ class ReceiptRepository extends ChangeNotifier {
       AppLogger.warning('Isar',
           '[ReceiptRepository] IsarService not initialized yet; deferring init.');
     }
-    notifyListeners();
   }
 
   /// Saves a single receipt to the Isar database.

@@ -153,7 +153,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   backgroundColor: Colors.transparent,
                   elevation: 0,
                   leading: Center(
-                    child: NeumorphicIconBadge(
+                    child: NeumorphicCircularButton(
                       icon: Icons.arrow_back_ios_new_rounded,
                       iconSize: 18,
                       onTap: () => context.pop(),

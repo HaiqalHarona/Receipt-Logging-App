@@ -62,6 +62,7 @@ class ConversationRepository extends ChangeNotifier {
         _isInitialized = true;
         AppLogger.info('Isar',
             '[ConversationRepository] Initialized successfully with ${_conversations.length} active conversations.');
+        notifyListeners();
       } catch (e, stackTrace) {
         AppLogger.error(
             'Isar', '[ConversationRepository] Init error', e, stackTrace);
@@ -70,7 +71,6 @@ class ConversationRepository extends ChangeNotifier {
       AppLogger.warning('Isar',
           '[ConversationRepository] IsarService not initialized yet; deferring init.');
     }
-    notifyListeners();
   }
 
   // ── CRUD OPERATIONS ───────────────────────────────────────────────────────────

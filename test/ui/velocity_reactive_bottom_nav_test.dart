@@ -3,92 +3,171 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:reciept_logging/ui/core/router/main_tab_shell.dart';
 import 'package:reciept_logging/ui/core/widgets/bottom_nav_bar.dart';
 import 'package:reciept_logging/services/tutorial_service.dart';
 
 void main() {
-  // Helper to build the app shell for testing
+  setUp(() async {
+    await TutorialService.instance.dismissTutorial();
+  });
+
+  tearDown(() async {
+    await TutorialService.instance.resetForTesting();
+  });
+
   Widget buildTestableShell({required String path}) {
     return MaterialApp(
       home: MainTabShell(currentPath: path),
-      // Provide a minimal GoRouter to satisfy context.go calls in NavItem
       navigatorKey: GlobalKey<NavigatorState>(),
     );
   }
 
-  testWidgets('Downward scroll hides bottom navigation bar', (WidgetTester tester) async {
+  AnimatedOpacity getNavBarOpacity(WidgetTester tester) {
+    return tester.widget<AnimatedOpacity>(
+      find.ancestor(
+        of: find.byType(AppBottomNavBar),
+        matching: find.byType(AnimatedOpacity),
+      ),
+    );
+  }
+
+  AnimatedSlide getNavBarSlide(WidgetTester tester) {
+    return tester.widget<AnimatedSlide>(
+      find.ancestor(
+        of: find.byType(AppBottomNavBar),
+        matching: find.byType(AnimatedSlide),
+      ),
+    );
+  }
+
+  void dispatchScrollDelta(WidgetTester tester, double delta, {double pixels = 100.0}) {
+    final element = tester.element(find.byType(Scrollable).first);
+    ScrollUpdateNotification(
+      metrics: FixedScrollMetrics(
+        minScrollExtent: 0.0,
+        maxScrollExtent: 1000.0,
+        pixels: pixels,
+        viewportDimension: 600.0,
+        axisDirection: AxisDirection.down,
+        devicePixelRatio: 1.0,
+      ),
+      context: element,
+      scrollDelta: delta,
+    ).dispatch(element);
+  }
+
+  testWidgets('Slow and fast scrolls do not hide bottom navigation bar', (WidgetTester tester) async {
     await tester.pumpWidget(buildTestableShell(path: '/dashboard'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    // Find a scrollable widget inside the dashboard (assume at least one)
-    final scrollable = find.byType(Scrollable).first;
-    expect(scrollable, findsOneWidget);
+    // Slow speed (delta = 2.0 < 4.0)
+    dispatchScrollDelta(tester, 2.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(getNavBarOpacity(tester).opacity, equals(1.0));
+    expect(getNavBarSlide(tester).offset, equals(Offset.zero));
 
-    // Perform a drag downwards (content moves up, simulating downward scroll) with medium speed
-    await tester.drag(scrollable, const Offset(0, -8));
-    await tester.pumpAndSettle();
-
-    // Verify that the bottom navigation bar is hidden (opacity 0)
-    final animatedOpacity = tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity).first);
-    expect(animatedOpacity.opacity, equals(0.0));
+    // Fast speed (delta = 20.0 > 12.0)
+    dispatchScrollDelta(tester, 20.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(getNavBarOpacity(tester).opacity, equals(1.0));
+    expect(getNavBarSlide(tester).offset, equals(Offset.zero));
   });
 
-  testWidgets('Upward scroll reveals bottom navigation bar', (WidgetTester tester) async {
+  testWidgets('Downward medium-speed scroll hides bottom navigation bar', (WidgetTester tester) async {
     await tester.pumpWidget(buildTestableShell(path: '/dashboard'));
-    await tester.pumpAndSettle();
-    final scrollable = find.byType(Scrollable).first;
-    // Hide first with medium speed drag
-    await tester.drag(scrollable, const Offset(0, -8));
-    await tester.pumpAndSettle();
-    // Now drag upward to reveal with medium speed
-    await tester.drag(scrollable, const Offset(0, 8));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    // Verify that the bottom navigation bar is visible (opacity 1)
-    final animatedOpacity = tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity).first);
-    expect(animatedOpacity.opacity, equals(1.0));
+    // Medium speed (delta = 8.0, 4.0 <= delta <= 12.0)
+    dispatchScrollDelta(tester, 8.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Verify hidden
+    expect(getNavBarOpacity(tester).opacity, equals(0.0));
+    expect(getNavBarSlide(tester).offset, equals(const Offset(0, 1.45)));
+  });
+
+  testWidgets('Upward medium-speed scroll reveals bottom navigation bar', (WidgetTester tester) async {
+    await tester.pumpWidget(buildTestableShell(path: '/dashboard'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Hide first with downward medium speed
+    dispatchScrollDelta(tester, 8.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(getNavBarOpacity(tester).opacity, equals(0.0));
+
+    // Reveal with upward medium speed (delta = -8.0)
+    dispatchScrollDelta(tester, -8.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Verify visible
+    expect(getNavBarOpacity(tester).opacity, equals(1.0));
+    expect(getNavBarSlide(tester).offset, equals(Offset.zero));
+  });
+
+  testWidgets('Reaching top of page (pixels <= 0) auto-reveals bottom navigation bar', (WidgetTester tester) async {
+    await tester.pumpWidget(buildTestableShell(path: '/dashboard'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Hide first
+    dispatchScrollDelta(tester, 8.0, pixels: 100.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(getNavBarOpacity(tester).opacity, equals(0.0));
+
+    // Reach top (pixels = 0.0)
+    dispatchScrollDelta(tester, 0.0, pixels: 0.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Verify auto-revealed
+    expect(getNavBarOpacity(tester).opacity, equals(1.0));
+    expect(getNavBarSlide(tester).offset, equals(Offset.zero));
   });
 
   testWidgets('Tutorial step 1 keeps nav bar visible during scroll', (WidgetTester tester) async {
-    // Ensure tutorial step 1 is active
     TutorialService.instance.setStep(1);
     await tester.pumpWidget(buildTestableShell(path: '/dashboard'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    final scrollable = find.byType(Scrollable).first;
-    // Attempt a medium‑speed downward drag
-    await tester.drag(scrollable, const Offset(0, -8));
-    await tester.pumpAndSettle();
+    // Medium-speed downward scroll attempted during tutorial step 1
+    dispatchScrollDelta(tester, 8.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    // Nav bar should remain visible
-    final navBar = find.byType(AppBottomNavBar);
-    expect(navBar, findsOneWidget);
-    final navBarOffset = tester.getTopLeft(navBar);
-    final screenSize = tester.binding.window.physicalSize / tester.binding.window.devicePixelRatio;
-    expect(navBarOffset.dy, lessThan(screenSize.height));
+    // Nav bar must remain visible
+    expect(getNavBarOpacity(tester).opacity, equals(1.0));
+    expect(getNavBarSlide(tester).offset, equals(Offset.zero));
   });
 
   testWidgets('Tab switch resets navigation bar visibility', (WidgetTester tester) async {
     await tester.pumpWidget(buildTestableShell(path: '/dashboard'));
-    await tester.pumpAndSettle();
-    final scrollable = find.byType(Scrollable).first;
-    // Hide nav bar with medium speed drag
-    await tester.drag(scrollable, const Offset(0, -8));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
-    // Switch tab by tapping the History nav item
-    final historyNavItem = find.text('History');
-    expect(historyNavItem, findsOneWidget);
-    await tester.tap(historyNavItem);
-    await tester.pumpAndSettle();
+    // Hide nav bar with medium-speed scroll
+    dispatchScrollDelta(tester, 8.0);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(getNavBarOpacity(tester).opacity, equals(0.0));
 
-    final navBar = find.byType(AppBottomNavBar);
-    expect(navBar, findsOneWidget);
-    final navBarOffset = tester.getTopLeft(navBar);
-    final screenSize = tester.binding.window.physicalSize / tester.binding.window.devicePixelRatio;
-    // After tab change, nav bar should be visible again
-    expect(navBarOffset.dy, lessThan(screenSize.height));
+    // Switch tab by rebuilding with different path (simulating route change)
+    await tester.pumpWidget(buildTestableShell(path: '/history'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Nav bar should be visible again
+    expect(getNavBarOpacity(tester).opacity, equals(1.0));
+    expect(getNavBarSlide(tester).offset, equals(Offset.zero));
   });
 }

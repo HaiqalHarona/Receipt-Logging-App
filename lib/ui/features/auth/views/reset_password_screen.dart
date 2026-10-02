@@ -156,7 +156,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    NeumorphicIconBadge(
+                    NeumorphicCircularButton(
                       icon: Icons.arrow_back_rounded,
                       iconSize: 20,
                       onTap: () => context.pop(),

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../data/repositories/conversation_repository.dart';
 import '../../../../domain/models/conversation.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/bottom_nav_bar.dart';
@@ -191,23 +192,17 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
                             const SizedBox(width: 12),
 
                             // "+" New Chat Action Button (outlined, protruded, not filled)
-                            NeumorphicButton(
-                              onPressed: _handleCreateNewChat,
-                              style: NeumorphicStyle(
-                                depth: controller.neuDepth,
-                                intensity: 0.85,
-                                color: baseColor,
-                                boxShape: const NeumorphicBoxShape.circle(),
-                                border: NeumorphicBorder(
-                                  color: accent,
-                                  width: 1.5,
-                                ),
-                              ),
-                              padding: const EdgeInsets.all(10),
-                              child: Icon(
-                                Icons.add_rounded,
+                            NeumorphicCircularButton(
+                              icon: Icons.add_rounded,
+                              onTap: _handleCreateNewChat,
+                              depth: controller.neuDepth,
+                              color: baseColor,
+                              iconColor: accent,
+                              padding: 10,
+                              iconSize: 20,
+                              border: NeumorphicBorder(
                                 color: accent,
-                                size: 20,
+                                width: 1.5,
                               ),
                             ),
                           ],
