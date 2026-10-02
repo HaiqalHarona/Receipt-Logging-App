@@ -156,15 +156,29 @@ class ReceiptLoggerApp extends StatelessWidget {
               ),
             );
 
-            return NeumorphicTheme(
-              themeMode: controller.themeMode,
-              darkTheme: customDarkTheme,
-              theme: customLightTheme,
-              child: MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: TextScaler.linear(controller.fontScale),
+            final overlayStyle = SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness:
+                  controller.isDarkMode ? Brightness.light : Brightness.dark,
+              statusBarBrightness:
+                  controller.isDarkMode ? Brightness.dark : Brightness.light,
+              systemNavigationBarColor: controller.currentBaseColor,
+              systemNavigationBarIconBrightness:
+                  controller.isDarkMode ? Brightness.light : Brightness.dark,
+            );
+
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: overlayStyle,
+              child: NeumorphicTheme(
+                themeMode: controller.themeMode,
+                darkTheme: customDarkTheme,
+                theme: customLightTheme,
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(controller.fontScale),
+                  ),
+                  child: child!,
                 ),
-                child: child!,
               ),
             );
           },

@@ -984,43 +984,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                                     ),
                                                   ),
                                                 ),
-                                                const SizedBox(width: 5),
-                                                Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green
-                                                        .withValues(
-                                                            alpha: 0.15),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            6),
-                                                  ),
-                                                  child: const Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        Icons
-                                                            .cloud_done_rounded,
-                                                        color: Colors.green,
-                                                        size: 11,
-                                                      ),
-                                                      SizedBox(width: 3),
-                                                      Text(
-                                                        "Synced",
-                                                        style: TextStyle(
-                                                          color: Colors.green,
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
                                               ],
                                             ),
                                             const SizedBox(height: 2),

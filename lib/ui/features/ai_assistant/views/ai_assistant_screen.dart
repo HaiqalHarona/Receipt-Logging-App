@@ -300,7 +300,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
                               ),
                               itemCount: filteredList.length,
                               separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 15),
                               itemBuilder: (context, index) {
                                 final conv = filteredList[index];
                                 return ConversationListItemWidget(

@@ -151,10 +151,13 @@ class NeumorphicTactileButton extends StatefulWidget {
   final String? tooltip;
   final bool isLoading;
 
+  final bool? enabled;
+
   const NeumorphicTactileButton({
     super.key,
     required this.child,
     required this.onPressed,
+    this.enabled,
     this.depth = 4.0,
     this.pressedDepth = 0.0,
     this.pressedScale = 0.98,
@@ -172,7 +175,7 @@ class NeumorphicTactileButton extends StatefulWidget {
     this.isLoading = false,
   });
 
-  bool get isEnabled => onPressed != null && !isLoading;
+  bool get isEnabled => (enabled ?? (onPressed != null)) && !isLoading;
 
   @override
   State<NeumorphicTactileButton> createState() => _NeumorphicTactileButtonState();
@@ -819,6 +822,7 @@ class NeumorphicCircularButton extends StatelessWidget {
   final bool isLoading;
   final NeumorphicShape shape;
   final NeumorphicBorder? border;
+  final bool? enabled;
 
   const NeumorphicCircularButton({
     super.key,
@@ -828,11 +832,12 @@ class NeumorphicCircularButton extends StatelessWidget {
     this.padding = 8,
     this.iconColor,
     this.color,
-    this.depth = 3,
+    this.depth = 4.0,
     this.tooltip,
     this.isLoading = false,
     this.shape = NeumorphicShape.convex,
     this.border,
+    this.enabled,
   });
 
   @override
@@ -858,6 +863,7 @@ class NeumorphicCircularButton extends StatelessWidget {
 
     return NeumorphicTactileButton(
       onPressed: isLoading ? null : onTap,
+      enabled: enabled,
       depth: depth,
       pressedDepth: 0.0,
       pressedScale: 0.96,

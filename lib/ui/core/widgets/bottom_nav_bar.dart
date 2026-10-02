@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../services/scan_batch_controller.dart';
@@ -288,6 +289,9 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTapDown: (_) {
+        HapticFeedback.lightImpact();
+      },
       onTap: () {
         if (!isActive) context.go(path);
       },

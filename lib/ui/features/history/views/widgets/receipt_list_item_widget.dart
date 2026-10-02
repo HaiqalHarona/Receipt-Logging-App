@@ -47,9 +47,10 @@ class ReceiptListItemWidget extends StatelessWidget {
       depth: 3.0,
       pressedDepth: 0.0,
       pressedScale: 0.98,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
       child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 76),
+          constraints: const BoxConstraints(minHeight: 54),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
             child: Row(

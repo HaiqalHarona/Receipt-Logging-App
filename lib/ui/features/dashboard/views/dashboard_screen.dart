@@ -9,7 +9,6 @@ import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
-import '../../../core/widgets/bottom_nav_bar.dart';
 import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';

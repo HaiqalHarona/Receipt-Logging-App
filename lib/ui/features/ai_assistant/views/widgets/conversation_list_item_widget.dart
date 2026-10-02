@@ -344,10 +344,11 @@ class ConversationListItemWidget extends StatelessWidget {
       depth: 3.0,
       pressedDepth: 0.0,
       pressedScale: 0.98,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
       color: baseColor,
       child: SizedBox(
-          height: 76,
+          height: 54,
           width: double.infinity,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
@@ -417,6 +418,7 @@ class ConversationListItemWidget extends StatelessWidget {
                       iconSize: 18,
                       padding: 8,
                       depth: 4.0,
+                      enabled: true,
                     ),
                   ),
                   itemBuilder: (ctx) => [

@@ -1,5 +1,6 @@
 // File: test/ui/velocity_reactive_bottom_nav_test.dart
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter/material.dart';
@@ -169,5 +170,41 @@ void main() {
     // Nav bar should be visible again
     expect(getNavBarOpacity(tester).opacity, equals(1.0));
     expect(getNavBarSlide(tester).offset, equals(Offset.zero));
+  });
+
+  testWidgets('Route buttons trigger haptic feedback on touch down', (WidgetTester tester) async {
+    final List<MethodCall> hapticCalls = [];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (MethodCall call) async {
+      if (call.method == 'HapticFeedback.vibrate') {
+        hapticCalls.add(call);
+      }
+      return null;
+    });
+
+    try {
+      await tester.pumpWidget(buildTestableShell(path: '/dashboard'));
+      await tester.pumpAndSettle();
+
+      for (final label in ['Home', 'History', 'AI Chat', 'Settings']) {
+        hapticCalls.clear();
+        final buttonFinder = find.text(label);
+        expect(buttonFinder, findsOneWidget);
+
+        // Tap down should trigger immediate haptic feedback
+        final gesture = await tester.startGesture(tester.getCenter(buttonFinder));
+        await tester.pump();
+
+        expect(hapticCalls, isNotEmpty,
+            reason: 'Tapping down on $label should trigger haptics');
+        expect(hapticCalls.first.arguments, equals('HapticFeedbackType.lightImpact'));
+
+        await gesture.cancel();
+        await tester.pumpAndSettle();
+      }
+    } finally {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    }
   });
 }

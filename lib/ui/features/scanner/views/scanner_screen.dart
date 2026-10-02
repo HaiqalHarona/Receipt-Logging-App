@@ -1,6 +1,7 @@
 // File: lib/ui/features/scanner/views/scanner_screen.dart
 import 'dart:io';
 import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -420,13 +421,14 @@ class _ScannerTopBar extends StatelessWidget {
               context.pop();
             },
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 "Scan Receipt",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: textPrimary,
                 ),
               ),
             ),
@@ -483,6 +485,10 @@ class _ScanModeToggleBar extends StatelessWidget {
           children: [
             Expanded(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) {
+                  HapticFeedback.lightImpact();
+                },
                 onTap: onSingleSelect,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -505,6 +511,10 @@ class _ScanModeToggleBar extends StatelessWidget {
             ),
             Expanded(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) {
+                  HapticFeedback.lightImpact();
+                },
                 onTap: onBulkSelect,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),

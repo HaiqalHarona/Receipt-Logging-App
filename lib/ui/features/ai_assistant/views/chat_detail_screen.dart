@@ -669,7 +669,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               icon: Icons.more_vert_rounded,
                               iconSize: 20,
                               padding: 8,
-                              depth: 3.0,
+                              depth: 4.0,
+                              enabled: true,
                             ),
                           ),
                           itemBuilder: (ctx) => [

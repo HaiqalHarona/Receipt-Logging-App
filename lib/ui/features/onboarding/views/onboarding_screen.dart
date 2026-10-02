@@ -119,7 +119,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 color: accent, size: 24),
                             const SizedBox(width: 8),
                             Text(
-                              'Receipt Logger',
+                              'SancFund',
                               style: TextStyle(
                                 fontSize: 16 * fontScale,
                                 fontWeight: FontWeight.bold,
