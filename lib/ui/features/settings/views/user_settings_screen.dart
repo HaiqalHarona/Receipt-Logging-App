@@ -55,7 +55,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
   bool _isLoggingOut = false;
   bool _isManualSyncing = false;
   bool _isUploadingAvatar = false;
-  bool _isExporting = false;
   bool _isSimulatingExpiry = false;
   bool _highlightPlan = false;
   Timer? _highlightTimer;
@@ -441,53 +440,257 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
     }
   }
 
-  Future<void> _onExportData() async {
-    if (_isExporting) return;
-    setState(() => _isExporting = true);
-    try {
-      final result = await DataExportService.instance
-          .exportToFile(format: ExportFormat.json);
-      if (mounted) {
-        if (result.success && result.filePath != null) {
-          final path = result.filePath!;
-          AppSnackBar.show(
-            context,
-            message: "Backup saved (${result.receiptsCount} receipts):\n$path",
-          );
-
-          if (!kIsWeb && Platform.isIOS) {
-            try {
-              await SharePlus.instance.share(
-                ShareParams(
-                  files: [XFile(path)],
-                  subject: 'SancFund Database Backup',
+  void _showExportFormatBottomSheet(
+    BuildContext context,
+    Color accent,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        bool isExporting = false;
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: NeumorphicTheme.baseColor(ctx),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(
+                    color: textSecondary.withValues(alpha: 0.15),
+                    width: 1,
+                  ),
                 ),
-              );
-            } catch (_) {}
-          } else if (!kIsWeb && Platform.isAndroid) {
-            try {
-              await OpenFilex.open(path);
-            } catch (_) {}
-          }
-        } else {
-          AppSnackBar.show(
-            context,
-            message: "Export failed: ${result.errorMessage ?? 'Unknown error'}",
-            isError: true,
-          );
-        }
+              ),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    "Export Local Database",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Choose an export format to save all receipts, AI chats, and categories. Zero cloud requests are made.",
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // JSON Option
+                  InkWell(
+                    onTap: isExporting
+                        ? null
+                        : () async {
+                            setModalState(() => isExporting = true);
+                            await _handleExport(ctx, ExportFormat.json);
+                          },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: textSecondary.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.data_object_rounded,
+                              color: accent, size: 24),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "JSON Format (.json)",
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Structured complete backup, best for re-importing",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              color: textSecondary, size: 14),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // CSV Option
+                  InkWell(
+                    onTap: isExporting
+                        ? null
+                        : () async {
+                            setModalState(() => isExporting = true);
+                            await _handleExport(ctx, ExportFormat.csv);
+                          },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: textSecondary.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart_outlined,
+                              color: accent, size: 24),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "CSV Spreadsheet (.csv)",
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Standard table format, best for Excel & Google Sheets",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              color: textSecondary, size: 14),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (isExporting) ...[
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: accent,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Exporting local database...",
+                            style:
+                                TextStyle(fontSize: 13, color: textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handleExport(
+      BuildContext modalContext, ExportFormat format) async {
+    try {
+      final result =
+          await DataExportService.instance.exportToFile(format: format);
+      if (modalContext.mounted) {
+        Navigator.of(modalContext).pop();
       }
-    } catch (e) {
-      if (mounted) {
+
+      if (!mounted) return;
+
+      if (result.success && result.filePath != null) {
+        final path = result.filePath!;
         AppSnackBar.show(
           context,
-          message: "Export failed: $e",
+          message:
+              "Database exported (${result.receiptsCount} receipts):\n$path",
+        );
+
+        // Share or open based on platform
+        if (!kIsWeb && Platform.isIOS) {
+          try {
+            await SharePlus.instance.share(
+              ShareParams(
+                files: [XFile(path)],
+                subject: 'SancFund Database Backup',
+              ),
+            );
+          } catch (_) {}
+        } else if (!kIsWeb && Platform.isAndroid) {
+          try {
+            await OpenFilex.open(path);
+          } catch (_) {}
+        }
+      } else {
+        AppSnackBar.show(
+          context,
+          message: "Export failed: ${result.errorMessage ?? 'Unknown error'}",
           isError: true,
         );
       }
-    } finally {
+    } catch (e) {
+      if (modalContext.mounted) {
+        Navigator.of(modalContext).pop();
+      }
       if (mounted) {
-        setState(() => _isExporting = false);
+        AppSnackBar.show(
+          context,
+          message: "Export error: $e",
+          isError: true,
+        );
       }
     }
   }
@@ -1410,7 +1613,12 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                             _buildDivider(textSecondary),
                             // Quick Export Row
                             NeumorphicPressableRow(
-                              onTap: _onExportData,
+                              onTap: () => _showExportFormatBottomSheet(
+                                context,
+                                accent,
+                                textPrimary,
+                                textSecondary,
+                              ),
                               borderRadius: const BorderRadius.vertical(
                                   bottom: Radius.circular(18)),
                               padding: const EdgeInsets.symmetric(
@@ -1437,7 +1645,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          "Backup Receipts (JSON)",
+                                          "Export Database (JSON/CSV)",
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
@@ -1446,7 +1654,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          "Create offline archive of all records",
+                                          "Save receipts & chat backup to device",
                                           style: TextStyle(
                                             fontSize: 11.5,
                                             color: textSecondary,

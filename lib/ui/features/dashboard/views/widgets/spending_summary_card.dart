@@ -109,7 +109,7 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SizedBox(
-        height: MediaQuery.textScalerOf(context).scale(98).clamp(98.0, 135.0),
+        height: MediaQuery.textScalerOf(context).scale(98).clamp(98.0, 145.0),
         width: double.infinity,
         child: PageView.builder(
           controller: _pageController,
@@ -128,15 +128,20 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      summary.title,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
-                        color: widget.textSecondary,
+                    Expanded(
+                      child: Text(
+                        summary.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                          color: widget.textSecondary,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),

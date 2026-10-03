@@ -239,11 +239,13 @@ class _TwoFactorOtpSheetState extends State<TwoFactorOtpSheet> {
         ),
         child: SafeArea(
           top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 // Top drag handle
                 Center(
                   child: Container(
@@ -494,6 +496,7 @@ class _TwoFactorOtpSheetState extends State<TwoFactorOtpSheet> {
         ),
       ),
     ),
-  );
+  ),
+);
 }
 }

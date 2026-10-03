@@ -347,9 +347,11 @@ class ConversationListItemWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
       color: baseColor,
-      child: SizedBox(
-          height: 54,
-          width: double.infinity,
+      child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: 54,
+            minWidth: double.infinity,
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
             child: Row(

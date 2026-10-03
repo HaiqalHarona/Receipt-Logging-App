@@ -119,6 +119,8 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
+  int get _maxBulkCount => QuotaService.instance.isPremium ? 10 : 5;
+
   Future<void> _capturePhoto() async {
     if (_cameraController == null ||
         !_isCameraInitialized ||
@@ -132,8 +134,8 @@ class _ScannerScreenState extends State<ScannerScreen>
       return;
     }
 
-    if (_isBulkMode && _queuedImages.length >= 10) {
-      _showToast("Maximum of 10 receipts reached for bulk scan.");
+    if (_isBulkMode && _queuedImages.length >= _maxBulkCount) {
+      _showToast("Maximum of $_maxBulkCount receipts reached for bulk scan.");
       return;
     }
 
@@ -170,11 +172,20 @@ class _ScannerScreenState extends State<ScannerScreen>
         final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
         if (pickedFiles.isNotEmpty) {
+          final remainingSlots = _maxBulkCount - _queuedImages.length;
+          if (remainingSlots <= 0) {
+            _showToast("Maximum of $_maxBulkCount receipts reached for bulk scan.");
+            return;
+          }
+          final toAdd = pickedFiles.take(remainingSlots).toList();
           setState(() {
-            _queuedImages.addAll(pickedFiles);
+            _queuedImages.addAll(toAdd);
           });
+          if (pickedFiles.length > remainingSlots) {
+            _showToast("Added $remainingSlots receipts (capped at $_maxBulkCount).");
+          }
           AppLogger.info(
-              'UI', 'Imported ${pickedFiles.length} image(s) into bulk queue (total: ${_queuedImages.length})');
+              'UI', 'Imported ${toAdd.length} image(s) into bulk queue (total: ${_queuedImages.length})');
         }
       } else {
         final XFile? image = await _picker.pickImage(
@@ -329,6 +340,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                           scanAnimationController: _scanAnimationController,
                           isBulkMode: _isBulkMode,
                           queuedCount: _queuedImages.length,
+                          maxBulkCount: _maxBulkCount,
                         ),
                       ),
                       if (_isBulkMode && _queuedImages.isNotEmpty)
@@ -345,6 +357,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                         isBulkMode: _isBulkMode,
                         isProcessing: _isSubmitting,
                         queuedCount: _queuedImages.length,
+                        maxBulkCount: _maxBulkCount,
                         onPickGallery: _pickFromGallery,
                         onCapture: _capturePhoto,
                         onProcessQueue: _processQueueAndNavigate,
@@ -552,6 +565,7 @@ class _ViewfinderArea extends StatelessWidget {
   final AnimationController scanAnimationController;
   final bool isBulkMode;
   final int queuedCount;
+  final int maxBulkCount;
 
   const _ViewfinderArea({
     required this.controller,
@@ -562,6 +576,7 @@ class _ViewfinderArea extends StatelessWidget {
     required this.scanAnimationController,
     required this.isBulkMode,
     required this.queuedCount,
+    this.maxBulkCount = 10,
   });
 
   @override
@@ -663,7 +678,7 @@ class _ViewfinderArea extends StatelessWidget {
                       ),
                       child: Text(
                         isBulkMode
-                            ? "Queue: $queuedCount / 10 receipts"
+                            ? "Queue: $queuedCount / $maxBulkCount receipts"
                             : "Position receipt inside frame",
                         style: TextStyle(
                           fontSize: 12,
@@ -764,6 +779,7 @@ class _ScannerBottomControls extends StatelessWidget {
   final bool isBulkMode;
   final bool isProcessing;
   final int queuedCount;
+  final int maxBulkCount;
   final VoidCallback onPickGallery;
   final VoidCallback onCapture;
   final VoidCallback onProcessQueue;
@@ -776,6 +792,7 @@ class _ScannerBottomControls extends StatelessWidget {
     required this.isBulkMode,
     required this.isProcessing,
     required this.queuedCount,
+    this.maxBulkCount = 10,
     required this.onPickGallery,
     required this.onCapture,
     required this.onProcessQueue,
@@ -829,7 +846,7 @@ class _ScannerBottomControls extends StatelessWidget {
         height: 66,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: (queuedCount >= 10 || isProcessing || isScanQuotaExhausted)
+          color: (queuedCount >= maxBulkCount || isProcessing || isScanQuotaExhausted)
               ? Colors.grey
               : accent,
           boxShadow: (isScanQuotaExhausted || isProcessing)
