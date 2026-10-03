@@ -125,7 +125,8 @@ class GoogleAuthService {
         );
 
         if (verifiedResponse == null || verifiedResponse!.user == null) {
-          AppLogger.info('GoogleAuth', 'User canceled or failed 2FA verification');
+          AppLogger.info('GoogleAuth', 'User dismissed 2FA sheet during Google sign-in');
+          onLoadingChanged?.call(false);
           return;
         }
 

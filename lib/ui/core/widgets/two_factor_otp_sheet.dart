@@ -14,6 +14,7 @@ class TwoFactorOtpSheet extends StatefulWidget {
   final String? maskedEmail;
   final Future<void> Function(String otp) onVerify;
   final Future<void> Function()? onResend;
+  final IconData? icon;
 
   const TwoFactorOtpSheet({
     super.key,
@@ -22,6 +23,7 @@ class TwoFactorOtpSheet extends StatefulWidget {
     this.maskedEmail,
     required this.onVerify,
     this.onResend,
+    this.icon,
   });
 
   /// Displays the modal bottom sheet and returns the verified OTP code on success, or null if dismissed.
@@ -32,13 +34,16 @@ class TwoFactorOtpSheet extends StatefulWidget {
     String? maskedEmail,
     required Future<void> Function(String otp) onVerify,
     Future<void> Function()? onResend,
+    IconData? icon,
+    bool isDismissible = false,
+    bool enableDrag = false,
   }) {
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      isDismissible: true,
-      enableDrag: true,
+      isDismissible: isDismissible,
+      enableDrag: enableDrag,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -49,6 +54,7 @@ class TwoFactorOtpSheet extends StatefulWidget {
           maskedEmail: maskedEmail,
           onVerify: onVerify,
           onResend: onResend,
+          icon: icon,
         ),
       ),
     );
@@ -213,67 +219,69 @@ class _TwoFactorOtpSheetState extends State<TwoFactorOtpSheet> {
 
     final isOtpComplete = _otpController.text.trim().length == 6;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: baseColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border.all(
-          color: accent.withValues(alpha: 0.25),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 20,
-            offset: const Offset(0, -6),
+    return PopScope(
+      canPop: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: baseColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.25),
+            width: 1.2,
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Top drag handle
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: textSecondary.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 20,
+              offset: const Offset(0, -6),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top drag handle
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: textSecondary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Header icon & close button row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.shield_outlined,
-                        color: accent,
-                        size: 24,
+                // Header icon & close button row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          widget.icon ?? Icons.shield_outlined,
+                          color: accent,
+                          size: 24,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close_rounded, color: textSecondary),
-                    onPressed: () => Navigator.of(context).pop(null),
-                  ),
-                ],
-              ),
+                    IconButton(
+                      icon: Icon(Icons.close_rounded, color: textSecondary),
+                      onPressed: () => Navigator.of(context).pop(null),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 12),
 
               // Title
@@ -485,6 +493,7 @@ class _TwoFactorOtpSheetState extends State<TwoFactorOtpSheet> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

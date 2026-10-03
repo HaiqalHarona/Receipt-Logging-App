@@ -9,6 +9,7 @@ import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../core/widgets/trial_ineligible_dialog.dart';
 import '../../../core/widgets/two_factor_otp_sheet.dart';
+import '../../../core/widgets/neumorphic_loading_barrier.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../cloud/models/user_models.dart';
@@ -16,7 +17,6 @@ import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../services/subscription_notification_service.dart';
 import '../../../../services/sync_coordinator.dart';
-import 'user_settings_screen.dart';
 
 class ContactSecurityScreen extends StatefulWidget {
   const ContactSecurityScreen({super.key});
@@ -31,10 +31,6 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
 
   // 2FA state (mocked locally in UI session)
   bool _is2FAEnabled = false;
-
-  // Verification cooldown tracking
-  int _verifyResendCooldownRemaining = 0;
-  DateTime? _verifyCooldownStartedAt;
 
   @override
   void initState() {
@@ -82,7 +78,12 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
         : 'Enter the 6-digit verification code sent to your email to confirm deactivation.';
 
     try {
-      await BackendApiClient.instance.request2faActionOtp(action: action);
+      await NeumorphicLoadingBarrier.runWithBarrier(
+        context,
+        message: "Requesting verification code...",
+        action: () =>
+            BackendApiClient.instance.request2faActionOtp(action: action),
+      );
     } on ApiException catch (e) {
       if (mounted) {
         AppSnackBar.show(context, message: e.message, isError: true);
@@ -967,9 +968,13 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                 });
                                 try {
                                   if (_is2FAEnabled) {
-                                    await BackendApiClient.instance
-                                        .request2faActionOtp(
-                                            action: 'delete_account');
+                                    await NeumorphicLoadingBarrier.runWithBarrier(
+                                      modalCtx,
+                                      message: "Requesting verification code...",
+                                      action: () => BackendApiClient.instance
+                                          .request2faActionOtp(
+                                              action: 'delete_account'),
+                                    );
 
                                     if (!modalCtx.mounted) return;
                                     String? verifiedOtp;
@@ -1099,52 +1104,59 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
     }
     AppLogger.info('UI', 'User opened Email Verification modal');
 
-    final controller = AppThemeController.instance;
-
-    int cooldownRemaining = 0;
-    if (_verifyCooldownStartedAt != null) {
-      final elapsed =
-          DateTime.now().difference(_verifyCooldownStartedAt!).inSeconds;
-      cooldownRemaining = (60 - elapsed).clamp(0, 60);
-      if (cooldownRemaining > 0) {
-        _verifyResendCooldownRemaining = cooldownRemaining;
-      } else {
-        _verifyResendCooldownRemaining = 0;
-        _verifyCooldownStartedAt = null;
+    try {
+      await NeumorphicLoadingBarrier.runWithBarrier(
+        context,
+        message: "Sending verification code...",
+        action: () => AuthService.instance
+            .initiateVerification(type: 'email', identifier: email),
+      );
+    } on ApiException catch (e) {
+      if (context.mounted) {
+        AppSnackBar.show(context, message: e.message, isError: true);
       }
+      return;
+    } catch (e) {
+      if (context.mounted) {
+        AppSnackBar.show(
+          context,
+          message: "Failed to send verification code. Please try again.",
+          isError: true,
+        );
+      }
+      return;
     }
 
-    final updatedProfile = await showModalBottomSheet<UserRecordDto>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => EmailVerificationSheet(
-        email: email,
-        accent: accent,
-        textPrimary: textPrimary,
-        textSecondary: textSecondary,
-        controller: controller,
-        initialCooldownRemaining: _verifyResendCooldownRemaining,
-        onCooldownStarted: (startedAt) {
-          if (mounted) {
-            setState(() {
-              _verifyCooldownStartedAt = startedAt;
-              _verifyResendCooldownRemaining = 60;
-            });
-          }
-        },
-        onVerified: (updated) {
-          if (mounted) {
-            setState(() {
-              _profile = updated;
-            });
-          }
-        },
-      ),
+    if (!context.mounted) return;
+
+    UserRecordDto? updatedProfile;
+    final verifiedOtp = await TwoFactorOtpSheet.show(
+      context,
+      title: 'Verify Email Address',
+      subtitle:
+          'Enter the 6-digit verification code sent to your email to verify your address.',
+      icon: Icons.mark_email_read_outlined,
+      maskedEmail: email,
+      onVerify: (otp) async {
+        final updated = await AuthService.instance.completeVerification(
+          type: 'email',
+          identifier: email,
+          otp: otp,
+        );
+        _profile = updated;
+        updatedProfile = updated;
+      },
+      onResend: () => AuthService.instance
+          .initiateVerification(type: 'email', identifier: email),
     );
 
-    if (updatedProfile != null && mounted) {
-      await _handlePostVerificationTrialStatus(updatedProfile);
+    if (verifiedOtp != null && updatedProfile != null && mounted) {
+      setState(() {
+        _profile = updatedProfile;
+      });
+      if (context.mounted) {
+        await _handlePostVerificationTrialStatus(updatedProfile!);
+      }
     }
   }
 
@@ -1416,9 +1428,13 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                                 });
                                 try {
                                   if (_is2FAEnabled) {
-                                    await BackendApiClient.instance
-                                        .request2faActionOtp(
-                                            action: 'change_password');
+                                    await NeumorphicLoadingBarrier.runWithBarrier(
+                                      modalCtx,
+                                      message: "Requesting verification code...",
+                                      action: () => BackendApiClient.instance
+                                          .request2faActionOtp(
+                                              action: 'change_password'),
+                                    );
 
                                     if (!modalCtx.mounted) return;
                                     String? verifiedOtp;

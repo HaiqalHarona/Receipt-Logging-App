@@ -23,6 +23,7 @@ import '../../../../cloud/api/api_config.dart';
 import '../../../../cloud/services/google_auth_service.dart';
 import '../../../../cloud/models/user_models.dart';
 import '../../../core/widgets/two_factor_otp_sheet.dart';
+import '../../../core/widgets/neumorphic_loading_barrier.dart';
 import '../widgets/google_sign_in_button.dart';
 import '../widgets/guest_override_warning_modal.dart';
 
@@ -146,9 +147,13 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      var response = await BackendApiClient.instance.loginUser(
-        username: identifier,
-        password: password,
+      var response = await NeumorphicLoadingBarrier.runWithBarrier(
+        context,
+        message: 'Signing in...',
+        action: () => BackendApiClient.instance.loginUser(
+          username: identifier,
+          password: password,
+        ),
       );
 
       // Handle Two-Factor Authentication (2FA) Challenge
@@ -180,11 +185,74 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (verifiedResponse == null || verifiedResponse!.user == null) {
           AppLogger.info('UI', 'User dismissed 2FA sheet during login');
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
           return;
         }
 
-        response = verifiedResponse!;
-        setState(() => _isLoading = true);
+        final verifiedUser = verifiedResponse!.user!;
+
+        // Check if local unsynced guest data exists BEFORE saving user session and linking device
+        if (await _hasLocalGuestData()) {
+          AppLogger.info('UI',
+              'Local guest data detected. Prompting override warning modal...');
+          final confirmed = await _showGuestOverrideWarningModal();
+          if (!confirmed) {
+            AppLogger.info('UI', 'User canceled override modal. Aborting login.');
+            if (mounted) {
+              setState(() => _isLoading = false);
+            }
+            return;
+          }
+          await _purgeLocalGuestData();
+        } else {
+          // Clean slate: ensure local stores are cleared so no stale records duplicate with cloud data
+          await _purgeLocalGuestData();
+        }
+
+        if (!mounted) return;
+
+        // Wrap subsequent session initialization in NeumorphicLoadingBarrier
+        await NeumorphicLoadingBarrier.runWithBarrier(
+          context,
+          message: 'Completing sign in...',
+          action: () async {
+            // Persist session locally with JWT tokens
+            await AuthService.instance.saveSession(
+              verifiedUser,
+              accessToken: verifiedResponse!.accessToken,
+              refreshToken: verifiedResponse!.refreshToken,
+            );
+
+            // Fetch latest user profile
+            await AuthService.instance.getOrFetchProfile(force: true);
+
+            // Perform hardware device linking and cloud data sync asynchronously in the background
+            unawaited(AuthService.instance
+                .linkCurrentDevice(verifiedUser)
+                .then((_) => CloudSyncService.instance.syncOnLogin())
+                .catchError((e, st) {
+              AppLogger.error(
+                  'CloudSync', 'Background link/sync error post-login', e, st);
+            }));
+
+            if (!mounted) return;
+            setState(() => _isLoading = false);
+
+            AppLogger.info(
+                'UI', 'User logged in successfully: ${verifiedUser.username}');
+
+            AppSnackBar.show(
+              context,
+              message: 'Welcome back, ${verifiedUser.username}!',
+            );
+
+            // Navigate to dashboard immediately, clearing the auth stack
+            context.go('/dashboard');
+          },
+        );
+        return;
       }
 
       final user = response.user;

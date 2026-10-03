@@ -84,6 +84,33 @@ class Mock2faBackendApiClient extends BackendApiClient {
       passwordChangedAt: DateTime.now().toUtc().toIso8601String(),
     );
   }
+
+  @override
+  Future<({bool success, int cooldownSeconds})> initiateVerification({
+    required String type,
+    required String identifier,
+    String? username,
+    String? userToken,
+  }) async {
+    return (success: true, cooldownSeconds: 60);
+  }
+
+  @override
+  Future<UserRecordDto> completeVerification({
+    required String type,
+    required String identifier,
+    required String otp,
+    String? username,
+    String? userToken,
+  }) async {
+    return const UserRecordDto(
+      id: 'usr-cs-unverified',
+      username: 'UnverifiedCS',
+      email: 'unverified@example.com',
+      createdAt: '2026-08-10T12:00:00Z',
+      emailVerifiedAt: '2026-10-03T12:00:00Z',
+    );
+  }
 }
 
 void main() {
@@ -199,6 +226,11 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
+      final originalClient = BackendApiClient.instance;
+      final mockClient = Mock2faBackendApiClient();
+      BackendApiClient.instance = mockClient;
+      addTearDown(() => BackendApiClient.instance = originalClient);
+
       await AuthService.instance.saveSession(
         const UserRecordDto(
           id: 'usr-cs-unverified',
@@ -223,9 +255,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      // Modal bottom sheet should be open
+      // TwoFactorOtpSheet modal bottom sheet should be open
       expect(find.text('Verify Email Address'), findsOneWidget);
-      expect(find.text('Send Verification Code'), findsOneWidget);
+      expect(find.text('Enter the 6-digit verification code sent to your email to verify your address.'), findsOneWidget);
     });
 
     testWidgets(
@@ -645,7 +677,7 @@ void main() {
           find.text(
               'All your receipts, AI conversations, and profile data will be permanently and irrecoverably destroyed. This action cannot be undone.'),
           findsOneWidget);
-      expect(find.text('TYPE "DELETE" TO CONFIRM'), findsOneWidget);
+      expect(find.text('TYPE "Delete Account Forever" TO CONFIRM'), findsOneWidget);
 
       final confirmBtnFinder = find.byKey(const Key('confirm_delete_account_button'));
       expect(confirmBtnFinder, findsOneWidget);
@@ -655,8 +687,8 @@ void main() {
       await tester.enterText(inputFinder, 'delete');
       await tester.pump();
 
-      // Enter "DELETE" verbatim
-      await tester.enterText(inputFinder, 'DELETE');
+      // Enter "Delete Account Forever" verbatim
+      await tester.enterText(inputFinder, 'Delete Account Forever');
       await tester.pump();
 
       // Close modal
@@ -706,9 +738,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Type "DELETE"
+      // Type "Delete Account Forever"
       await tester.enterText(
-          find.byKey(const Key('delete_account_confirm_input')), 'DELETE');
+          find.byKey(const Key('delete_account_confirm_input')), 'Delete Account Forever');
       await tester.pump();
 
       // Tap Confirm Delete
@@ -767,9 +799,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Type "DELETE"
+      // Type "Delete Account Forever"
       await tester.enterText(
-          find.byKey(const Key('delete_account_confirm_input')), 'DELETE');
+          find.byKey(const Key('delete_account_confirm_input')), 'Delete Account Forever');
       await tester.pump();
 
       // Tap Confirm Delete
