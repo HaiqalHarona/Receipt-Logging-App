@@ -189,7 +189,7 @@ void main() {
 
       expect(find.text('Account & Profile'), findsOneWidget);
       expect(find.text('AlexDev'), findsOneWidget);
-      expect(find.text('alex@example.com'), findsOneWidget);
+      expect(find.text('View & Edit'), findsOneWidget);
       expect(find.text('Log Out'), findsOneWidget);
     });
 

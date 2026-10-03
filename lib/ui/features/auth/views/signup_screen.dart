@@ -16,6 +16,8 @@ import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/api/api_config.dart';
+import '../../../../cloud/services/google_auth_service.dart';
+import '../widgets/google_sign_in_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -34,6 +36,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _isTrialEligible = true;
 
   // Inline field-level error states
@@ -237,7 +240,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       // Navigate to user settings and highlight Plan & Usage widget if trial was redeemed, else dashboard
       if (isTrial) {
-        context.go('/user-settings?highlight=plan');
+        context.go('/dashboard');
+        context.push('/user-settings?highlight=plan');
       } else {
         context.go('/dashboard');
       }
@@ -370,8 +374,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 // Top Navigation Back Pill
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () {
+                    NeumorphicTactileButton(
+                      onPressed: () {
                         AppLogger.info(
                             'UI', 'User tapped Back on SignUpScreen');
                         if (GoRouter.of(context).canPop()) {
@@ -380,34 +384,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           context.go('/auth');
                         }
                       },
-                      child: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 4,
-                          intensity: 0.85,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                          color: controller.currentBaseColor,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.arrow_back_rounded,
-                                  color: textPrimary, size: 18),
-                              const SizedBox(width: 6),
-                              Text(
-                                "Back",
-                                style: TextStyle(
-                                  color: textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                      depth: 4.0,
+                      pressedDepth: 0.0,
+                      pressedScale: 0.97,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
+                      color: controller.currentBaseColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_back_rounded,
+                              color: textPrimary, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Back",
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ],
@@ -478,11 +477,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                "Sign up now and get instant upgrade to Premium for 14 days. No credit card required!",
+                                "Get 14 days of Premium upon email verification. Ineligible if email was previously used for a trial or purchase.",
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   color: textSecondary,
-                                  height: 1.3,
+                                  height: 1.35,
                                 ),
                               ),
                             ],
@@ -761,7 +760,77 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                if (_isTrialEligible) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 13,
+                        color: textSecondary.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          "Verify your email to activate your 14-day trial. Ineligible if email previously used for trial or purchase.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: textSecondary.withValues(alpha: 0.7),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
+
+                // ── Or Divider ───────────────────────────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        "or sign up with",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── Google Sign Up Button ────────────────────────────────────
+                GoogleSignInButton(
+                  isLoading: _isGoogleLoading,
+                  label: "Sign up with Google",
+                  onPressed: () {
+                    GoogleAuthService.instance.signInWithGoogle(
+                      context,
+                      onLoadingChanged: (loading) {
+                        if (mounted) setState(() => _isGoogleLoading = loading);
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
 
                 // ── Legal Terms Disclaimer ──────────────────────────────────
                 Center(

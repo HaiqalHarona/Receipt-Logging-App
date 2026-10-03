@@ -20,6 +20,12 @@ import '../../../../data/models/chat_message_isar.dart';
 import '../../../../domain/models/receipt.dart';
 import 'package:isar/isar.dart';
 import '../../../../cloud/api/api_config.dart';
+import '../../../../cloud/services/google_auth_service.dart';
+import '../../../../cloud/models/user_models.dart';
+import '../../../core/widgets/two_factor_otp_sheet.dart';
+import '../../../core/widgets/neumorphic_loading_barrier.dart';
+import '../widgets/google_sign_in_button.dart';
+import '../widgets/guest_override_warning_modal.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _errorMessage;
 
   @override
@@ -115,150 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<bool> _showGuestOverrideWarningModal() async {
-    final controller = AppThemeController.instance;
-    final textPrimary = controller.textColor;
-    final textSecondary = controller.secondaryTextColor;
-
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        String inputText = '';
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            final canOverride = inputText.trim() == 'Override Data';
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Neumorphic(
-                style: NeumorphicStyle(
-                  depth: 0,
-                  boxShape:
-                      NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
-                  color: NeumorphicTheme.baseColor(dialogContext),
-                  border:
-                      NeumorphicBorder(color: Colors.red.shade700, width: 2.0),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded,
-                              color: Colors.red.shade700, size: 28),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              "Warning",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textPrimary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "Cannot migrate local receipts, settings, and other data into an existing account. If you wish to save these data, please create a new account.",
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.4,
-                          color: textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        "To confirm data override, type 'Override Data' below (case-sensitive):",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: -3,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(10)),
-                          color: NeumorphicTheme.baseColor(dialogContext),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 4),
-                          child: TextField(
-                            onChanged: (val) {
-                              setDialogState(() {
-                                inputText = val;
-                              });
-                            },
-                            style: TextStyle(color: textPrimary, fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: 'Override Data',
-                              hintStyle: TextStyle(
-                                  color: textSecondary.withValues(alpha: 0.5)),
-                              border: InputBorder.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(false),
-                            child: Text(
-                              "Cancel",
-                              style: TextStyle(color: textSecondary),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade700,
-                              disabledBackgroundColor:
-                                  Colors.red.shade900.withValues(alpha: 0.4),
-                              disabledForegroundColor: Colors.white38,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                side: canOverride
-                                    ? BorderSide.none
-                                    : BorderSide(
-                                        color: Colors.red.shade900, width: 1),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                            ),
-                            onPressed: canOverride
-                                ? () => Navigator.of(ctx).pop(true)
-                                : null,
-                            child: const Text(
-                              "Override Data",
-                              style: TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    return result ?? false;
+    return showGuestOverrideWarningModal(context);
   }
 
   Future<void> _onSignIn() async {
@@ -283,10 +147,113 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await BackendApiClient.instance.loginUser(
-        username: identifier,
-        password: password,
+      var response = await NeumorphicLoadingBarrier.runWithBarrier(
+        context,
+        message: 'Signing in...',
+        action: () => BackendApiClient.instance.loginUser(
+          username: identifier,
+          password: password,
+        ),
       );
+
+      // Handle Two-Factor Authentication (2FA) Challenge
+      if (response.requires2fa && response.tempToken != null) {
+        setState(() => _isLoading = false);
+        final tempToken = response.tempToken!;
+        final maskedEmail = response.maskedEmail;
+        UserLoginResponseDto? verifiedResponse;
+
+        if (!mounted) return;
+        await TwoFactorOtpSheet.show(
+          context,
+          title: 'Two-Factor Authentication',
+          subtitle: 'Enter the 6-digit verification code sent to your email',
+          maskedEmail: maskedEmail,
+          onVerify: (otp) async {
+            final vfy = await BackendApiClient.instance.login2faVerify(
+              tempToken: tempToken,
+              otp: otp,
+            );
+            verifiedResponse = vfy;
+          },
+          onResend: () async {
+            await BackendApiClient.instance.login2faResend(
+              tempToken: tempToken,
+            );
+          },
+        );
+
+        if (verifiedResponse == null || verifiedResponse!.user == null) {
+          AppLogger.info('UI', 'User dismissed 2FA sheet during login');
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
+          return;
+        }
+
+        final verifiedUser = verifiedResponse!.user!;
+
+        // Check if local unsynced guest data exists BEFORE saving user session and linking device
+        if (await _hasLocalGuestData()) {
+          AppLogger.info('UI',
+              'Local guest data detected. Prompting override warning modal...');
+          final confirmed = await _showGuestOverrideWarningModal();
+          if (!confirmed) {
+            AppLogger.info('UI', 'User canceled override modal. Aborting login.');
+            if (mounted) {
+              setState(() => _isLoading = false);
+            }
+            return;
+          }
+          await _purgeLocalGuestData();
+        } else {
+          // Clean slate: ensure local stores are cleared so no stale records duplicate with cloud data
+          await _purgeLocalGuestData();
+        }
+
+        if (!mounted) return;
+
+        // Wrap subsequent session initialization in NeumorphicLoadingBarrier
+        await NeumorphicLoadingBarrier.runWithBarrier(
+          context,
+          message: 'Completing sign in...',
+          action: () async {
+            // Persist session locally with JWT tokens
+            await AuthService.instance.saveSession(
+              verifiedUser,
+              accessToken: verifiedResponse!.accessToken,
+              refreshToken: verifiedResponse!.refreshToken,
+            );
+
+            // Fetch latest user profile
+            await AuthService.instance.getOrFetchProfile(force: true);
+
+            // Perform hardware device linking and cloud data sync asynchronously in the background
+            unawaited(AuthService.instance
+                .linkCurrentDevice(verifiedUser)
+                .then((_) => CloudSyncService.instance.syncOnLogin())
+                .catchError((e, st) {
+              AppLogger.error(
+                  'CloudSync', 'Background link/sync error post-login', e, st);
+            }));
+
+            if (!mounted) return;
+            setState(() => _isLoading = false);
+
+            AppLogger.info(
+                'UI', 'User logged in successfully: ${verifiedUser.username}');
+
+            AppSnackBar.show(
+              context,
+              message: 'Welcome back, ${verifiedUser.username}!',
+            );
+
+            // Navigate to dashboard immediately, clearing the auth stack
+            context.go('/dashboard');
+          },
+        );
+        return;
+      }
 
       final user = response.user;
       if (user == null) {
@@ -406,8 +373,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Top Navigation Back Pill
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () {
+                    NeumorphicTactileButton(
+                      onPressed: () {
                         AppLogger.info('UI', 'User tapped Back on LoginScreen');
                         if (GoRouter.of(context).canPop()) {
                           context.pop();
@@ -415,34 +382,29 @@ class _LoginScreenState extends State<LoginScreen> {
                           context.go('/auth');
                         }
                       },
-                      child: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 4,
-                          intensity: 0.85,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(12)),
-                          color: controller.currentBaseColor,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.arrow_back_rounded,
-                                  color: textPrimary, size: 18),
-                              const SizedBox(width: 6),
-                              Text(
-                                "Back",
-                                style: TextStyle(
-                                  color: textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                      depth: 4.0,
+                      pressedDepth: 0.0,
+                      pressedScale: 0.97,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
+                      color: controller.currentBaseColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_back_rounded,
+                              color: textPrimary, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Back",
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ],
@@ -651,7 +613,52 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
+
+                // ── Or Divider ───────────────────────────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        "or continue with",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── Google Sign In Button ────────────────────────────────────
+                GoogleSignInButton(
+                  isLoading: _isGoogleLoading,
+                  label: "Sign in with Google",
+                  onPressed: () {
+                    GoogleAuthService.instance.signInWithGoogle(
+                      context,
+                      onLoadingChanged: (loading) {
+                        if (mounted) setState(() => _isGoogleLoading = loading);
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
 
                 // ── Bottom Centered Sign Up Link ──────────────────────────────
                 Center(

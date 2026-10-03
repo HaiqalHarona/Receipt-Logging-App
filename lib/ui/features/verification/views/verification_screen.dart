@@ -7,6 +7,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../core/widgets/coach_mark_overlay.dart';
 import '../../../../domain/models/receipt.dart';
+import '../../../../cloud/services/quota_service.dart';
 import '../../../../services/scan_batch_controller.dart';
 import '../../../../services/tutorial_service.dart';
 import '../view_models/verification_view_model.dart';
@@ -152,7 +153,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   backgroundColor: Colors.transparent,
                   elevation: 0,
                   leading: Center(
-                    child: NeumorphicIconBadge(
+                    child: NeumorphicCircularButton(
                       icon: Icons.arrow_back_ios_new_rounded,
                       iconSize: 18,
                       onTap: () => context.pop(),
@@ -212,6 +213,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                             textPrimary: textPrimary,
                             textSecondary: textSecondary,
                             accent: accent,
+                            isPremium: QuotaService.instance.isPremium,
                           ),
                           const SizedBox(height: 32),
 

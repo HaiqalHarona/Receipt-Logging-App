@@ -1,6 +1,7 @@
 // File: lib/ui/features/history/views/widgets/category_filter_bottom_sheet.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/utils/category_utils.dart';
 
@@ -130,50 +131,36 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
                 final catColor = CategoryUtils.getCategoryColor(cat);
                 final catIcon = CategoryUtils.getCategoryIcon(cat);
 
-                return GestureDetector(
+                return NeumorphicFilterChip(
+                  isSelected: isSelected,
                   onTap: () => _toggleCategory(cat),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    child: Neumorphic(
-                      style: NeumorphicStyle(
-                        depth: isSelected ? -3 : 3,
-                        intensity: 0.8,
-                        color: isSelected ? accent : baseColor,
-                        boxShape: NeumorphicBoxShape.roundRect(
-                            BorderRadius.circular(12)),
+                  selectedColor: accent,
+                  unselectedColor: baseColor,
+                  selectedDepth: -3.0,
+                  restDepth: 3.0,
+                  borderRadius: BorderRadius.circular(12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        catIcon,
+                        size: 15,
+                        color: isSelected ? Colors.white : catColor,
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            catIcon,
-                            size: 15,
-                            color: isSelected ? Colors.white : catColor,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            cat,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: isSelected ? Colors.white : textPrimary,
-                            ),
-                          ),
-                          if (isSelected) ...[
-                            const SizedBox(width: 6),
-                            const Icon(
-                              Icons.check_rounded,
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                          ],
-                        ],
+                      const SizedBox(width: 6),
+                      Text(
+                        cat,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.w500,
+                          color: isSelected ? Colors.white : textPrimary,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 );
               }).toList(),
@@ -185,18 +172,13 @@ class _CategoryFilterBottomSheetState extends State<CategoryFilterBottomSheet> {
           SizedBox(
             width: double.infinity,
             height: 48,
-            child: NeumorphicButton(
+            child: NeumorphicButtonWidget(
               onPressed: () {
                 widget.onApply(_selected);
                 Navigator.of(context).pop();
               },
-              style: NeumorphicStyle(
-                depth: 4,
-                intensity: 0.85,
-                color: accent,
-                boxShape:
-                    NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-              ),
+              color: accent,
+              borderRadius: 14,
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: const Center(
                 child: Text(

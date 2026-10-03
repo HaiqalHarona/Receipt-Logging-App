@@ -3,6 +3,7 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../../data/repositories/receipt_repository.dart';
 import '../../../../../services/category_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/utils/category_utils.dart';
 
@@ -208,17 +209,11 @@ class _CategoryMultiSelectBottomSheetState
           Row(
             children: [
               Expanded(
-                child: NeumorphicButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  style: NeumorphicStyle(
-                    depth: 2,
-                    intensity: 0.85,
-                    color: baseColor,
-                    boxShape:
-                        NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.of(ctx).pop(false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
                     child: Text(
                       'Cancel',
                       style: TextStyle(
@@ -232,15 +227,10 @@ class _CategoryMultiSelectBottomSheetState
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: NeumorphicButton(
+                child: NeumorphicButtonWidget(
                   onPressed: () => Navigator.of(ctx).pop(true),
-                  style: NeumorphicStyle(
-                    depth: 3,
-                    intensity: 0.85,
-                    color: Colors.redAccent,
-                    boxShape:
-                        NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                  ),
+                  color: Colors.red.shade700,
+                  borderRadius: 12,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: const Center(
                     child: Text(
@@ -403,17 +393,12 @@ class _CategoryMultiSelectBottomSheetState
               child: Row(
                 children: [
                   Expanded(
-                    child: NeumorphicButton(
+                    child: NeumorphicButtonWidget(
                       onPressed: () {
                         Navigator.of(context).pop(_selectedCategories.toList());
                       },
-                      style: NeumorphicStyle(
-                        depth: 4,
-                        intensity: 0.85,
-                        color: accent,
-                        boxShape: NeumorphicBoxShape.roundRect(
-                            BorderRadius.circular(14)),
-                      ),
+                      color: accent,
+                      borderRadius: 14,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       child: const Center(
                         child: Text(
@@ -559,21 +544,18 @@ class _CategoryMultiSelectBottomSheetState
               children: [
                 // Col-1: Edit Categories
                 Expanded(
-                  child: NeumorphicButton(
-                    onPressed: () {
+                  child: NeumorphicFilterChip(
+                    isSelected: _isEditingCategories,
+                    onTap: () {
                       setState(() {
                         _isEditingCategories = !_isEditingCategories;
                       });
                     },
-                    style: NeumorphicStyle(
-                      depth: _isEditingCategories ? -2 : 3,
-                      intensity: 0.85,
-                      color: _isEditingCategories
-                          ? accent.withValues(alpha: 0.15)
-                          : baseColor,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(14)),
-                    ),
+                    selectedDepth: -2.0,
+                    restDepth: 3.0,
+                    selectedColor: accent.withValues(alpha: 0.15),
+                    unselectedColor: baseColor,
+                    borderRadius: BorderRadius.circular(14),
                     padding:
                         const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     child: Row(
@@ -609,7 +591,7 @@ class _CategoryMultiSelectBottomSheetState
 
                 // Col-2: Add New Category
                 Expanded(
-                  child: NeumorphicButton(
+                  child: NeumorphicTactileButton(
                     onPressed: isMaxReached
                         ? null
                         : () {
@@ -619,15 +601,14 @@ class _CategoryMultiSelectBottomSheetState
                               _creationError = null;
                             });
                           },
-                    style: NeumorphicStyle(
-                      depth: isMaxReached ? -4 : 3,
-                      intensity: 0.85,
-                      color: isMaxReached
-                          ? baseColor.withValues(alpha: 0.5)
-                          : baseColor,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(14)),
-                    ),
+                    depth: isMaxReached ? -4.0 : 3.0,
+                    pressedDepth: 0.0,
+                    pressedScale: 0.98,
+                    color: isMaxReached
+                        ? baseColor.withValues(alpha: 0.5)
+                        : baseColor,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(14)),
                     padding:
                         const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     child: Row(
@@ -711,13 +692,7 @@ class _CategoryMultiSelectBottomSheetState
               fontSize: 12, fontWeight: FontWeight.bold, color: textSecondary),
         ),
         const SizedBox(height: 6),
-        Neumorphic(
-          style: NeumorphicStyle(
-            depth: -3,
-            intensity: 0.85,
-            color: baseColor,
-            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          ),
+        NeumorphicInputFieldWidget(
           child: TextField(
             controller: _newCatNameController,
             style: TextStyle(
@@ -726,8 +701,7 @@ class _CategoryMultiSelectBottomSheetState
               hintText: 'e.g., Subscriptions, Books, Pet Care',
               hintStyle: TextStyle(
                   color: textSecondary.withValues(alpha: 0.5), fontSize: 13),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: EdgeInsets.zero,
               border: InputBorder.none,
             ),
             onChanged: (_) {
@@ -763,15 +737,6 @@ class _CategoryMultiSelectBottomSheetState
                   border: isSelected
                       ? Border.all(color: textPrimary, width: 3)
                       : null,
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.5),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          )
-                        ]
-                      : null,
                 ),
                 child: isSelected
                     ? const Icon(Icons.check_rounded,
@@ -798,24 +763,19 @@ class _CategoryMultiSelectBottomSheetState
             final isSelected = index == _selectedIconIndex;
             final currentColor = _presetColors[_selectedColorIndex];
 
-            return GestureDetector(
+            return NeumorphicFilterChip(
+              isSelected: isSelected,
               onTap: () => setState(() => _selectedIconIndex = index),
-              child: Neumorphic(
-                style: NeumorphicStyle(
-                  depth: isSelected ? -2 : 3,
-                  intensity: 0.85,
-                  color: isSelected
-                      ? currentColor.withValues(alpha: 0.2)
-                      : baseColor,
-                  boxShape:
-                      NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                ),
-                padding: const EdgeInsets.all(10),
-                child: Icon(
-                  icon,
-                  size: 22,
-                  color: isSelected ? currentColor : textSecondary,
-                ),
+              selectedColor: currentColor.withValues(alpha: 0.2),
+              unselectedColor: baseColor,
+              selectedDepth: -2.0,
+              restDepth: 3.0,
+              borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.all(10),
+              child: Icon(
+                icon,
+                size: 22,
+                color: isSelected ? currentColor : textSecondary,
               ),
             );
           }),
@@ -826,22 +786,16 @@ class _CategoryMultiSelectBottomSheetState
         Row(
           children: [
             Expanded(
-              child: NeumorphicButton(
-                onPressed: () {
+              child: GestureDetector(
+                onTap: () {
                   setState(() {
                     _isAddingNew = false;
                     _creationError = null;
                   });
                 },
-                style: NeumorphicStyle(
-                  depth: 2,
-                  intensity: 0.85,
-                  color: baseColor,
-                  boxShape:
-                      NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  alignment: Alignment.center,
                   child: Text(
                     'Cancel',
                     style: TextStyle(
@@ -855,15 +809,10 @@ class _CategoryMultiSelectBottomSheetState
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: NeumorphicButton(
+              child: NeumorphicButtonWidget(
                 onPressed: _handleSaveNewCategory,
-                style: NeumorphicStyle(
-                  depth: 4,
-                  intensity: 0.85,
-                  color: accent,
-                  boxShape:
-                      NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                ),
+                color: accent,
+                borderRadius: 12,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: const Center(
                   child: Text(

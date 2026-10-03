@@ -1,7 +1,8 @@
-﻿// File: lib/ui/features/dashboard/views/widgets/monthly_spending_graph_card.dart
-
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/widgets/spending_line_graph.dart';
 import '../../view_models/dashboard_view_model.dart';
 import 'spending_summary_card.dart';
@@ -62,6 +63,11 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
     final isSelected = filter == activeFilter;
     return Expanded(
       child: GestureDetector(
+        onTapDown: (_) {
+          if (!isSelected) {
+            HapticFeedback.lightImpact();
+          }
+        },
         onTap: () {
           if (!isSelected) {
             widget.viewModel.setTimeline(filter);
@@ -71,7 +77,7 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
         child: isSelected
             ? Neumorphic(
                 style: NeumorphicStyle(
-                  depth: 2.5,
+                  depth: AppThemeController.instance.neuDepth,
                   intensity: 0.9,
                   color: NeumorphicTheme.baseColor(context),
                   boxShape:
@@ -158,41 +164,38 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => context.push('/analytics'),
-                  child: Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: 2.5,
-                      intensity: 0.85,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(10)),
-                      color: NeumorphicTheme.baseColor(context),
-                      border: NeumorphicBorder(
-                        color: widget.accent.withValues(alpha: 0.25),
-                        width: 0.8,
-                      ),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.auto_graph_rounded,
-                            size: 13, color: widget.accent),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Analytics',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: widget.accent,
-                          ),
+                NeumorphicTactileButton(
+                  onPressed: () => context.push('/analytics'),
+                  depth: 2.5,
+                  pressedDepth: 0.0,
+                  pressedScale: 0.97,
+                  color: NeumorphicTheme.baseColor(context),
+                  boxShape: NeumorphicBoxShape.roundRect(
+                      BorderRadius.circular(10)),
+                  border: NeumorphicBorder(
+                    color: widget.accent.withValues(alpha: 0.25),
+                    width: 0.8,
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.query_stats,
+                          size: 13, color: widget.accent),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Analytics',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: widget.accent,
                         ),
-                        const SizedBox(width: 2),
-                        Icon(Icons.chevron_right_rounded,
-                            size: 13, color: widget.accent),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded,
+                          size: 13, color: widget.accent),
+                    ],
                   ),
                 ),
               ],
@@ -203,11 +206,24 @@ class _MonthlySpendingGraphCardState extends State<MonthlySpendingGraphCard> {
             // ── Grouped Segmented Timeline Selector (1W · 4W · 3M) ──
             Neumorphic(
               style: NeumorphicStyle(
-                depth: -2.5,
-                intensity: 0.85,
+                depth: -(AppThemeController.instance.neuDepth.clamp(1.5, 3.0)),
+                intensity: AppThemeController.instance.isDarkMode ? 0.45 : 0.85,
                 boxShape:
                     NeumorphicBoxShape.roundRect(BorderRadius.circular(11)),
-                color: NeumorphicTheme.baseColor(context),
+                color: AppThemeController.instance.isDarkMode
+                    ? Color.alphaBlend(Colors.black.withValues(alpha: 0.15),
+                        NeumorphicTheme.baseColor(context))
+                    : NeumorphicTheme.baseColor(context),
+                shadowDarkColorEmboss:
+                    AppThemeController.instance.shadowDarkColorEmboss,
+                shadowLightColorEmboss:
+                    AppThemeController.instance.shadowLightColorEmboss,
+                border: NeumorphicBorder(
+                  color: AppThemeController.instance.isDarkMode
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.05),
+                  width: 0.8,
+                ),
               ),
               padding: const EdgeInsets.all(3),
               child: Row(

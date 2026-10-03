@@ -691,18 +691,18 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                 const Divider(height: 20, thickness: 0.6),
                 _buildBenefitItem(
                   icon: Icons.flash_on_rounded,
-                  iconColor: amberColor,
+                  iconColor: Colors.deepPurpleAccent.shade200,
                   title: "Priority Vision OCR Processing",
-                  subtitle: "Save ~16.5s per scan with flagship AI",
+                  subtitle: "Save up to 10s per scan in Single Scan",
                   textPrimary: textPrimary,
                   textSecondary: textSecondary,
                 ),
                 const Divider(height: 20, thickness: 0.6),
                 _buildBenefitItem(
-                  icon: Icons.cloud_sync_rounded,
-                  iconColor: Colors.deepPurpleAccent.shade200,
-                  title: "Instant Multi-Device Cloud Sync",
-                  subtitle: "Automatic backup to your cloud vault",
+                  icon: Icons.document_scanner,
+                  iconColor: amberColor,
+                  title: "4x Faster Bulk Scanning",
+                  subtitle: "Save up to 50s per batch in Bulk Scan",
                   textPrimary: textPrimary,
                   textSecondary: textSecondary,
                 ),
@@ -940,13 +940,20 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                       const BorderRadius.vertical(top: Radius.circular(14)),
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  "MOST POPULAR · BEST VALUE",
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    color: isSelected ? Colors.white : textSecondary,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      "MOST POPULAR · BEST VALUE",
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                        color: isSelected ? Colors.white : textSecondary,
+                      ),
+                    ),
                   ),
                 ),
               )
@@ -1007,37 +1014,41 @@ class _PremiumPaywallSheetState extends State<PremiumPaywallSheet> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        priceMain,
-                        style: TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.bold,
-                          color: textPrimary,
-                        ),
-                      ),
-                      Text(
-                        priceSub,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: textSecondary,
-                        ),
-                      ),
-                      if (strikeThroughPrice != null) ...[
-                        const SizedBox(width: 5),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
                         Text(
-                          strikeThroughPrice,
+                          priceMain,
                           style: TextStyle(
-                            fontSize: 11,
-                            color: textSecondary.withValues(alpha: 0.6),
-                            decoration: TextDecoration.lineThrough,
+                            fontSize: 21,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
                           ),
                         ),
+                        Text(
+                          priceSub,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: textSecondary,
+                          ),
+                        ),
+                        if (strikeThroughPrice != null) ...[
+                          const SizedBox(width: 5),
+                          Text(
+                            strikeThroughPrice,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: textSecondary.withValues(alpha: 0.6),
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(

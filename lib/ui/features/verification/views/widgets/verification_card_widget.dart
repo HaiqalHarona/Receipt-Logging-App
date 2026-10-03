@@ -1,13 +1,16 @@
 // File: lib/ui/features/verification/views/widgets/verification_card_widget.dart
 
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../domain/models/line_item.dart';
 import '../../../../../domain/models/receipt.dart';
 import '../../../../../services/currency_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/category_utils.dart';
+import '../../../../core/widgets/receipt_image_thumbnail.dart';
 import 'category_multi_select_bottom_sheet.dart';
 import 'line_items_table_widget.dart';
 
@@ -18,6 +21,7 @@ class VerificationCardWidget extends StatefulWidget {
   final Color textPrimary;
   final Color textSecondary;
   final Color accent;
+  final bool isPremium;
 
   const VerificationCardWidget({
     super.key,
@@ -26,6 +30,7 @@ class VerificationCardWidget extends StatefulWidget {
     required this.textPrimary,
     required this.textSecondary,
     required this.accent,
+    this.isPremium = true,
   });
 
   @override
@@ -201,21 +206,39 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final baseColor = NeumorphicTheme.baseColor(context);
+
     return NeumorphicCardWidget(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Receipt Image Thumbnail (top center, 90x90 with tap-to-enlarge)
+          Center(
+            child: ReceiptImageThumbnail(
+              imagePath: widget.receipt.imagePath,
+              receiptId: widget.receipt.id,
+              merchant: _merchantController.text.trim().isNotEmpty
+                  ? _merchantController.text.trim()
+                  : widget.receipt.merchant,
+              categoryColor: CategoryUtils.getCategoryColor(
+                _selectedCategories.isNotEmpty
+                    ? _selectedCategories.first
+                    : 'General',
+              ),
+              textSecondary: widget.textSecondary,
+              accent: widget.accent,
+              baseColor: baseColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Merchant Field
           _buildLabel("Merchant"),
           const SizedBox(height: 6),
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: -3,
-              intensity: 0.85,
-              color: NeumorphicTheme.baseColor(context),
-              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-            ),
+          NeumorphicInputFieldWidget(
+            borderRadius: 12,
+            padding: EdgeInsets.zero,
             child: TextField(
               controller: _merchantController,
               style: TextStyle(
@@ -242,14 +265,9 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                   children: [
                     _buildLabel("Date"),
                     const SizedBox(height: 6),
-                    Neumorphic(
-                      style: NeumorphicStyle(
-                        depth: -3,
-                        intensity: 0.85,
-                        color: NeumorphicTheme.baseColor(context),
-                        boxShape: NeumorphicBoxShape.roundRect(
-                            BorderRadius.circular(12)),
-                      ),
+                    NeumorphicInputFieldWidget(
+                      borderRadius: 12,
+                      padding: EdgeInsets.zero,
                       child: TextField(
                         controller: _dateController,
                         readOnly: true,
@@ -318,13 +336,9 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
           _buildLabel(
               "Amount (${CurrencyService.supportedCurrencies[_selectedCurrency]?.symbol ?? '\$'})"),
           const SizedBox(height: 6),
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: -3,
-              intensity: 0.85,
-              color: NeumorphicTheme.baseColor(context),
-              boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-            ),
+          NeumorphicInputFieldWidget(
+            borderRadius: 12,
+            padding: EdgeInsets.zero,
             child: TextField(
               controller: _amountController,
               readOnly: _isAutoCalculate,
@@ -374,14 +388,8 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
                   ),
                 ],
               ),
-              NeumorphicSwitch(
+              NeumorphicToggleSwitch(
                 value: _isAutoCalculate,
-                style: NeumorphicSwitchStyle(
-                  activeTrackColor: widget.accent.withValues(alpha: 0.3),
-                  activeThumbColor: widget.accent,
-                  inactiveThumbColor:
-                      widget.textSecondary.withValues(alpha: 0.5),
-                ),
                 onChanged: (val) {
                   setState(() {
                     _isAutoCalculate = val;
@@ -485,22 +493,27 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
 
           // Line Items table (structured from backend Vision AI or empty)
           const SizedBox(height: 20),
-          LineItemsTableWidget(
-            lineItems: _lineItems,
-            currency: _selectedCurrency,
-            textPrimary: widget.textPrimary,
-            textSecondary: widget.textSecondary,
-            accent: widget.accent,
-            onChanged: (updatedItems) {
-              setState(() {
-                _lineItems = updatedItems;
-                if (_isAutoCalculate) {
-                  _recalculateTotalFromLineItems();
-                }
-              });
-              _notifyChange();
-            },
-          ),
+          widget.isPremium
+              ? LineItemsTableWidget(
+                  lineItems: _lineItems,
+                  currency: _selectedCurrency,
+                  textPrimary: widget.textPrimary,
+                  textSecondary: widget.textSecondary,
+                  accent: widget.accent,
+                  onChanged: (updatedItems) {
+                    setState(() {
+                      _lineItems = updatedItems;
+                      if (_isAutoCalculate) {
+                        _recalculateTotalFromLineItems();
+                      }
+                    });
+                    _notifyChange();
+                  },
+                )
+              : _LockedLineItemsSection(
+                  accent: widget.accent,
+                  textSecondary: widget.textSecondary,
+                ),
         ],
       ),
     );
@@ -514,6 +527,169 @@ class _VerificationCardWidgetState extends State<VerificationCardWidget> {
         fontWeight: FontWeight.bold,
         color: widget.textSecondary,
       ),
+    );
+  }
+}
+
+/// Blurred placeholder table with lock icon and subtle upgrade CTA chip for Free tier.
+class _LockedLineItemsSection extends StatelessWidget {
+  final Color accent;
+  final Color textSecondary;
+
+  const _LockedLineItemsSection({
+    required this.accent,
+    required this.textSecondary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = NeumorphicTheme.baseColor(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Line Items',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: textSecondary,
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Blurred placeholder rows with Upgrade CTA overlay
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 4.5, sigmaY: 4.5),
+              child: IgnorePointer(
+                child: _buildGhostTable(context, baseColor),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => context.push('/paywall'),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.4),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline_rounded, size: 15, color: accent),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Upgrade to Premium',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGhostTable(BuildContext context, Color baseColor) {
+    return Column(
+      children: [
+        // Sunken header placeholder
+        Neumorphic(
+          style: NeumorphicStyle(
+            depth: -2,
+            intensity: 0.7,
+            color: baseColor,
+            boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: textSecondary.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Container(
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: textSecondary.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Container(
+                  width: 48,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: textSecondary.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        // 3 dummy ghost rows
+        ...List.generate(
+          3,
+          (index) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 20,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: textSecondary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Container(
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: textSecondary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Container(
+                  width: 42,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: textSecondary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2,7 +2,11 @@
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
+import '../../../core/widgets/bottom_nav_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../view_models/history_view_model.dart';
 import 'widgets/category_filter_bottom_sheet.dart';
 import 'widgets/receipt_list_item_widget.dart';
@@ -72,7 +76,7 @@ class _HistoryScreenState extends State<HistoryScreen>
         final sortField = _viewModel.sortField;
         final sortAsc = _viewModel.sortAscending;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
@@ -88,20 +92,24 @@ class _HistoryScreenState extends State<HistoryScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "Receipt History",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "All logged transactions (${list.length} records)",
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: textSecondary,
+                        Text.rich(
+                          TextSpan(
+                            text: "History",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: " (${list.length})",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -109,11 +117,25 @@ class _HistoryScreenState extends State<HistoryScreen>
                         // 1. Indented Search Bar
                         Neumorphic(
                           style: NeumorphicStyle(
-                            depth: -3,
-                            intensity: 0.8,
-                            color: NeumorphicTheme.baseColor(context),
+                            depth: -(controller.neuDepth.clamp(1.5, 3.5)),
+                            intensity: controller.isDarkMode ? 0.45 : 0.8,
+                            color: controller.isDarkMode
+                                ? Color.alphaBlend(
+                                    Colors.black.withValues(alpha: 0.15),
+                                    NeumorphicTheme.baseColor(context))
+                                : NeumorphicTheme.baseColor(context),
+                            shadowDarkColorEmboss:
+                                controller.shadowDarkColorEmboss,
+                            shadowLightColorEmboss:
+                                controller.shadowLightColorEmboss,
                             boxShape: NeumorphicBoxShape.roundRect(
                                 BorderRadius.circular(14)),
+                            border: NeumorphicBorder(
+                              color: controller.isDarkMode
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              width: 0.8,
+                            ),
                           ),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
@@ -162,45 +184,39 @@ class _HistoryScreenState extends State<HistoryScreen>
                           children: [
                             // Category Filter Button
                             Expanded(
-                              child: GestureDetector(
+                              child: NeumorphicFilterChip(
+                                isSelected: selectedCats.isNotEmpty,
                                 onTap: _openFilterModal,
-                                child: Neumorphic(
-                                  style: NeumorphicStyle(
-                                    depth: selectedCats.isNotEmpty ? -2 : 3,
-                                    intensity: 0.8,
-                                    color: selectedCats.isNotEmpty
-                                        ? accent
-                                        : NeumorphicTheme.baseColor(context),
-                                    boxShape: NeumorphicBoxShape.roundRect(
-                                        BorderRadius.circular(12)),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 10),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.filter_list_rounded,
-                                        size: 16,
+                                restDepth: 3.0,
+                                selectedDepth: -2.0,
+                                selectedColor: accent,
+                                borderRadius: BorderRadius.circular(12),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 10),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.filter_list_rounded,
+                                      size: 16,
+                                      color: selectedCats.isNotEmpty
+                                          ? Colors.white
+                                          : textPrimary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      selectedCats.isEmpty
+                                          ? "Category"
+                                          : "Filter (${selectedCats.length})",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
                                         color: selectedCats.isNotEmpty
                                             ? Colors.white
                                             : textPrimary,
                                       ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        selectedCats.isEmpty
-                                            ? "Category"
-                                            : "Filter (${selectedCats.length})",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: selectedCats.isNotEmpty
-                                              ? Colors.white
-                                              : textPrimary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -251,10 +267,15 @@ class _HistoryScreenState extends State<HistoryScreen>
                   // ── Independently Scrollable Receipt Records List ─────────────
                   Expanded(
                     child: list.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 48),
+                        ? Padding(
+                            padding: EdgeInsets.only(
+                              left: 24,
+                              right: 24,
+                              bottom: AppBottomNavBar.contentBottomPadding(
+                                  context,
+                                  extraMargin: 0),
+                            ),
+                            child: Center(
                               child: Text(
                                 "No matching receipts found.\nTry clearing your search or category filters!",
                                 textAlign: TextAlign.center,
@@ -263,33 +284,42 @@ class _HistoryScreenState extends State<HistoryScreen>
                               ),
                             ),
                           )
-                        : ListView.separated(
-                            controller: _scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.only(
-                                left: 24, right: 24, bottom: 120),
-                            itemCount: list.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final receipt = list[index];
-                              final formattedPrice =
-                                  _viewModel.formatReceiptPrice(receipt);
+                        : FadingEdgeScrollView(
+                            fadeHeightTop: 20,
+                            fadeHeightBottom: 28,
+                            child: ListView.separated(
+                              controller: _scrollController,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              clipBehavior: Clip.hardEdge,
+                              padding: EdgeInsets.only(
+                                left: 24,
+                                right: 24,
+                                top: 8,
+                                bottom: 130,
+                              ),
+                              itemCount: list.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 15),
+                              itemBuilder: (context, index) {
+                                final receipt = list[index];
+                                final formattedPrice =
+                                    _viewModel.formatReceiptPrice(receipt);
 
-                              return ReceiptListItemWidget(
-                                receipt: receipt,
-                                formattedPrice: formattedPrice,
-                                onTap: () {
-                                  AppLogger.info('UI',
-                                      'User tapped receipt item: ${receipt.id}');
-                                  context.push('/receipt-detail',
-                                      extra: receipt);
-                                },
-                                textPrimary: textPrimary,
-                                textSecondary: textSecondary,
-                                accent: accent,
-                              );
-                            },
+                                return ReceiptListItemWidget(
+                                  receipt: receipt,
+                                  formattedPrice: formattedPrice,
+                                  onTap: () {
+                                    AppLogger.info('UI',
+                                        'User tapped receipt item: ${receipt.id}');
+                                    context.push('/receipt-detail',
+                                        extra: receipt);
+                                  },
+                                  textPrimary: textPrimary,
+                                  textSecondary: textSecondary,
+                                  accent: accent,
+                                );
+                              },
+                            ),
                           ),
                   ),
                 ],
@@ -314,41 +344,38 @@ class _HistoryScreenState extends State<HistoryScreen>
   }) {
     final isActive = currentField == field;
 
-    return GestureDetector(
+    return NeumorphicFilterChip(
+      isSelected: isActive,
       onTap: () => _viewModel.toggleSort(field),
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isActive ? -2 : 3,
-          intensity: 0.8,
-          color: isActive ? accent : NeumorphicTheme.baseColor(context),
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        child: SizedBox(
-          height: 18,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: isActive ? Colors.white : textPrimary,
-                ),
+      restDepth: 3.0,
+      selectedDepth: -2.0,
+      selectedColor: accent,
+      borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: SizedBox(
+        height: 18,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: isActive ? Colors.white : textPrimary,
               ),
-              const SizedBox(width: 3),
-              Icon(
-                isActive
-                    ? (sortAsc
-                        ? Icons.arrow_upward_rounded
-                        : Icons.arrow_downward_rounded)
-                    : Icons.unfold_more_rounded,
-                size: 14,
-                color: isActive ? Colors.white : textSecondary,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 3),
+            Icon(
+              isActive
+                  ? (sortAsc
+                      ? Icons.arrow_upward_rounded
+                      : Icons.arrow_downward_rounded)
+                  : Icons.unfold_more_rounded,
+              size: 14,
+              color: isActive ? Colors.white : textSecondary,
+            ),
+          ],
         ),
       ),
     );

@@ -12,7 +12,9 @@ import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../cloud/api/api_config.dart';
@@ -53,17 +55,11 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
   bool _isLoggingOut = false;
   bool _isManualSyncing = false;
   bool _isUploadingAvatar = false;
-  bool _isExporting = false;
   bool _isSimulatingExpiry = false;
   bool _highlightPlan = false;
   Timer? _highlightTimer;
   final GlobalKey _planSectionKey = GlobalKey();
   final ImagePicker _imagePicker = ImagePicker();
-
-  // ── EMAIL VERIFICATION STATE ─────────────────────────────────────────────
-  /// Remaining cooldown seconds for OTP resend (persists across modal dismissals).
-  int _verifyResendCooldownRemaining = 0;
-  DateTime? _verifyCooldownStartedAt;
 
   @override
   void initState() {
@@ -322,69 +318,65 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
               Row(
                 children: [
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () {
+                    child: NeumorphicTactileButton(
+                      onPressed: () {
                         Navigator.pop(ctx);
                         _pickAndUploadAvatar(ImageSource.camera);
                       },
-                      child: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 4,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(16)),
-                          color: NeumorphicTheme.baseColor(context),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.camera_alt_rounded,
-                                size: 32, color: accent),
-                            const SizedBox(height: 8),
-                            Text(
-                              "Take Photo",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: textPrimary,
-                              ),
+                      depth: 4.0,
+                      pressedDepth: 0.0,
+                      pressedScale: 0.96,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(16)),
+                      color: NeumorphicTheme.baseColor(context),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.camera_alt_rounded,
+                              size: 32, color: accent),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Take Photo",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () {
+                    child: NeumorphicTactileButton(
+                      onPressed: () {
                         Navigator.pop(ctx);
                         _pickAndUploadAvatar(ImageSource.gallery);
                       },
-                      child: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 4,
-                          boxShape: NeumorphicBoxShape.roundRect(
-                              BorderRadius.circular(16)),
-                          color: NeumorphicTheme.baseColor(context),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.photo_library_rounded,
-                                size: 32, color: accent),
-                            const SizedBox(height: 8),
-                            Text(
-                              "Choose Gallery",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: textPrimary,
-                              ),
+                      depth: 4.0,
+                      pressedDepth: 0.0,
+                      pressedScale: 0.96,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(16)),
+                      color: NeumorphicTheme.baseColor(context),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.photo_library_rounded,
+                              size: 32, color: accent),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Choose Gallery",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -448,320 +440,197 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
     }
   }
 
-  Future<void> _onExportData() async {
-    if (_isExporting) return;
-    setState(() => _isExporting = true);
-    try {
-      final result = await DataExportService.instance
-          .exportToFile(format: ExportFormat.json);
-      if (mounted) {
-        if (result.success && result.filePath != null) {
-          final path = result.filePath!;
-          AppSnackBar.show(
-            context,
-            message: "Backup saved (${result.receiptsCount} receipts):\n$path",
-          );
-
-          if (!kIsWeb && Platform.isIOS) {
-            try {
-              await SharePlus.instance.share(
-                ShareParams(
-                  files: [XFile(path)],
-                  subject: 'SancFund Database Backup',
-                ),
-              );
-            } catch (_) {}
-          } else if (!kIsWeb && Platform.isAndroid) {
-            try {
-              await OpenFilex.open(path);
-            } catch (_) {}
-          }
-        } else {
-          AppSnackBar.show(
-            context,
-            message: "Export failed: ${result.errorMessage ?? 'Unknown error'}",
-            isError: true,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        AppSnackBar.show(
-          context,
-          message: "Export failed: $e",
-          isError: true,
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isExporting = false);
-      }
-    }
-  }
-
-  // ── EMAIL VERIFICATION BOTTOM SHEET ─────────────────────────────────────
-  Future<void> _showEmailVerificationBottomSheet({
-    required BuildContext context,
-    required String email,
-    required Color accent,
-    required Color textPrimary,
-    required Color textSecondary,
-  }) async {
-    if (!_isOnline) {
-      AppSnackBar.show(
-        context,
-        message: "Email verification requires an active internet connection.",
-        isError: true,
-      );
-      return;
-    }
-    AppLogger.info('UI', 'User opened Email Verification modal');
-
-    final controller = AppThemeController.instance;
-
-    // Recalculate remaining cooldown from stored start time
-    int cooldownRemaining = 0;
-    if (_verifyCooldownStartedAt != null) {
-      final elapsed =
-          DateTime.now().difference(_verifyCooldownStartedAt!).inSeconds;
-      cooldownRemaining = (60 - elapsed).clamp(0, 60);
-      if (cooldownRemaining > 0) {
-        _verifyResendCooldownRemaining = cooldownRemaining;
-      } else {
-        _verifyResendCooldownRemaining = 0;
-        _verifyCooldownStartedAt = null;
-      }
-    }
-
-    await showModalBottomSheet(
+  void _showExportFormatBottomSheet(
+    BuildContext context,
+    Color accent,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _EmailVerificationSheet(
-        email: email,
-        accent: accent,
-        textPrimary: textPrimary,
-        textSecondary: textSecondary,
-        controller: controller,
-        initialCooldownRemaining: _verifyResendCooldownRemaining,
-        onCooldownStarted: (startedAt) {
-          if (mounted) {
-            setState(() {
-              _verifyCooldownStartedAt = startedAt;
-              _verifyResendCooldownRemaining = 60;
-            });
-          }
-        },
-        onVerified: (updatedProfile) {
-          if (mounted) {
-            setState(() {
-              _profile = updatedProfile;
-            });
-            AppSnackBar.show(
-              context,
-              message: '✓ Email verified successfully!',
-            );
-          }
-        },
-      ),
-    );
-  }
-
-  // ignore: unused_element
-  Future<void> _showAddMobileBottomSheet(BuildContext context, Color accent,
-      Color textPrimary, Color textSecondary) async {
-    AppLogger.info('UI', 'User opened Add Mobile modal');
-    final countryCodeController =
-        TextEditingController(text: _profile?.countryCode ?? "+60");
-    final mobileController =
-        TextEditingController(text: _profile?.mobileNumber ?? "");
-    bool isSaving = false;
-    String? errorMsg;
-
-    await showModalBottomSheet(
-      context: context,
       isScrollControlled: true,
-      backgroundColor: NeumorphicTheme.baseColor(context),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (ctx) {
+        bool isExporting = false;
         return StatefulBuilder(
           builder: (ctx, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 24,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            return Container(
+              decoration: BoxDecoration(
+                color: NeumorphicTheme.baseColor(ctx),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(
+                    color: textSecondary.withValues(alpha: 0.15),
+                    width: 1,
+                  ),
+                ),
               ),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   Text(
-                    "Add Mobile Number",
+                    "Export Local Database",
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
-                    "Enter your country code and mobile contact number.",
-                    style: TextStyle(fontSize: 13, color: textSecondary),
+                    "Choose an export format to save all receipts, AI chats, and categories. Zero cloud requests are made.",
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      // Country Code Input
-                      SizedBox(
-                        width: 90,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "CODE",
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            NeumorphicInputFieldWidget(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 2),
-                              child: TextField(
-                                controller: countryCodeController,
-                                inputFormatters: [
-                                  LengthLimitingTextInputFormatter(10),
-                                ],
-                                style:
-                                    TextStyle(color: textPrimary, fontSize: 14),
-                                decoration: const InputDecoration(
-                                  hintText: "+60",
-                                  border: InputBorder.none,
-                                ),
-                              ),
-                            ),
-                          ],
+                  // JSON Option
+                  InkWell(
+                    onTap: isExporting
+                        ? null
+                        : () async {
+                            setModalState(() => isExporting = true);
+                            await _handleExport(ctx, ExportFormat.json);
+                          },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: textSecondary.withValues(alpha: 0.12),
                         ),
                       ),
-                      const SizedBox(width: 12),
-
-                      // Mobile Number Input
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "MOBILE NUMBER",
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            NeumorphicInputFieldWidget(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 2),
-                              child: TextField(
-                                controller: mobileController,
-                                keyboardType: TextInputType.phone,
-                                inputFormatters: [
-                                  LengthLimitingTextInputFormatter(20),
-                                ],
-                                style:
-                                    TextStyle(color: textPrimary, fontSize: 14),
-                                decoration: const InputDecoration(
-                                  hintText: "123456789",
-                                  border: InputBorder.none,
+                      child: Row(
+                        children: [
+                          Icon(Icons.data_object_rounded,
+                              color: accent, size: 24),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "JSON Format (.json)",
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Structured complete backup, best for re-importing",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              color: textSecondary, size: 14),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                  if (errorMsg != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      errorMsg!,
-                      style: const TextStyle(
-                          color: Colors.redAccent, fontSize: 12),
+                  const SizedBox(height: 12),
+                  // CSV Option
+                  InkWell(
+                    onTap: isExporting
+                        ? null
+                        : () async {
+                            setModalState(() => isExporting = true);
+                            await _handleExport(ctx, ExportFormat.csv);
+                          },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: textSecondary.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart_outlined,
+                              color: accent, size: 24),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "CSV Spreadsheet (.csv)",
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "Standard table format, best for Excel & Google Sheets",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              color: textSecondary, size: 14),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (isExporting) ...[
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: accent,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Exporting local database...",
+                            style:
+                                TextStyle(fontSize: 13, color: textSecondary),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: NeumorphicButtonWidget(
-                      onPressed: isSaving
-                          ? null
-                          : () async {
-                              final cc = countryCodeController.text.trim();
-                              final mn = mobileController.text.trim();
-                              if (mn.isEmpty) {
-                                AppLogger.warning('UI',
-                                    'Mobile number save validation failed: empty mobile number');
-                                setModalState(() =>
-                                    errorMsg = "Please enter a mobile number.");
-                                return;
-                              }
-                              AppLogger.info('UI', 'User saving mobile number');
-                              setModalState(() {
-                                isSaving = true;
-                                errorMsg = null;
-                              });
-
-                              final success =
-                                  await AuthService.instance.updateMobileNumber(
-                                countryCode: cc.isEmpty ? "+60" : cc,
-                                mobileNumber: mn,
-                              );
-
-                              if (success && context.mounted) {
-                                AppLogger.info(
-                                    'UI', 'Mobile number updated successfully');
-                                Navigator.of(ctx).pop();
-                                _loadProfile();
-                                AppSnackBar.show(
-                                  context,
-                                  message: "Mobile number updated!",
-                                );
-                              } else {
-                                AppLogger.warning('UI',
-                                    'Mobile number update failed on backend');
-                                setModalState(() {
-                                  isSaving = false;
-                                  errorMsg =
-                                      "Failed to update mobile number. Please try again.";
-                                });
-                              }
-                            },
-                      child: Center(
-                        child: isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text(
-                                "Save Mobile Number",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             );
@@ -771,460 +640,59 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
     );
   }
 
-  void _showChangePasswordBottomSheet(
-    BuildContext context,
-    Color accent,
-    Color textPrimary,
-    Color textSecondary,
-  ) {
-    if (!_isOnline) {
-      AppSnackBar.show(
-        context,
-        message: "Password reset requires an active internet connection.",
-        isError: true,
-      );
-      return;
-    }
-    final oldPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
+  Future<void> _handleExport(
+      BuildContext modalContext, ExportFormat format) async {
+    try {
+      final result =
+          await DataExportService.instance.exportToFile(format: format);
+      if (modalContext.mounted) {
+        Navigator.of(modalContext).pop();
+      }
 
-    bool obscureOld = true;
-    bool obscureNew = true;
-    bool obscureConfirm = true;
-    bool isSubmitting = false;
-    String? errorMsg;
+      if (!mounted) return;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (modalCtx, setModalState) {
-            final newPass = newPasswordController.text;
-            final confirmPass = confirmPasswordController.text;
+      if (result.success && result.filePath != null) {
+        final path = result.filePath!;
+        AppSnackBar.show(
+          context,
+          message:
+              "Database exported (${result.receiptsCount} receipts):\n$path",
+        );
 
-            final hasMinLen = newPass.length >= 8;
-            final hasUpper = RegExp(r'[A-Z]').hasMatch(newPass);
-            final hasLower = RegExp(r'[a-z]').hasMatch(newPass);
-            final hasDigit = RegExp(r'[0-9]').hasMatch(newPass);
-            final hasSpecial =
-                RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(newPass);
-            final isStrong =
-                hasMinLen && hasUpper && hasLower && hasDigit && hasSpecial;
-
-            return Container(
-              decoration: BoxDecoration(
-                color: NeumorphicTheme.baseColor(modalCtx),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 12,
-                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 24,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Drag Handle
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: textSecondary.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Header
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: accent.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(Icons.lock_reset_rounded,
-                              color: accent, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            "Reset Account Password",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: textPrimary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "Enter your current password and choose a new secure password.",
-                      style: TextStyle(fontSize: 12.5, color: textSecondary),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Current Password Field
-                    Text(
-                      "CURRENT PASSWORD",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: textSecondary,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    NeumorphicInputFieldWidget(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 4),
-                      child: Row(
-                        children: [
-                          Icon(Icons.lock_outline_rounded,
-                              color: textSecondary, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: oldPasswordController,
-                              obscureText: obscureOld,
-                              style:
-                                  TextStyle(color: textPrimary, fontSize: 14),
-                              onChanged: (_) {
-                                if (errorMsg != null) {
-                                  setModalState(() => errorMsg = null);
-                                }
-                              },
-                              decoration: InputDecoration(
-                                hintText: "Enter current password",
-                                hintStyle: TextStyle(
-                                    color: textSecondary.withValues(alpha: 0.5),
-                                    fontSize: 13),
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () =>
-                                setModalState(() => obscureOld = !obscureOld),
-                            child: Icon(
-                              obscureOld
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
-                              color: textSecondary,
-                              size: 18,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // New Password Field
-                    Text(
-                      "NEW PASSWORD",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: textSecondary,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    NeumorphicInputFieldWidget(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 4),
-                      child: Row(
-                        children: [
-                          Icon(Icons.key_rounded,
-                              color: textSecondary, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: newPasswordController,
-                              obscureText: obscureNew,
-                              style:
-                                  TextStyle(color: textPrimary, fontSize: 14),
-                              onChanged: (_) => setModalState(() {
-                                if (errorMsg != null) errorMsg = null;
-                              }),
-                              decoration: InputDecoration(
-                                hintText: "Min 8 chars with symbols",
-                                hintStyle: TextStyle(
-                                    color: textSecondary.withValues(alpha: 0.5),
-                                    fontSize: 13),
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () =>
-                                setModalState(() => obscureNew = !obscureNew),
-                            child: Icon(
-                              obscureNew
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
-                              color: textSecondary,
-                              size: 18,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Requirements Checklist
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _buildRequirementChip(
-                            "8+ chars", hasMinLen, accent, textSecondary),
-                        _buildRequirementChip(
-                            "Uppercase", hasUpper, accent, textSecondary),
-                        _buildRequirementChip(
-                            "Lowercase", hasLower, accent, textSecondary),
-                        _buildRequirementChip(
-                            "Number", hasDigit, accent, textSecondary),
-                        _buildRequirementChip(r"Special (!@#$)", hasSpecial,
-                            accent, textSecondary),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Confirm New Password Field
-                    Text(
-                      "CONFIRM NEW PASSWORD",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: textSecondary,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    NeumorphicInputFieldWidget(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 4),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle_outline_rounded,
-                              color: (confirmPass.isNotEmpty &&
-                                      confirmPass == newPass)
-                                  ? Colors.green
-                                  : textSecondary,
-                              size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: confirmPasswordController,
-                              obscureText: obscureConfirm,
-                              style:
-                                  TextStyle(color: textPrimary, fontSize: 14),
-                              onChanged: (_) => setModalState(() {
-                                if (errorMsg != null) errorMsg = null;
-                              }),
-                              decoration: InputDecoration(
-                                hintText: "Re-enter new password",
-                                hintStyle: TextStyle(
-                                    color: textSecondary.withValues(alpha: 0.5),
-                                    fontSize: 13),
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => setModalState(
-                                () => obscureConfirm = !obscureConfirm),
-                            child: Icon(
-                              obscureConfirm
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
-                              color: textSecondary,
-                              size: 18,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    if (errorMsg != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(Icons.error_outline_rounded,
-                              color: Colors.redAccent, size: 16),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              errorMsg!,
-                              style: const TextStyle(
-                                  color: Colors.redAccent, fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 22),
-
-                    // Submit Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: NeumorphicButtonWidget(
-                        onPressed: (isSubmitting ||
-                                !SyncCoordinator.instance.isOnline)
-                            ? null
-                            : () async {
-                                if (!SyncCoordinator.instance.isOnline) {
-                                  setModalState(() => errorMsg =
-                                      "Password reset requires an active internet connection.");
-                                  return;
-                                }
-                                final oldP = oldPasswordController.text;
-                                final newP = newPasswordController.text;
-                                final confP = confirmPasswordController.text;
-
-                                if (oldP.isEmpty) {
-                                  setModalState(() => errorMsg =
-                                      "Please enter your current password.");
-                                  return;
-                                }
-                                if (!isStrong) {
-                                  setModalState(() => errorMsg =
-                                      "New password does not meet security requirements.");
-                                  return;
-                                }
-                                if (newP == oldP) {
-                                  setModalState(() => errorMsg =
-                                      "New password cannot be the same as your old password.");
-                                  return;
-                                }
-                                if (newP != confP) {
-                                  setModalState(() =>
-                                      errorMsg = "New passwords do not match.");
-                                  return;
-                                }
-
-                                setModalState(() {
-                                  isSubmitting = true;
-                                  errorMsg = null;
-                                });
-
-                                try {
-                                  await AuthService.instance.changePassword(
-                                    oldPassword: oldP,
-                                    newPassword: newP,
-                                  );
-
-                                  if (context.mounted) {
-                                    Navigator.of(ctx).pop();
-                                    AppSnackBar.show(
-                                      context,
-                                      message: "Password updated successfully!",
-                                    );
-                                  }
-                                } catch (e) {
-                                  String cleanError =
-                                      "Failed to update password. Please check your current password.";
-                                  if (e is ApiException) {
-                                    cleanError = e.message;
-                                  } else if (e.toString().contains(
-                                      "Current password is incorrect")) {
-                                    cleanError =
-                                        "Current password is incorrect.";
-                                  } else if (e
-                                      .toString()
-                                      .contains("cannot be the same")) {
-                                    cleanError =
-                                        "New password cannot be the same as your old password.";
-                                  }
-                                  setModalState(() {
-                                    isSubmitting = false;
-                                    errorMsg = cleanError;
-                                  });
-                                }
-                              },
-                        child: Center(
-                          child: isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Text(
-                                  "Update Password",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+        // Share or open based on platform
+        if (!kIsWeb && Platform.isIOS) {
+          try {
+            await SharePlus.instance.share(
+              ShareParams(
+                files: [XFile(path)],
+                subject: 'SancFund Database Backup',
               ),
             );
-          },
+          } catch (_) {}
+        } else if (!kIsWeb && Platform.isAndroid) {
+          try {
+            await OpenFilex.open(path);
+          } catch (_) {}
+        }
+      } else {
+        AppSnackBar.show(
+          context,
+          message: "Export failed: ${result.errorMessage ?? 'Unknown error'}",
+          isError: true,
         );
-      },
-    );
-  }
-
-  Widget _buildRequirementChip(
-    String label,
-    bool isMet,
-    Color accent,
-    Color textSecondary,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: isMet
-            ? Colors.green.withValues(alpha: 0.15)
-            : textSecondary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: isMet
-              ? Colors.green.withValues(alpha: 0.6)
-              : textSecondary.withValues(alpha: 0.2),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isMet ? Icons.check_rounded : Icons.circle_outlined,
-            size: 11,
-            color: isMet ? Colors.green : textSecondary,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: isMet ? FontWeight.bold : FontWeight.normal,
-              color: isMet ? Colors.green : textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
+      }
+    } catch (e) {
+      if (modalContext.mounted) {
+        Navigator.of(modalContext).pop();
+      }
+      if (mounted) {
+        AppSnackBar.show(
+          context,
+          message: "Export error: $e",
+          isError: true,
+        );
+      }
+    }
   }
 
   Future<void> _onLogout() async {
@@ -1421,11 +889,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
     final username =
         _profile?.username ?? AuthService.instance.currentUsername ?? 'User';
     final userId = _profile?.id ?? AuthService.instance.currentUserId ?? '';
-    final email =
-        _profile?.email ?? AuthService.instance.currentEmail ?? 'No email';
-    final countryCode = _profile?.countryCode;
-    final mobileNumber = _profile?.mobileNumber;
-    final hasMobile = mobileNumber != null && mobileNumber.isNotEmpty;
     final deviceId = DeviceIdentityService.instance.deviceId;
     final createdAtRaw = _profile?.createdAt;
     String joinedDate = "Active Member";
@@ -1466,50 +929,40 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
         trialEnd != null &&
         DateTime.now().toUtc().isBefore(trialEnd.toUtc());
 
-    final lastChangedStr =
-        activeProfile?.preferences['password_changed_at'] as String?;
-    DateTime? lastChanged;
-    if (lastChangedStr != null) {
-      lastChanged = DateTime.tryParse(lastChangedStr);
-    }
-    int cooldownDaysRemaining = 0;
-    bool isPasswordCooldownActive = false;
-    if (lastChanged != null) {
-      final difference = DateTime.now().toUtc().difference(lastChanged.toUtc());
-      const cooldownDuration = Duration(days: 7);
-      if (difference < cooldownDuration) {
-        final remainingSeconds =
-            cooldownDuration.inSeconds - difference.inSeconds;
-        cooldownDaysRemaining = (remainingSeconds / 86400).ceil();
-        if (cooldownDaysRemaining < 1) cooldownDaysRemaining = 1;
-        isPasswordCooldownActive = true;
-      }
-    }
-    final cooldownMessage =
-        "Change allowed in $cooldownDaysRemaining day${cooldownDaysRemaining > 1 ? 's' : ''}";
-
-    return NeumorphicBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Top Navigation Bar
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    NeumorphicIconBadge(
-                      icon: Icons.arrow_back_rounded,
-                      iconSize: 20,
-                      onTap: () {
-                        AppLogger.info(
-                            'UI', 'User tapped Back on UserSettingsScreen');
-                        context.pop();
-                      },
-                    ),
+    return PopScope(
+      canPop: GoRouter.maybeOf(context)?.canPop() ?? false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          AppLogger.info('UI', 'UserSettingsScreen PopScope handled back -> go /dashboard');
+          context.go('/dashboard');
+        }
+      },
+      child: AppGradientBackground(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Top Navigation Bar
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      NeumorphicCircularButton(
+                        icon: Icons.arrow_back_rounded,
+                        iconSize: 20,
+                        onTap: () {
+                          AppLogger.info(
+                              'UI', 'User tapped Back on UserSettingsScreen');
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/dashboard');
+                          }
+                        },
+                      ),
                     Text(
                       "Account & Profile",
                       style: TextStyle(
@@ -1518,46 +971,22 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                         color: textPrimary,
                       ),
                     ),
-                    // Quick Sync Icon Badge
-                    Tooltip(
-                      message: !_isOnline
+                    // Quick Sync Icon Button (identical protrusion to back button)
+                    NeumorphicCircularButton(
+                      icon: !_isOnline
+                          ? Icons.sync_disabled_rounded
+                          : Icons.sync_rounded,
+                      iconColor: !_isOnline
+                          ? textSecondary.withValues(alpha: 0.4)
+                          : accent,
+                      iconSize: 20,
+                      tooltip: !_isOnline
                           ? "Sync requires an internet connection"
                           : "Sync all data",
-                      triggerMode: TooltipTriggerMode.tap,
-                      child: GestureDetector(
-                        onTap: (!_isOnline || _isManualSyncing)
-                            ? null
-                            : _onManualSync,
-                        child: Neumorphic(
-                          style: NeumorphicStyle(
-                            depth: !_isOnline ? -2 : 3,
-                            intensity: 0.85,
-                            boxShape: const NeumorphicBoxShape.circle(),
-                            color: controller.currentBaseColor,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(9),
-                            child: _isManualSyncing
-                                ? SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: accent,
-                                    ),
-                                  )
-                                : Icon(
-                                    !_isOnline
-                                        ? Icons.sync_disabled_rounded
-                                        : Icons.sync_rounded,
-                                    size: 18,
-                                    color: !_isOnline
-                                        ? textSecondary.withValues(alpha: 0.4)
-                                        : accent,
-                                  ),
-                          ),
-                        ),
-                      ),
+                      isLoading: _isManualSyncing,
+                      onTap: (!_isOnline || _isManualSyncing)
+                          ? null
+                          : _onManualSync,
                     ),
                   ],
                 ),
@@ -1565,10 +994,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
 
               // Scrollable Dynamic Content
               Expanded(
-                child: SingleChildScrollView(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Column(
+                child: FadingEdgeScrollView(
+                  fadeHeightTop: 20,
+                  fadeHeightBottom: 28,
+                  child: SingleChildScrollView(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ── 1. HERO PROFILE CARD ──────────────────────────────
@@ -1597,8 +1029,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                         child: Stack(
                                           clipBehavior: Clip.none,
                                           children: [
-                                            GestureDetector(
-                                              onTap: (!_isOnline ||
+                                            NeumorphicTactileButton(
+                                              onPressed: (!_isOnline ||
                                                       _isUploadingAvatar)
                                                   ? null
                                                   : () =>
@@ -1608,53 +1040,52 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                                         textPrimary,
                                                         textSecondary,
                                                       ),
-                                              child: Neumorphic(
-                                                style: NeumorphicStyle(
-                                                  depth: !_isOnline ? 1 : 5,
-                                                  boxShape:
-                                                      const NeumorphicBoxShape
-                                                          .circle(),
-                                                  color: !_isOnline
-                                                      ? textSecondary
-                                                          .withValues(
-                                                              alpha: 0.08)
-                                                      : accent.withValues(
-                                                          alpha: 0.15),
-                                                  border: NeumorphicBorder(
-                                                    color: !_isOnline
-                                                        ? textSecondary
-                                                            .withValues(
-                                                                alpha: 0.2)
-                                                        : accent.withValues(
-                                                            alpha: 0.4),
-                                                    width: 1.5,
-                                                  ),
-                                                ),
-                                                child: SizedBox(
-                                                  width: 60,
-                                                  height: 60,
-                                                  child: _isUploadingAvatar
-                                                      ? Center(
-                                                          child: SizedBox(
-                                                            width: 22,
-                                                            height: 22,
-                                                            child:
-                                                                CircularProgressIndicator(
-                                                              strokeWidth: 2.5,
-                                                              color: accent,
-                                                            ),
+                                              depth: !_isOnline ? 1.0 : 5.0,
+                                              pressedDepth: 0.0,
+                                              pressedScale: 0.96,
+                                              boxShape:
+                                                  const NeumorphicBoxShape
+                                                      .circle(),
+                                                   padding: EdgeInsets.zero,
+                                              color: !_isOnline
+                                                  ? textSecondary
+                                                      .withValues(
+                                                          alpha: 0.08)
+                                                  : accent.withValues(
+                                                      alpha: 0.15),
+                                              border: NeumorphicBorder(
+                                                color: !_isOnline
+                                                    ? textSecondary
+                                                        .withValues(
+                                                            alpha: 0.2)
+                                                    : accent.withValues(
+                                                        alpha: 0.4),
+                                                width: 1.5,
+                                              ),
+                                              child: SizedBox(
+                                                width: 60,
+                                                height: 60,
+                                                child: _isUploadingAvatar
+                                                    ? Center(
+                                                        child: SizedBox(
+                                                          width: 22,
+                                                          height: 22,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                            strokeWidth: 2.5,
+                                                            color: accent,
                                                           ),
-                                                        )
-                                                      : _buildAvatarContent(
-                                                          username, accent),
-                                                ),
+                                                        ),
+                                                      )
+                                                    : _buildAvatarContent(
+                                                        username, accent),
                                               ),
                                             ),
                                             Positioned(
                                               bottom: -2,
                                               right: -2,
-                                              child: GestureDetector(
-                                                onTap: (!_isOnline ||
+                                              child: NeumorphicTactileButton(
+                                                onPressed: (!_isOnline ||
                                                         _isUploadingAvatar)
                                                     ? null
                                                     : () =>
@@ -1664,49 +1095,48 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                                           textPrimary,
                                                           textSecondary,
                                                         ),
-                                                child: Neumorphic(
-                                                  style: NeumorphicStyle(
-                                                    depth: !_isOnline ? 0 : 3,
-                                                    boxShape:
-                                                        const NeumorphicBoxShape
-                                                            .circle(),
-                                                    color: NeumorphicTheme
-                                                        .baseColor(context),
-                                                    border: NeumorphicBorder(
-                                                      color: !_isOnline
-                                                          ? textSecondary
-                                                              .withValues(
-                                                                  alpha: 0.3)
-                                                          : accent.withValues(
-                                                              alpha: 0.5),
-                                                      width: 1.5,
-                                                    ),
+                                                depth: !_isOnline ? 0.0 : 3.0,
+                                                pressedDepth: 0.0,
+                                                pressedScale: 0.92,
+                                                boxShape:
+                                                    const NeumorphicBoxShape
+                                                        .circle(),
+                                                color: NeumorphicTheme
+                                                    .baseColor(context),
+                                                border: NeumorphicBorder(
+                                                  color: !_isOnline
+                                                      ? textSecondary
+                                                          .withValues(
+                                                              alpha: 0.3)
+                                                      : accent.withValues(
+                                                          alpha: 0.5),
+                                                  width: 1.5,
+                                                ),
+                                                padding: EdgeInsets.zero,
+                                                child: Container(
+                                                  width: 22,
+                                                  height: 22,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: !_isOnline
+                                                        ? textSecondary
+                                                            .withValues(
+                                                                alpha: 0.1)
+                                                        : accent.withValues(
+                                                            alpha: 0.2),
                                                   ),
-                                                  child: Container(
-                                                    width: 22,
-                                                    height: 22,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
+                                                  child: Center(
+                                                    child: Icon(
+                                                      !_isOnline
+                                                          ? Icons
+                                                              .wifi_off_rounded
+                                                          : Icons.add_rounded,
+                                                      size: 14,
                                                       color: !_isOnline
                                                           ? textSecondary
                                                               .withValues(
-                                                                  alpha: 0.1)
-                                                          : accent.withValues(
-                                                              alpha: 0.2),
-                                                    ),
-                                                    child: Center(
-                                                      child: Icon(
-                                                        !_isOnline
-                                                            ? Icons
-                                                                .wifi_off_rounded
-                                                            : Icons.add_rounded,
-                                                        size: 14,
-                                                        color: !_isOnline
-                                                            ? textSecondary
-                                                                .withValues(
-                                                                    alpha: 0.5)
-                                                            : accent,
-                                                      ),
+                                                                  alpha: 0.5)
+                                                          : accent,
                                                     ),
                                                   ),
                                                 ),
@@ -1755,43 +1185,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                                           FontWeight.bold,
                                                       letterSpacing: 0.4,
                                                     ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 5),
-                                                Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green
-                                                        .withValues(
-                                                            alpha: 0.15),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            6),
-                                                  ),
-                                                  child: const Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        Icons
-                                                            .cloud_done_rounded,
-                                                        color: Colors.green,
-                                                        size: 11,
-                                                      ),
-                                                      SizedBox(width: 3),
-                                                      Text(
-                                                        "Synced",
-                                                        style: TextStyle(
-                                                          color: Colors.green,
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ],
                                                   ),
                                                 ),
                                               ],
@@ -2010,478 +1403,64 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                       ),
                       const SizedBox(height: 20),
 
-                      // ── 3. CONTACT & CREDENTIALS ───────────────────────────
+                      // ── 3. CONTACT & SECURITY ──────────────────────────────
                       _buildSectionHeader("CONTACT & SECURITY", textSecondary),
                       const SizedBox(height: 8),
                       NeumorphicCardWidget(
                         padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            // Email Row
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: accent.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(Icons.email_outlined,
-                                        size: 18, color: accent),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "EMAIL ADDRESS",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: textSecondary,
-                                            letterSpacing: 0.6,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          email,
-                                          style: TextStyle(
-                                            fontSize: 13.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: textPrimary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Verified badge or Verify button
-                                  if (_profile?.isEmailVerified == true)
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.verified_rounded,
-                                          color: Colors.green,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          "Verified",
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.green,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  else if (!_isOnline)
-                                    Tooltip(
-                                      message:
-                                          "Email verification requires an internet connection",
-                                      triggerMode: TooltipTriggerMode.tap,
-                                      child: Neumorphic(
-                                        style: NeumorphicStyle(
-                                          depth: -2,
-                                          intensity: 0.6,
-                                          color: NeumorphicTheme.baseColor(
-                                              context),
-                                          boxShape:
-                                              NeumorphicBoxShape.roundRect(
-                                                  BorderRadius.circular(8)),
-                                          border: NeumorphicBorder(
-                                            color: textSecondary.withValues(
-                                                alpha: 0.25),
-                                            width: 0.8,
-                                          ),
-                                        ),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 5),
-                                          child: Text(
-                                            "Verify",
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: textSecondary.withValues(
-                                                  alpha: 0.45),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    GestureDetector(
-                                      onTap: () =>
-                                          _showEmailVerificationBottomSheet(
-                                        context: context,
-                                        email: email,
-                                        accent: accent,
-                                        textPrimary: textPrimary,
-                                        textSecondary: textSecondary,
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 5),
-                                        decoration: BoxDecoration(
-                                          color: accent.withValues(alpha: 0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color:
-                                                accent.withValues(alpha: 0.3),
-                                            width: 0.8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          "Verify",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: accent,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                        child: NeumorphicPressableRow(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () async {
+                            await context.push('/user-settings/contact-security');
+                            if (mounted) {
+                              _loadProfile();
+                            }
+                          },
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(Icons.shield_outlined,
+                                    size: 18, color: accent),
                               ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Mobile Number Row (Temporarily disabled - Coming Soon)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: hasMobile
-                                          ? accent.withValues(alpha: 0.12)
-                                          : textSecondary.withValues(
-                                              alpha: 0.08),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.phone_iphone_rounded,
-                                      size: 18,
-                                      color: hasMobile
-                                          ? accent
-                                          : textSecondary.withValues(
-                                              alpha: 0.5),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "MOBILE NUMBER",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: textSecondary,
-                                            letterSpacing: 0.6,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          hasMobile
-                                              ? "${countryCode ?? '+60'} $mobileNumber"
-                                              : "Not configured",
-                                          style: TextStyle(
-                                            fontSize: 13.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: hasMobile
-                                                ? textPrimary
-                                                : textSecondary.withValues(
-                                                    alpha: 0.7),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Tooltip(
-                                    message: "Coming Soon",
-                                    triggerMode: TooltipTriggerMode.tap,
-                                    child: Neumorphic(
-                                      style: NeumorphicStyle(
-                                        depth: -2.5,
-                                        intensity: 0.8,
-                                        color:
-                                            NeumorphicTheme.baseColor(context),
-                                        boxShape: NeumorphicBoxShape.roundRect(
-                                            BorderRadius.circular(8)),
-                                        border: NeumorphicBorder(
-                                          color: textSecondary.withValues(
-                                              alpha: 0.25),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 5),
-                                        child: Text(
-                                          hasMobile ? "Edit" : "+ Add",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: textSecondary.withValues(
-                                                alpha: 0.6),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Reset Password Row
-                            InkWell(
-                              onTap: (isPasswordCooldownActive || !_isOnline)
-                                  ? null
-                                  : () => _showChangePasswordBottomSheet(
-                                        context,
-                                        accent,
-                                        textPrimary,
-                                        textSecondary,
-                                      ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: (isPasswordCooldownActive ||
-                                                !_isOnline)
-                                            ? textSecondary.withValues(
-                                                alpha: 0.08)
-                                            : accent.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.lock_reset_rounded,
-                                        size: 18,
-                                        color: (isPasswordCooldownActive ||
-                                                !_isOnline)
-                                            ? textSecondary.withValues(
-                                                alpha: 0.5)
-                                            : accent,
+                                    Text(
+                                      "View & Edit",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "ACCOUNT PASSWORD",
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: textSecondary,
-                                              letterSpacing: 0.6,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "••••••••••••",
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 2,
-                                              color:
-                                                  (isPasswordCooldownActive ||
-                                                          !_isOnline)
-                                                      ? textSecondary
-                                                          .withValues(
-                                                              alpha: 0.5)
-                                                      : textPrimary,
-                                            ),
-                                          ),
-                                        ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Change contact, configure security, and more",
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: textSecondary,
                                       ),
                                     ),
-                                    if (!_isOnline)
-                                      Tooltip(
-                                        message:
-                                            "Password reset requires an internet connection",
-                                        triggerMode: TooltipTriggerMode.tap,
-                                        child: Neumorphic(
-                                          style: NeumorphicStyle(
-                                            depth: -2.5,
-                                            intensity: 0.8,
-                                            color: NeumorphicTheme.baseColor(
-                                                context),
-                                            boxShape:
-                                                NeumorphicBoxShape.roundRect(
-                                                    BorderRadius.circular(8)),
-                                            border: NeumorphicBorder(
-                                              color: textSecondary.withValues(
-                                                  alpha: 0.25),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10, vertical: 5),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  Icons.wifi_off_rounded,
-                                                  size: 12,
-                                                  color: textSecondary
-                                                      .withValues(alpha: 0.6),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  "Reset",
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: textSecondary
-                                                        .withValues(alpha: 0.6),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    else if (isPasswordCooldownActive)
-                                      Tooltip(
-                                        message: cooldownMessage,
-                                        triggerMode: TooltipTriggerMode.tap,
-                                        child: Neumorphic(
-                                          style: NeumorphicStyle(
-                                            depth: -2.5,
-                                            intensity: 0.8,
-                                            color: NeumorphicTheme.baseColor(
-                                                context),
-                                            boxShape:
-                                                NeumorphicBoxShape.roundRect(
-                                                    BorderRadius.circular(8)),
-                                            border: NeumorphicBorder(
-                                              color: textSecondary.withValues(
-                                                  alpha: 0.25),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10, vertical: 5),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  Icons.schedule_rounded,
-                                                  size: 12,
-                                                  color: textSecondary
-                                                      .withValues(alpha: 0.6),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  "Reset",
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: textSecondary
-                                                        .withValues(alpha: 0.6),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 5),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                              color:
-                                                  accent.withValues(alpha: 0.5),
-                                              width: 1),
-                                        ),
-                                        child: Text(
-                                          "Reset",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: accent,
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 ),
                               ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Security Encryption Row
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: accent.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(Icons.shield_outlined,
-                                        size: 18, color: accent),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "AUTHENTICATION METHOD",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: textSecondary,
-                                            letterSpacing: 0.6,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          "PBKDF2 SHA-256 Cloud Token",
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: textPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: textSecondary,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -2497,9 +1476,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.devices_rounded,
-                                    size: 20, color: accent),
-                                const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
                                     "Physical Hardware Identity",
@@ -2557,18 +1533,24 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                   ? "Sync requires an internet connection"
                                   : "Force push local receipts & pull updates",
                               triggerMode: TooltipTriggerMode.tap,
-                              child: InkWell(
+                              child: NeumorphicPressableRow(
                                 onTap: (!_isOnline || _isManualSyncing)
                                     ? null
                                     : _onManualSync,
                                 borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(18)),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 14),
-                                  child: Row(
-                                    children: [
-                                      Icon(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: accent.withValues(alpha: 0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
                                         !_isOnline
                                             ? Icons.cloud_off_outlined
                                             : Icons.cloud_upload_outlined,
@@ -2578,86 +1560,29 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                             : accent,
                                         size: 20,
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              "Sync All Data Now",
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: !_isOnline
-                                                    ? textSecondary.withValues(
-                                                        alpha: 0.6)
-                                                    : textPrimary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              !_isOnline
-                                                  ? "Connect to internet to synchronize data"
-                                                  : "Force push local receipts & pull updates",
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                color: textSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Text(
-                                        !_isOnline
-                                            ? "Offline"
-                                            : (_isManualSyncing
-                                                ? "Syncing..."
-                                                : "Sync"),
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          color: !_isOnline
-                                              ? textSecondary.withValues(
-                                                  alpha: 0.4)
-                                              : accent,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            _buildDivider(textSecondary),
-                            // Quick Export Row
-                            InkWell(
-                              onTap: _onExportData,
-                              borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(18)),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.file_download_outlined,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
+                                    ),
+                                    const SizedBox(width: 14),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            "Backup Receipts (JSON)",
+                                            "Sync All Data Now",
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
-                                              color: textPrimary,
+                                              color: !_isOnline
+                                                  ? textSecondary.withValues(
+                                                      alpha: 0.6)
+                                                  : textPrimary,
                                             ),
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            "Create offline archive of all records",
+                                            !_isOnline
+                                                ? "Connect to internet to synchronize data"
+                                                : "Force push local receipts & pull updates",
                                             style: TextStyle(
                                               fontSize: 11.5,
                                               color: textSecondary,
@@ -2667,15 +1592,86 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                                       ),
                                     ),
                                     Text(
-                                      "Export",
+                                      !_isOnline
+                                          ? "Offline"
+                                          : (_isManualSyncing
+                                              ? "Syncing..."
+                                              : "Sync"),
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
-                                        color: accent,
+                                        color: !_isOnline
+                                            ? textSecondary.withValues(
+                                                alpha: 0.4)
+                                            : accent,
                                       ),
                                     ),
                                   ],
                                 ),
+                              ),
+                            ),
+                            _buildDivider(textSecondary),
+                            // Quick Export Row
+                            NeumorphicPressableRow(
+                              onTap: () => _showExportFormatBottomSheet(
+                                context,
+                                accent,
+                                textPrimary,
+                                textSecondary,
+                              ),
+                              borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(18)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: accent.withValues(alpha: 0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.file_download_outlined,
+                                      color: accent,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Export Database (JSON/CSV)",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          "Save receipts & chat backup to device",
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            color: textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    "Export",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: accent,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -2688,183 +1684,54 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                       const SizedBox(height: 8),
                       NeumorphicCardWidget(
                         padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            // Privacy Policy
-                            InkWell(
-                              onTap: () => context.push('/legal/privacy'),
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(18)),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
+                        child: NeumorphicPressableRow(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => context.push('/settings/policies-tour'),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(Icons.policy_outlined,
+                                    size: 18, color: accent),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.security_rounded,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Privacy Policy",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "GDPR, CCPA/CPRA & Zero AI Training",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
+                                    Text(
+                                      "View Policies & Tour",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
                                       ),
                                     ),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                        color: textSecondary, size: 14),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Read our legal documents or play the app's walkthrough",
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: textSecondary,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Terms of Service
-                            InkWell(
-                              onTap: () => context.push('/legal/terms'),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.gavel_rounded,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Terms of Service",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "Acceptable use & governing law",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                        color: textSecondary, size: 14),
-                                  ],
-                                ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: textSecondary,
                               ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Cookie Policy
-                            InkWell(
-                              onTap: () => context.push('/legal/cookies'),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.cookie_outlined,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Cookie & Storage Policy",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "Secure tokens, cache & local database",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                        color: textSecondary, size: 14),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            _buildDivider(textSecondary),
-
-                            // Accessibility Statement
-                            InkWell(
-                              onTap: () => context.push('/legal/accessibility'),
-                              borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(18)),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.accessibility_new_rounded,
-                                        color: accent, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Accessibility Statement",
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: textPrimary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            "ADA Title III & WCAG 2.1 AA",
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              color: textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(Icons.arrow_forward_ios_rounded,
-                                        color: textSecondary, size: 14),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -2987,12 +1854,14 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildSectionHeader(String label, Color textSecondary) {
     return Padding(
@@ -3074,8 +1943,8 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                   children: [
                     // Deepened Indented Tier Icon
                     Container(
-                      margin: const EdgeInsets.only(left: 10),
-                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: tierColor.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
@@ -3086,11 +1955,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                             : (tierName == 'DEV'
                                 ? Icons.developer_mode_rounded
                                 : Icons.bolt_rounded),
-                        size: 18,
+                        size: 28,
                         color: tierColor,
                       ),
                     ),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3098,7 +1966,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
                           Text(
                             tierName,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: textPrimary,
                             ),
@@ -3145,90 +2013,73 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
               ),
               if (tierName == 'FREE') ...[
                 const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => _showPremiumUpgradeBottomSheet(
+                NeumorphicTactileButton(
+                  onPressed: () => _showPremiumUpgradeBottomSheet(
                     context,
                     controller,
                     accent,
                     textPrimary,
                     textSecondary,
                   ),
-                  child: Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: 3,
-                      intensity: 0.9,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                        BorderRadius.circular(10),
-                      ),
-                      color: controller.currentBaseColor,
-                      border: NeumorphicBorder(
-                        color: amberColor.withValues(alpha: 0.6),
-                        width: 1.2,
-                      ),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.keyboard_double_arrow_up_rounded,
-                          size: 15,
-                          color: amberColor,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          "Upgrade",
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            color: amberColor,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
+                  depth: controller.neuDepth,
+                  pressedDepth: 0.0,
+                  pressedScale: 0.96,
+                  boxShape: NeumorphicBoxShape.roundRect(
+                    BorderRadius.circular(10),
+                  ),
+                  color: controller.currentBaseColor,
+                  border: NeumorphicBorder(
+                    color: amberColor.withValues(alpha: 0.6),
+                    width: 1.2,
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  child: Text(
+                    "Upgrade",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: amberColor,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),
               ] else if (tierName == 'PREMIUM' && !isTrialActive) ...[
                 const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => _onManageTap(context),
-                  child: Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: 3,
-                      intensity: 0.9,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                        BorderRadius.circular(10),
+                NeumorphicTactileButton(
+                  onPressed: () => _onManageTap(context),
+                  depth: controller.neuDepth,
+                  pressedDepth: 0.0,
+                  pressedScale: 0.96,
+                  boxShape: NeumorphicBoxShape.roundRect(
+                    BorderRadius.circular(10),
+                  ),
+                  color: controller.currentBaseColor,
+                  border: NeumorphicBorder(
+                    color: textSecondary.withValues(alpha: 0.35),
+                    width: 1.2,
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.settings_rounded,
+                        size: 14,
+                        color: textSecondary,
                       ),
-                      color: controller.currentBaseColor,
-                      border: NeumorphicBorder(
-                        color: textSecondary.withValues(alpha: 0.35),
-                        width: 1.2,
-                      ),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.settings_rounded,
-                          size: 14,
+                      const SizedBox(width: 3),
+                      Text(
+                        "Manage",
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
                           color: textSecondary,
+                          letterSpacing: 0.2,
                         ),
-                        const SizedBox(width: 3),
-                        Text(
-                          "Manage",
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            color: textSecondary,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -3432,7 +2283,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
     return Expanded(
       child: Neumorphic(
         style: NeumorphicStyle(
-          depth: 3,
+          depth: controller.neuDepth,
           intensity: 0.85,
           color: controller.currentBaseColor,
           boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
@@ -3540,425 +2391,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
           fontSize: 24,
           fontWeight: FontWeight.bold,
           color: accent,
-        ),
-      ),
-    );
-  }
-}
-
-// ── EMAIL VERIFICATION BOTTOM SHEET WIDGET ────────────────────────────────────
-
-class _EmailVerificationSheet extends StatefulWidget {
-  const _EmailVerificationSheet({
-    required this.email,
-    required this.accent,
-    required this.textPrimary,
-    required this.textSecondary,
-    required this.controller,
-    required this.initialCooldownRemaining,
-    required this.onCooldownStarted,
-    required this.onVerified,
-  });
-
-  final String email;
-  final Color accent;
-  final Color textPrimary;
-  final Color textSecondary;
-  final AppThemeController controller;
-  final int initialCooldownRemaining;
-  final void Function(DateTime startedAt) onCooldownStarted;
-  final void Function(UserRecordDto updatedProfile) onVerified;
-
-  @override
-  State<_EmailVerificationSheet> createState() =>
-      _EmailVerificationSheetState();
-}
-
-class _EmailVerificationSheetState extends State<_EmailVerificationSheet> {
-  int _step = 1; // 1 = Confirm Email, 2 = Enter OTP
-
-  bool _isLoading = false;
-  String? _errorMessage;
-
-  final _otpController = TextEditingController();
-  int _cooldownRemaining = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _cooldownRemaining = widget.initialCooldownRemaining;
-    if (_cooldownRemaining > 0) {
-      _startCooldownTimer();
-    }
-  }
-
-  @override
-  void dispose() {
-    _otpController.dispose();
-    super.dispose();
-  }
-
-  void _startCooldownTimer() {
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return false;
-      setState(() {
-        if (_cooldownRemaining > 0) _cooldownRemaining--;
-      });
-      return _cooldownRemaining > 0;
-    });
-  }
-
-  Future<void> _onSendCode() async {
-    if (_isLoading || _cooldownRemaining > 0) return;
-    if (!SyncCoordinator.instance.isOnline) {
-      setState(() {
-        _errorMessage =
-            "Internet connection required to send verification code.";
-        _isLoading = false;
-      });
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      await AuthService.instance.initiateVerification(
-        type: 'email',
-        identifier: widget.email,
-      );
-      final now = DateTime.now();
-      widget.onCooldownStarted(now);
-      if (!mounted) return;
-      setState(() {
-        _cooldownRemaining = 60;
-        _step = 2;
-        _isLoading = false;
-      });
-      _startCooldownTimer();
-    } on RateLimitException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = e.message;
-        _isLoading = false;
-        _cooldownRemaining = e.retryAfterSeconds;
-        _step = 2;
-      });
-      _startCooldownTimer();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _onVerifyCode() async {
-    final otp = _otpController.text.trim();
-    if (otp.length != 6 || _isLoading) return;
-    if (!SyncCoordinator.instance.isOnline) {
-      setState(() {
-        _errorMessage = "Internet connection required to verify code.";
-        _isLoading = false;
-      });
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      final updatedProfile = await AuthService.instance.completeVerification(
-        type: 'email',
-        identifier: widget.email,
-        otp: otp,
-      );
-      if (!mounted) return;
-      widget.onVerified(updatedProfile);
-      Navigator.of(context).pop();
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = e.message;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final baseColor = widget.controller.currentBaseColor;
-    final accent = widget.accent;
-    final textPrimary = widget.textPrimary;
-    final textSecondary = widget.textSecondary;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: 8,
-          color: baseColor,
-          boxShape: NeumorphicBoxShape.roundRect(
-            const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: textSecondary.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Title
-                Text(
-                  _step == 1
-                      ? 'Verify Email Address'
-                      : 'Enter Verification Code',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _step == 1
-                      ? 'We\'ll send a 6-digit code to your email address.'
-                      : 'Enter the 6-digit code sent to:',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: textSecondary,
-                  ),
-                ),
-                if (_step == 2) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.email,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: accent,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 20),
-
-                // Step 1: Email confirmation + Send button
-                if (_step == 1) ...[
-                  Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: -3,
-                      color: baseColor,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(12)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 14),
-                      child: Row(
-                        children: [
-                          Icon(Icons.email_outlined,
-                              size: 18, color: textSecondary),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              widget.email,
-                              style:
-                                  TextStyle(fontSize: 14, color: textPrimary),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildCta(
-                    label: 'Send Verification Code',
-                    onTap: _onSendCode,
-                    accent: accent,
-                    baseColor: baseColor,
-                    isLoading: _isLoading,
-                  ),
-                ],
-
-                // Step 2: OTP input + Verify button
-                if (_step == 2) ...[
-                  Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: -3,
-                      color: baseColor,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          BorderRadius.circular(12)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 4),
-                      child: TextField(
-                        controller: _otpController,
-                        keyboardType: TextInputType.number,
-                        maxLength: 6,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 8,
-                          color: textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          counterText: '',
-                          hintText: '------',
-                          hintStyle: TextStyle(
-                            fontSize: 28,
-                            letterSpacing: 8,
-                            color: textSecondary.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Resend cooldown or Resend link
-                  Center(
-                    child: _cooldownRemaining > 0
-                        ? Text(
-                            'Resend code in ${_cooldownRemaining}s',
-                            style:
-                                TextStyle(fontSize: 12, color: textSecondary),
-                          )
-                        : GestureDetector(
-                            onTap: _isLoading ? null : _onSendCode,
-                            child: Text(
-                              'Resend Code',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: accent,
-                              ),
-                            ),
-                          ),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildCta(
-                    label: 'Verify Code',
-                    onTap: _otpController.text.trim().length == 6
-                        ? _onVerifyCode
-                        : null,
-                    accent: accent,
-                    baseColor: baseColor,
-                    isLoading: _isLoading,
-                  ),
-                ],
-
-                // Error message
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.redAccent.withValues(alpha: 0.2),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline_rounded,
-                            size: 16, color: Colors.redAccent),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              color: Colors.redAccent,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCta({
-    required String label,
-    required VoidCallback? onTap,
-    required Color accent,
-    required Color baseColor,
-    required bool isLoading,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: onTap != null ? 4 : -2,
-          color: onTap != null ? accent : baseColor,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Center(
-              child: isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: onTap != null
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.4),
-                      ),
-                    ),
-            ),
-          ),
         ),
       ),
     );

@@ -7,9 +7,18 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../../cloud/api/api_config.dart';
 import '../../../core/widgets/alpha_breadcrumb_badge.dart';
+import '../../../../cloud/services/google_auth_service.dart';
+import '../widgets/google_sign_in_button.dart';
 
-class AuthScreen extends StatelessWidget {
+class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
+
+  @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  bool _isGoogleLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -36,40 +45,35 @@ class AuthScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         if (canPop)
-                          GestureDetector(
-                            onTap: () {
+                          NeumorphicTactileButton(
+                            onPressed: () {
                               AppLogger.info(
                                   'UI', 'User tapped Back on AuthScreen');
                               context.pop();
                             },
-                            child: Neumorphic(
-                              style: NeumorphicStyle(
-                                depth: 4,
-                                intensity: 0.85,
-                                boxShape: NeumorphicBoxShape.roundRect(
-                                    BorderRadius.circular(12)),
-                                color: controller.currentBaseColor,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.arrow_back_rounded,
-                                        color: textPrimary, size: 18),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "Back",
-                                      style: TextStyle(
-                                        color: textPrimary,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
+                            depth: 4.0,
+                            pressedDepth: 0.0,
+                            pressedScale: 0.97,
+                            boxShape: NeumorphicBoxShape.roundRect(
+                                BorderRadius.circular(12)),
+                            color: controller.currentBaseColor,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.arrow_back_rounded,
+                                    color: textPrimary, size: 18),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "Back",
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           )
                         else
@@ -212,37 +216,51 @@ class AuthScreen extends StatelessWidget {
                             SizedBox(
                               width: double.infinity,
                               height: 52,
-                              child: GestureDetector(
-                                onTap: () {
+                              child: NeumorphicTactileButton(
+                                onPressed: () {
                                   AppLogger.info('UI',
                                       'User tapped Create Account on AuthScreen');
                                   context.push('/signup');
                                 },
-                                child: Neumorphic(
-                                  style: NeumorphicStyle(
-                                    depth: 4,
-                                    intensity: 0.85,
-                                    boxShape: NeumorphicBoxShape.roundRect(
-                                        BorderRadius.circular(14)),
-                                    color: controller.currentBaseColor,
-                                    border: NeumorphicBorder(
-                                      color: accent.withValues(alpha: 0.5),
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      "Create Account",
-                                      style: TextStyle(
-                                        color: accent,
-                                        fontSize: 15.5,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.2,
-                                      ),
+                                depth: 4.0,
+                                pressedDepth: 0.0,
+                                pressedScale: 0.98,
+                                boxShape: NeumorphicBoxShape.roundRect(
+                                    BorderRadius.circular(14)),
+                                color: controller.currentBaseColor,
+                                border: NeumorphicBorder(
+                                  color: accent.withValues(alpha: 0.5),
+                                  width: 1.2,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    "Create Account",
+                                    style: TextStyle(
+                                      color: accent,
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.2,
                                     ),
                                   ),
                                 ),
                               ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // ── Google Sign-In ────────────────────────────────
+                            GoogleSignInButton(
+                              isLoading: _isGoogleLoading,
+                              label: "Continue with Google",
+                              onPressed: () {
+                                GoogleAuthService.instance.signInWithGoogle(
+                                  context,
+                                  onLoadingChanged: (loading) {
+                                    if (mounted) {
+                                      setState(() => _isGoogleLoading = loading);
+                                    }
+                                  },
+                                );
+                              },
                             ),
                             const SizedBox(height: 24),
 

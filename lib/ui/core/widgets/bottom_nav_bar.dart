@@ -1,8 +1,10 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../services/scan_batch_controller.dart';
 import '../../../../services/tutorial_service.dart';
 import '../../../../cloud/services/quota_service.dart';
+import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 import 'scan_progress_snack_bar.dart';
 import '../../features/subscription/widgets/ad_scan_reward_widget.dart';
@@ -16,6 +18,17 @@ class AppBottomNavBar extends StatelessWidget {
     required this.currentPath,
     this.fabKey,
   });
+
+  /// Calculates the bottom padding required for scrollable content so that
+  /// the lowest element clears the protruding center FAB with an extra margin
+  /// matching horizontal screen margin (default 24.0).
+  static double contentBottomPadding(BuildContext context, {double extraMargin = 24.0}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final margin5Percent = screenWidth * 0.05;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    // Nav bar height (70) + top protrusion of FAB (18) + bottom margin + system inset + extraMargin
+    return 70.0 + 18.0 + margin5Percent + bottomInset + extraMargin;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,61 +200,62 @@ class _CenterScanFAB extends StatelessWidget {
 
     final bool isDisabledState = isScanning || isScanQuotaExhausted;
 
-    Widget fabWidget = GestureDetector(
+    Widget fabContent = Container(
+      width: 58,
+      height: 58,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDisabledState ? disabledColor : null,
+        gradient: isDisabledState
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  accent,
+                  accent.withValues(alpha: 0.85),
+                ],
+              ),
+        boxShadow: isDisabledState
+            ? null
+            : [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.45),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Icon(
+        fabIcon,
+        color: isDisabledState ? Colors.white70 : Colors.white,
+        size: isScanning ? 25 : 28,
+      ),
+    );
+
+    Widget fabWidget = Container(
       key: fabKey,
-      onTap: onTapHandler,
-      behavior: HitTestBehavior.opaque,
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isDisabledState ? -3 : 10,
-          intensity: isDisabledState ? 0.4 : 0.95,
-          boxShape: const NeumorphicBoxShape.circle(),
-          color: isDisabledState ? disabledColor : accent,
-          border: NeumorphicBorder(
-            color: isDark
-                ? (isDisabledState
-                    ? Colors.white12
-                    : Colors.white.withValues(alpha: 0.5))
-                : (isDisabledState
-                    ? Colors.white24
-                    : Colors.white.withValues(alpha: 0.9)),
-            width: 2.5,
-          ),
+      child: NeumorphicTactileButton(
+        onPressed: onTapHandler,
+        depth: isDisabledState ? 0.0 : 10.0,
+        pressedDepth: 0.0,
+        pressedScale: 0.94,
+        color: isDisabledState ? disabledColor : accent,
+        boxShape: const NeumorphicBoxShape.circle(),
+        border: NeumorphicBorder(
+          color: isDark
+              ? (isDisabledState
+                  ? Colors.white12
+                  : Colors.white.withValues(alpha: 0.5))
+              : (isDisabledState
+                  ? Colors.white24
+                  : Colors.white.withValues(alpha: 0.9)),
+          width: 2.5,
         ),
         padding: const EdgeInsets.all(3),
-        child: Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isDisabledState ? disabledColor : null,
-            gradient: isDisabledState
-                ? null
-                : LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      accent,
-                      accent.withValues(alpha: 0.85),
-                    ],
-                  ),
-            boxShadow: isDisabledState
-                ? null
-                : [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.45),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-          ),
-          child: Icon(
-            fabIcon,
-            color: isDisabledState ? Colors.white70 : Colors.white,
-            size: isScanning ? 25 : 28,
-          ),
-        ),
+        isLoading: isScanning,
+        child: fabContent,
       ),
     );
 
@@ -275,6 +289,9 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTapDown: (_) {
+        HapticFeedback.lightImpact();
+      },
       onTap: () {
         if (!isActive) context.go(path);
       },

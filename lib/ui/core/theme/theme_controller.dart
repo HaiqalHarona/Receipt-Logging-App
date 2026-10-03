@@ -155,21 +155,54 @@ class AppThemeController extends ChangeNotifier with WidgetsBindingObserver {
   /// Dark shadow specifically used for inset / embossed containers (negative depth).
   Color get shadowDarkColorEmboss {
     if (isDarkMode) {
-      return Colors.black.withValues(alpha: 0.75);
+      return Colors.black.withValues(alpha: 0.65);
     } else {
       return shadowDarkColor;
     }
   }
 
   /// Highlight shadow specifically used for inset / embossed containers (negative depth).
-  /// Subdues the harsh white glow / drop shadows in dark mode.
+  /// Subdues the harsh white glow while providing a soft specular reflection on bottom-right bevels in dark mode.
   Color get shadowLightColorEmboss {
-    final base = currentBaseColor;
     if (isDarkMode) {
-      return base.withValues(alpha: 0.10);
+      return Colors.white.withValues(alpha: 0.16);
     } else {
       return shadowLightColor;
     }
+  }
+
+  /// Top tint color for the subtle canvas background gradient (lighter tone).
+  Color get backgroundGradientTop {
+    final base = currentBaseColor;
+    final hsl = HSLColor.fromColor(base);
+    if (isDarkMode) {
+      return hsl.withLightness((hsl.lightness + 0.04).clamp(0.0, 1.0)).toColor();
+    } else {
+      return hsl.withLightness((hsl.lightness + 0.03).clamp(0.0, 1.0)).toColor();
+    }
+  }
+
+  /// Bottom shade color for the subtle canvas background gradient (darker tone).
+  Color get backgroundGradientBottom {
+    final base = currentBaseColor;
+    final hsl = HSLColor.fromColor(base);
+    if (isDarkMode) {
+      return hsl.withLightness((hsl.lightness - 0.035).clamp(0.0, 1.0)).toColor();
+    } else {
+      return hsl.withLightness((hsl.lightness - 0.035).clamp(0.0, 1.0)).toColor();
+    }
+  }
+
+  /// Subtle top-to-bottom vertical linear gradient for canvas background.
+  LinearGradient get backgroundGradient {
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        backgroundGradientTop,
+        backgroundGradientBottom,
+      ],
+    );
   }
 
   // ── Dark Mode Presets (8 total) ──────────────────────────────────────────

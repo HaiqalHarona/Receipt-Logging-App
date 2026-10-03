@@ -119,6 +119,12 @@ class ApiConfig {
           ? const String.fromEnvironment('GEMINI_API_KEY')
           : _env('GEMINI_API_KEY', '');
 
+  /// Optional Google Server Client ID for Google Sign-In backend verification.
+  static String get googleServerClientId =>
+      const String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID').isNotEmpty
+          ? const String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID')
+          : _env('GOOGLE_SERVER_CLIENT_ID', '');
+
   /// Persistent hardware device ID powered by DeviceIdentityService.
   static String get deviceId => DeviceIdentityService.instance.deviceId;
 

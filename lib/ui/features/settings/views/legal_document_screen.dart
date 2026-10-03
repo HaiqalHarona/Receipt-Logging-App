@@ -1,7 +1,10 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../../../../services/legal_document_service.dart';
 import '../../../../services/app_logger_service.dart';
 
@@ -72,48 +75,47 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
         final baseColor = controller.currentBaseColor;
         final fontScale = controller.fontScale;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              centerTitle: true,
-              leading: Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: NeumorphicButton(
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.go('/dashboard');
-                      }
-                    },
-                    style: NeumorphicStyle(
-                      shape: NeumorphicShape.convex,
-                      boxShape: const NeumorphicBoxShape.circle(),
-                      depth: 3,
-                      intensity: 0.8,
-                      color: baseColor,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // Standardized Custom Top Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/dashboard');
+                            }
+                          },
+                        ),
+                        Expanded(
+                          child: Text(
+                            _selectedDocType.title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 16 * fontScale,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 40),
+                      ],
                     ),
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(Icons.arrow_back_rounded,
-                        color: textPrimary, size: 20),
                   ),
-                ),
-              ),
-              title: Text(
-                _selectedDocType.title,
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 18 * fontScale,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            body: Column(
-              children: [
                 // Top Segmented Document Selector Tabs with unclipped shadow padding
                 Container(
                   clipBehavior: Clip.none,
@@ -129,24 +131,12 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
                         final isSelected = _selectedDocType == type;
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: NeumorphicButton(
-                            onPressed: () => _onSelectTab(type),
-                            style: NeumorphicStyle(
-                              shape: isSelected
-                                  ? NeumorphicShape.concave
-                                  : NeumorphicShape.flat,
-                              boxShape: NeumorphicBoxShape.roundRect(
-                                  BorderRadius.circular(12)),
-                              depth: isSelected ? -2 : 3.5,
-                              intensity: 0.85,
-                              color: baseColor,
-                              border: isSelected
-                                  ? NeumorphicBorder(
-                                      color: accent.withValues(alpha: 0.8),
-                                      width: 1.5,
-                                    )
-                                  : const NeumorphicBorder.none(),
-                            ),
+                          child: NeumorphicFilterChip(
+                            isSelected: isSelected,
+                            onTap: () => _onSelectTab(type),
+                            restDepth: 3.5,
+                            selectedDepth: -2.0,
+                            borderRadius: BorderRadius.circular(12),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 15, vertical: 10),
                             child: Text(
@@ -179,67 +169,71 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(accent),
                           ),
                         )
-                      : Markdown(
-                          data: _markdownContent,
-                          selectable: true,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
-                          styleSheet: MarkdownStyleSheet(
-                            h1: TextStyle(
-                              fontSize: 22 * fontScale,
-                              fontWeight: FontWeight.bold,
-                              color: textPrimary,
-                              height: 1.3,
-                            ),
-                            h2: TextStyle(
-                              fontSize: 18 * fontScale,
-                              fontWeight: FontWeight.bold,
-                              color: accent,
-                              height: 1.4,
-                            ),
-                            h3: TextStyle(
-                              fontSize: 15 * fontScale,
-                              fontWeight: FontWeight.w600,
-                              color: textPrimary,
-                              height: 1.4,
-                            ),
-                            p: TextStyle(
-                              fontSize: 14 * fontScale,
-                              color: textSecondary,
-                              height: 1.6,
-                            ),
-                            listBullet: TextStyle(
-                              fontSize: 14 * fontScale,
-                              color: accent,
-                            ),
-                            tableHead: TextStyle(
-                              fontSize: 13 * fontScale,
-                              fontWeight: FontWeight.bold,
-                              color: textPrimary,
-                            ),
-                            tableBody: TextStyle(
-                              fontSize: 12.5 * fontScale,
-                              color: textSecondary,
-                            ),
-                            tableBorder: TableBorder.all(
-                              color: textSecondary.withValues(alpha: 0.2),
-                              width: 1,
-                            ),
-                            code: TextStyle(
-                              fontSize: 13 * fontScale,
-                              color: accent,
-                              backgroundColor: baseColor,
-                            ),
-                            blockquote: TextStyle(
-                              fontSize: 13.5 * fontScale,
-                              fontStyle: FontStyle.italic,
-                              color: textSecondary,
-                            ),
-                            horizontalRuleDecoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(
-                                  color: textSecondary.withValues(alpha: 0.2),
-                                  width: 1,
+                      : FadingEdgeScrollView(
+                          fadeHeightTop: 20,
+                          fadeHeightBottom: 28,
+                          child: Markdown(
+                            data: _markdownContent,
+                            selectable: true,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 16),
+                            styleSheet: MarkdownStyleSheet(
+                              h1: TextStyle(
+                                fontSize: 22 * fontScale,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
+                                height: 1.3,
+                              ),
+                              h2: TextStyle(
+                                fontSize: 18 * fontScale,
+                                fontWeight: FontWeight.bold,
+                                color: accent,
+                                height: 1.4,
+                              ),
+                              h3: TextStyle(
+                                fontSize: 15 * fontScale,
+                                fontWeight: FontWeight.w600,
+                                color: textPrimary,
+                                height: 1.4,
+                              ),
+                              p: TextStyle(
+                                fontSize: 14 * fontScale,
+                                color: textSecondary,
+                                height: 1.6,
+                              ),
+                              listBullet: TextStyle(
+                                fontSize: 14 * fontScale,
+                                color: accent,
+                              ),
+                              tableHead: TextStyle(
+                                fontSize: 13 * fontScale,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
+                              ),
+                              tableBody: TextStyle(
+                                fontSize: 12.5 * fontScale,
+                                color: textSecondary,
+                              ),
+                              tableBorder: TableBorder.all(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                              code: TextStyle(
+                                fontSize: 13 * fontScale,
+                                color: accent,
+                                backgroundColor: baseColor,
+                              ),
+                              blockquote: TextStyle(
+                                fontSize: 13.5 * fontScale,
+                                fontStyle: FontStyle.italic,
+                                color: textSecondary,
+                              ),
+                              horizontalRuleDecoration: BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(
+                                    color: textSecondary.withValues(alpha: 0.2),
+                                    width: 1,
+                                  ),
                                 ),
                               ),
                             ),
@@ -249,7 +243,8 @@ class _LegalDocumentScreenState extends State<LegalDocumentScreen> {
               ],
             ),
           ),
-        );
+        ),
+      );
       },
     );
   }

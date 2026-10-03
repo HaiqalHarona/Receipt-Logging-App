@@ -4,6 +4,7 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../cloud/api/api_config.dart';
 import '../../../domain/models/staging_manifest.dart';
 import '../../../services/staging_update_service.dart';
+import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 
 class StagingUpdateDialog extends StatefulWidget {
@@ -218,47 +219,45 @@ class _StagingUpdateDialogState extends State<StagingUpdateDialog> {
                       ),
                     ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: _isDownloading ? null : _startDownload,
-                    child: Neumorphic(
-                      style: NeumorphicStyle(
-                        depth: _isDownloading ? -1 : 3,
-                        intensity: 0.9,
-                        color: accent,
-                        boxShape: NeumorphicBoxShape.roundRect(
-                            BorderRadius.circular(10)),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 10),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_isDownloading)
-                            const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          else
-                            const Icon(
-                              Icons.download_rounded,
-                              size: 16,
+                  NeumorphicTactileButton(
+                    onPressed: _isDownloading ? null : _startDownload,
+                    depth: 3.0,
+                    pressedDepth: 0.0,
+                    pressedScale: 0.98,
+                    color: accent,
+                    isLoading: _isDownloading,
+                    boxShape: NeumorphicBoxShape.roundRect(
+                        BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_isDownloading)
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
                               color: Colors.white,
                             ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _isDownloading ? 'Downloading' : 'Update & Install',
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                          )
+                        else
+                          const Icon(
+                            Icons.download_rounded,
+                            size: 16,
+                            color: Colors.white,
                           ),
-                        ],
-                      ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _isDownloading ? 'Downloading' : 'Update & Install',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

@@ -121,7 +121,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Receipt Logger'), findsOneWidget);
+      expect(find.text('SancFund'), findsOneWidget);
       expect(find.text('Skip'), findsOneWidget);
       expect(find.text('100% Offline-First Privacy'), findsOneWidget);
       expect(find.text('Continue'), findsOneWidget);

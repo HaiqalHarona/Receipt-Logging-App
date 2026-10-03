@@ -4,6 +4,8 @@ import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
 
 class CustomizationScreen extends StatefulWidget {
   const CustomizationScreen({super.key});
@@ -46,48 +48,63 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
             body: SafeArea(
               bottom: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(top: 16, bottom: 120),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Header ──────────────────────────────────────────
-                          Row(
-                            children: [
-                              NeumorphicIconBadge(
-                                icon: Icons.arrow_back_rounded,
-                                iconSize: 20,
-                                onTap: () => context.pop(),
-                              ),
-                              const SizedBox(width: 16),
-                              Text(
-                                'Theme Customization',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
-                                ),
-                              ),
-                            ],
+              child: Column(
+                children: [
+                  // Standardized Custom Top Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/dashboard');
+                            }
+                          },
+                        ),
+                        Text(
+                          'Theme Customization',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
                           ),
-                          const SizedBox(height: 28),
-
-                          // ── Section: Theme Mode ──────────────────────────────
-                          _SectionLabel(
-                              label: 'APPEARANCE MODE',
-                              textSecondary: textSecondary),
-                          const SizedBox(height: 12),
+                        ),
+                        const SizedBox(width: 40),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: FadingEdgeScrollView(
+                      fadeHeightTop: 20,
+                      fadeHeightBottom: 28,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(top: 8, bottom: 120),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // ── Section: Theme Mode ──────────────────────────────
+                                  _SectionLabel(
+                                      label: 'APPEARANCE MODE',
+                                      textSecondary: textSecondary),
+                                  const SizedBox(height: 12),
                           NeumorphicCardWidget(
                             padding: const EdgeInsets.all(16),
                             child: Row(
@@ -169,68 +186,61 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                               ? preset.darkTextColor
                               : preset.lightTextColor;
 
-                          return GestureDetector(
+                          return NeumorphicFilterChip(
+                            isSelected: isSelected,
                             onTap: () {
                               controller.selectPreset(index);
                               _syncHslFromController();
                               setState(() {});
                             },
-                            child: Neumorphic(
-                              style: NeumorphicStyle(
-                                depth: isSelected ? -3 : 4,
-                                intensity: 0.85,
-                                color: previewBase,
-                                boxShape: NeumorphicBoxShape.roundRect(
-                                  BorderRadius.circular(14),
-                                ),
-                                border: NeumorphicBorder(
-                                  color: isSelected
-                                      ? previewAccent
-                                      : previewAccent.withValues(alpha: 0.4),
-                                  width: isSelected ? 2.5 : 1.0,
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 10),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                            restDepth: 4.0,
+                            selectedDepth: -3.0,
+                            selectedColor: previewBase,
+                            borderRadius: BorderRadius.circular(14),
+                            border: NeumorphicBorder(
+                              color: isSelected
+                                  ? previewAccent
+                                  : previewAccent.withValues(alpha: 0.4),
+                              width: isSelected ? 2.5 : 1.0,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 14,
-                                          height: 14,
-                                          decoration: BoxDecoration(
-                                            color: previewAccent,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          preset.name,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: isSelected
-                                                ? FontWeight.bold
-                                                : FontWeight.w500,
-                                            color: previewText,
-                                          ),
-                                        ),
-                                        if (isSelected) ...[
-                                          const SizedBox(width: 4),
-                                          Icon(
-                                            Icons.check_circle_rounded,
-                                            color: previewAccent,
-                                            size: 13,
-                                          ),
-                                        ],
-                                      ],
+                                    Container(
+                                      width: 14,
+                                      height: 14,
+                                      decoration: BoxDecoration(
+                                        color: previewAccent,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      preset.name,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.w500,
+                                        color: previewText,
+                                      ),
+                                    ),
+                                    if (isSelected) ...[
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        color: previewAccent,
+                                        size: 13,
+                                      ),
+                                    ],
                                   ],
                                 ),
-                              ),
+                              ],
                             ),
                           );
                         },
@@ -387,70 +397,6 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
                           ),
                           const SizedBox(height: 28),
 
-                          // ── Section: Neumorphic Depth ────────────────────────
-                          _SectionLabel(
-                              label: 'NEUMORPHIC DEPTH',
-                              textSecondary: textSecondary),
-                          const SizedBox(height: 12),
-                          NeumorphicCardWidget(
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Shadow Depth',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: textPrimary,
-                                      ),
-                                    ),
-                                    Text(
-                                      controller.neuDepth.toStringAsFixed(1),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: accent,
-                                        fontFamily: 'monospace',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Text('Flat',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            color: textSecondary)),
-                                    Expanded(
-                                      child: SliderTheme(
-                                        data: _sliderTheme(context, accent),
-                                        child: Slider(
-                                          value: controller.neuDepth,
-                                          min: 3.0,
-                                          max: 10.0,
-                                          divisions: 14,
-                                          onChanged: (v) =>
-                                              controller.setDepth(v),
-                                        ),
-                                      ),
-                                    ),
-                                    Text('Deep',
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            color: textSecondary)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-
                           // ── Section: Font Scale ──────────────────────────────
                           _SectionLabel(
                               label: 'TEXT SIZE', textSecondary: textSecondary),
@@ -501,7 +447,11 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
               ),
             ),
           ),
-        );
+        ],
+      ),
+    ),
+  ),
+);
       },
     );
   }
@@ -560,47 +510,38 @@ class _ModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return NeumorphicFilterChip(
+      isSelected: isSelected,
       onTap: onTap,
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isSelected ? -3 : 4,
-          intensity: 0.85,
-          color: isSelected ? accent.withValues(alpha: 0.12) : null,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          border: isSelected
-              ? NeumorphicBorder(
-                  color: accent.withValues(alpha: 0.4), width: 1.0)
-              : const NeumorphicBorder.none(),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? accent
-                        : textPrimary.withValues(alpha: 0.6),
-                  ),
-                ),
-              ),
-            ],
+      restDepth: 4.0,
+      selectedDepth: -3.0,
+      selectedColor: accent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: isSelected ? accent : textPrimary.withValues(alpha: 0.5),
           ),
-        ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? accent
+                    : textPrimary.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -626,32 +567,23 @@ class _FontScaleChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = (controller.fontScale - scale).abs() < 0.01;
-    return GestureDetector(
+    return NeumorphicFilterChip(
+      isSelected: isSelected,
       onTap: () => controller.setFontScale(scale),
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isSelected ? -3 : 4,
-          intensity: 0.85,
-          color: isSelected ? accent.withValues(alpha: 0.12) : null,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-          border: isSelected
-              ? NeumorphicBorder(
-                  color: accent.withValues(alpha: 0.4), width: 1.0)
-              : const NeumorphicBorder.none(),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Center(
-            child: MediaQuery.withNoTextScaling(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color:
-                      isSelected ? accent : textPrimary.withValues(alpha: 0.6),
-                ),
-              ),
+      restDepth: 4.0,
+      selectedDepth: -3.0,
+      selectedColor: accent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Center(
+        child: MediaQuery.withNoTextScaling(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color:
+                  isSelected ? accent : textPrimary.withValues(alpha: 0.6),
             ),
           ),
         ),

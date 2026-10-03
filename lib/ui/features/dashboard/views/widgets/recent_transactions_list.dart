@@ -42,7 +42,7 @@ class RecentTransactionsList extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 15),
       itemBuilder: (context, index) {
         final receipt = list[index];
         final formattedPrice = viewModel.formatReceiptPrice(receipt);

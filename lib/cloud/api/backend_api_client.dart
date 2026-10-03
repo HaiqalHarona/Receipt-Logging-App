@@ -83,7 +83,7 @@ class RateLimitException extends ApiException {
 }
 
 class BackendApiClient {
-  static final BackendApiClient instance = BackendApiClient();
+  static BackendApiClient instance = BackendApiClient();
 
   BackendApiClient({http.Client? httpClient})
       : _http = httpClient ?? http.Client();
@@ -413,6 +413,86 @@ class BackendApiClient {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Exchanges ephemeral 2FA challenge token + OTP for full session access/refresh tokens.
+  Future<UserLoginResponseDto> login2faVerify({
+    required String tempToken,
+    required String otp,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/login-2fa-verify');
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'temp_token': tempToken,
+        'otp': otp,
+      }),
+    );
+
+    _assertStatus(response, 200);
+    return UserLoginResponseDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Resends 2FA OTP during login challenge (enforces 60s cooldown).
+  Future<({bool success, int cooldownSeconds})> login2faResend({
+    required String tempToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/login-2fa-resend');
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'temp_token': tempToken,
+      }),
+    );
+
+    _assertStatus(response, 200);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (
+      success: (data['success'] as bool?) ?? true,
+      cooldownSeconds: (data['cooldown_seconds'] as int?) ?? 60,
+    );
+  }
+
+  /// Authenticates or registers a user via Google OAuth (OIDC ID Token).
+  ///
+  /// Returns a map containing:
+  /// - `needs_username`: bool
+  /// - `suggested_username`: String?
+  /// - `email`: String?
+  /// - `display_name`: String?
+  /// - `user`: `Map<String, dynamic>?`
+  /// - `access_token`: String?
+  /// - `refresh_token`: String?
+  /// - `message`: String
+  Future<Map<String, dynamic>> googleAuth({
+    required String idToken,
+    String? username,
+    Map<String, dynamic>? preferences,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/auth/google');
+
+    final body = <String, dynamic>{
+      'id_token': idToken,
+      if (username != null && username.isNotEmpty) 'username': username,
+      if (preferences != null) 'preferences': preferences,
+    };
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    _assertStatus(response, 200);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   /// Initiates password reset flow via email address or mobile number.
   Future<Map<String, dynamic>> initiatePasswordReset(String identifier) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/reset-password-initiate');
@@ -477,6 +557,7 @@ class BackendApiClient {
     required String newPassword,
     String? username,
     String? userToken,
+    String? twoFactorOtp,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/change-password');
     final headers = ApiConfig.buildUserHeaders(
@@ -485,6 +566,9 @@ class BackendApiClient {
       accessToken: AuthService.instance.accessToken,
     );
     headers['Content-Type'] = 'application/json';
+    if (twoFactorOtp != null && twoFactorOtp.isNotEmpty) {
+      headers['X-2FA-OTP'] = twoFactorOtp;
+    }
 
     final response = await _sendRequest(
       'POST',
@@ -698,6 +782,7 @@ class BackendApiClient {
   Future<bool> deleteUserProfile({
     String? username,
     String? userToken,
+    String? twoFactorOtp,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/user/me');
     final headers = ApiConfig.buildUserHeaders(
@@ -705,6 +790,9 @@ class BackendApiClient {
       userToken: userToken ?? AuthService.instance.currentUserToken,
       accessToken: AuthService.instance.accessToken,
     );
+    if (twoFactorOtp != null && twoFactorOtp.isNotEmpty) {
+      headers['X-2FA-OTP'] = twoFactorOtp;
+    }
 
     final response = await _sendRequest('DELETE', uri, headers: headers);
 
@@ -1670,6 +1758,89 @@ class BackendApiClient {
       uri,
       headers: headers,
       body: jsonEncode({'type': type, 'identifier': identifier, 'otp': otp}),
+    );
+
+    _assertStatus(response, 200);
+    return UserRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  // ── TWO-FACTOR AUTHENTICATION (2FA) ─────────────────────────────────────────
+
+  /// Requests a 6-digit OTP for sensitive operations (enabling/disabling 2FA, password change, account deletion).
+  Future<({bool success, int cooldownSeconds})> request2faActionOtp({
+    String action = 'security_action',
+    String? username,
+    String? userToken,
+  }) async {
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}/user/2fa/request-otp?action=$action');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
+    );
+    headers['Content-Type'] = 'application/json';
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+    );
+
+    _assertStatus(response, 200);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (
+      success: (data['success'] as bool?) ?? true,
+      cooldownSeconds: (data['cooldown_seconds'] as int?) ?? 60,
+    );
+  }
+
+  /// Enables two-factor authentication by validating 2fa_action OTP.
+  Future<UserRecordDto> enable2fa({
+    required String otp,
+    String? username,
+    String? userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/2fa/enable');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
+    );
+    headers['Content-Type'] = 'application/json';
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({'otp': otp}),
+    );
+
+    _assertStatus(response, 200);
+    return UserRecordDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Disables two-factor authentication by validating 2fa_action OTP.
+  Future<UserRecordDto> disable2fa({
+    required String otp,
+    String? username,
+    String? userToken,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/user/2fa/disable');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
+    );
+    headers['Content-Type'] = 'application/json';
+
+    final response = await _sendRequest(
+      'POST',
+      uri,
+      headers: headers,
+      body: jsonEncode({'otp': otp}),
     );
 
     _assertStatus(response, 200);

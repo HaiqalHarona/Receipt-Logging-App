@@ -1,5 +1,6 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../../services/onboarding_service.dart';
 import '../../../../services/legal_document_service.dart';
@@ -100,24 +101,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Row(
                           children: [
                             if (canPop) ...[
-                              NeumorphicButton(
-                                onPressed: () {
+                              NeumorphicCircularButton(
+                                icon: Icons.arrow_back_rounded,
+                                iconSize: 18,
+                                depth: 3.0,
+                                onTap: () {
                                   if (Navigator.of(context).canPop()) {
                                     Navigator.of(context).pop();
                                   } else {
                                     context.go('/dashboard');
                                   }
                                 },
-                                style: NeumorphicStyle(
-                                  shape: NeumorphicShape.convex,
-                                  boxShape: const NeumorphicBoxShape.circle(),
-                                  depth: 3,
-                                  intensity: 0.8,
-                                  color: baseColor,
-                                ),
-                                padding: const EdgeInsets.all(7),
-                                child: Icon(Icons.arrow_back_rounded,
-                                    color: textPrimary, size: 18),
                               ),
                               const SizedBox(width: 10),
                             ],
@@ -125,7 +119,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 color: accent, size: 24),
                             const SizedBox(width: 8),
                             Text(
-                              'Receipt Logger',
+                              'SancFund',
                               style: TextStyle(
                                 fontSize: 16 * fontScale,
                                 fontWeight: FontWeight.bold,
@@ -243,18 +237,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         if (_currentPage < _totalPages - 1)
                           SizedBox(
                             width: double.infinity,
-                            child: NeumorphicButton(
+                            child: NeumorphicTactileButton(
                               onPressed: _onNext,
-                              style: NeumorphicStyle(
-                                depth: 4,
-                                intensity: 0.85,
-                                boxShape: NeumorphicBoxShape.roundRect(
-                                    BorderRadius.circular(16)),
-                                color: baseColor,
-                                border: NeumorphicBorder(
-                                  color: accent.withValues(alpha: 0.6),
-                                  width: 1.5,
-                                ),
+                              depth: 4.0,
+                              pressedDepth: 0.0,
+                              pressedScale: 0.98,
+                              boxShape: NeumorphicBoxShape.roundRect(
+                                  BorderRadius.circular(16)),
+                              color: baseColor,
+                              border: NeumorphicBorder(
+                                color: accent.withValues(alpha: 0.6),
+                                width: 1.5,
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               child: Center(
@@ -280,20 +273,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         else
                           SizedBox(
                             width: double.infinity,
-                            child: NeumorphicButton(
+                            child: NeumorphicTactileButton(
                               onPressed: _isCompleting ? null : _onComplete,
-                              style: NeumorphicStyle(
-                                depth: _agreedToTerms ? 4 : 1,
-                                intensity: 0.85,
-                                boxShape: NeumorphicBoxShape.roundRect(
-                                    BorderRadius.circular(16)),
-                                color: _agreedToTerms ? accent : baseColor,
-                                border: NeumorphicBorder(
-                                  color: accent.withValues(alpha: 0.8),
-                                  width: 1.5,
-                                ),
+                              depth: _agreedToTerms ? 4.0 : 1.0,
+                              pressedDepth: 0.0,
+                              pressedScale: 0.98,
+                              boxShape: NeumorphicBoxShape.roundRect(
+                                  BorderRadius.circular(16)),
+                              color: _agreedToTerms ? accent : baseColor,
+                              border: NeumorphicBorder(
+                                color: accent.withValues(alpha: 0.8),
+                                width: 1.5,
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 14),
+                              isLoading: _isCompleting,
                               child: Center(
                                 child: _isCompleting
                                     ? const SizedBox(

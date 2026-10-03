@@ -27,13 +27,22 @@ class ScanProgressSnackBar {
   /// Shows the **scanning** state SnackBar.
   ///
   /// [onCancel] — called when the user taps 'Cancel'. Closes the SSE stream.
+  /// [onUpgrade] — optional callback when user taps the speed upgrade chip.
+  /// [badgeText] — optional badge label (e.g. 'Sequential' or 'Parallel').
   static void show({
     BuildContext? context,
     required String message,
     required VoidCallback onCancel,
+    VoidCallback? onUpgrade,
+    String? badgeText,
   }) {
     _present(
-      _ScanSnackBarConfig.scanning(message: message, onCancel: onCancel),
+      _ScanSnackBarConfig.scanning(
+        message: message,
+        onCancel: onCancel,
+        onUpgrade: onUpgrade,
+        badgeText: badgeText,
+      ),
       context: context,
     );
   }
@@ -116,14 +125,23 @@ class _ScanSnackBarConfig {
     this.onCancel,
     this.onReview,
     this.onRetry,
+    this.onUpgrade,
+    this.badgeText,
   });
 
   factory _ScanSnackBarConfig.scanning({
     required String message,
     required VoidCallback onCancel,
+    VoidCallback? onUpgrade,
+    String? badgeText,
   }) =>
       _ScanSnackBarConfig(
-          state: _ScanState.scanning, message: message, onCancel: onCancel);
+        state: _ScanState.scanning,
+        message: message,
+        onCancel: onCancel,
+        onUpgrade: onUpgrade,
+        badgeText: badgeText,
+      );
 
   factory _ScanSnackBarConfig.complete({
     required String message,
@@ -144,6 +162,8 @@ class _ScanSnackBarConfig {
   final VoidCallback? onCancel;
   final VoidCallback? onReview;
   final VoidCallback? onRetry;
+  final VoidCallback? onUpgrade;
+  final String? badgeText;
 
   bool get isScanning => state == _ScanState.scanning;
   bool get isComplete => state == _ScanState.complete;
@@ -232,16 +252,7 @@ class _ScanProgressSnackBarWidgetState
 
                       // Message
                       Expanded(
-                        child: Text(
-                          config.message,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: _ProgressMessage(config: config),
                       ),
 
                       // Action button: Cancel / Review / Retry
@@ -399,5 +410,128 @@ class _BottomIndicator extends StatelessWidget {
 
     // Static solid indicator for complete / error
     return Container(height: 3, color: accent);
+  }
+}
+
+class _ProgressMessage extends StatelessWidget {
+  const _ProgressMessage({required this.config});
+
+  final _ScanSnackBarConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    if (config.badgeText != null && config.badgeText!.isNotEmpty) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              config.message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          _MinimalistBadge(
+            badgeText: config.badgeText!,
+            onTap: config.onUpgrade,
+          ),
+        ],
+      );
+    }
+
+    if (config.onUpgrade != null && config.message.contains('• ⚡')) {
+      final parts = config.message.split('• ⚡');
+      final text = parts.first.replaceAll('(Sequential)', '').trim();
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          _MinimalistBadge(
+            badgeText: 'Sequential',
+            onTap: config.onUpgrade,
+          ),
+        ],
+      );
+    }
+
+    return Text(
+      config.message,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 13.5,
+        fontWeight: FontWeight.w500,
+      ),
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+class _MinimalistBadge extends StatelessWidget {
+  const _MinimalistBadge({
+    required this.badgeText,
+    this.onTap,
+  });
+
+  final String badgeText;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSequential = badgeText.toLowerCase() == 'sequential';
+    final borderColor = isSequential
+        ? Colors.amber.shade400.withValues(alpha: 0.7)
+        : const Color(0xFF10B981);
+    final bgColor = isSequential
+        ? Colors.amber.withValues(alpha: 0.12)
+        : const Color(0xFF10B981).withValues(alpha: 0.12);
+    final textColor = isSequential
+        ? Colors.amber.shade200
+        : const Color(0xFF6EE7B7);
+
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: borderColor, width: 0.8),
+      ),
+      child: Text(
+        badgeText,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+
+    if (onTap != null) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: badge,
+      );
+    }
+    return badge;
   }
 }
