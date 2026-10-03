@@ -24,12 +24,15 @@ class LocalImageCacheService extends ChangeNotifier {
   /// Monotonically increasing revision counter bumped whenever avatars are updated.
   int get avatarRevision => _avatarRevision;
 
+  @visibleForTesting
+  void setCacheBaseDirForTesting(Directory? dir) => _cacheBaseDir = dir;
+
   Future<Directory> _getBaseDir() async {
     if (_cacheBaseDir != null) return _cacheBaseDir!;
     final temp = await getTemporaryDirectory();
     final dir = Directory('${temp.path}/user_sessions');
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
     }
     _cacheBaseDir = dir;
     return dir;
@@ -260,8 +263,8 @@ class LocalImageCacheService extends ChangeNotifier {
     try {
       final baseDir = await _getBaseDir();
       final userDir = Directory('${baseDir.path}/$userId');
-      if (await userDir.exists()) {
-        await userDir.delete(recursive: true);
+      if (userDir.existsSync()) {
+        userDir.deleteSync(recursive: true);
         AppLogger.info(
             'LocalCache', 'Purged local session image cache for user: $userId');
       }
@@ -275,8 +278,8 @@ class LocalImageCacheService extends ChangeNotifier {
   Future<void> purgeAllSessionCaches() async {
     try {
       final baseDir = await _getBaseDir();
-      if (await baseDir.exists()) {
-        await baseDir.delete(recursive: true);
+      if (baseDir.existsSync()) {
+        baseDir.deleteSync(recursive: true);
         AppLogger.info('LocalCache', 'Purged all local session image caches');
       }
     } catch (e) {

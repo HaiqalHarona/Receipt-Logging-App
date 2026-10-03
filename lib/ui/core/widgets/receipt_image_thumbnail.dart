@@ -1,7 +1,6 @@
 // File: lib/ui/core/widgets/receipt_image_thumbnail.dart
 
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../cloud/services/auth_service.dart';
 import '../../../services/local_image_cache_service.dart';

@@ -1,6 +1,5 @@
 // File: test/unit/receipt_detail_tier_gating_test.dart
 
-import 'package:flutter/material.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';

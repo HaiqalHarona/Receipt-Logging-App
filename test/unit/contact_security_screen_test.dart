@@ -1,10 +1,15 @@
 // File: test/unit/contact_security_screen_test.dart
 
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reciept_logging/ui/features/settings/views/contact_security_screen.dart';
 import 'package:reciept_logging/cloud/services/auth_service.dart';
+import 'package:reciept_logging/services/local_image_cache_service.dart';
 import 'package:reciept_logging/cloud/models/user_models.dart';
 import 'package:reciept_logging/services/sync_coordinator.dart';
 import 'package:reciept_logging/ui/core/theme/app_theme.dart';
@@ -12,7 +17,10 @@ import 'package:reciept_logging/cloud/api/backend_api_client.dart';
 
 class Mock2faBackendApiClient extends BackendApiClient {
   bool request2faActionOtpCalled = false;
+  String? lastRequestedAction;
   bool enable2faCalled = false;
+  bool deleteUserProfileCalled = false;
+  String? lastActionOtp;
 
   @override
   Future<({bool success, int cooldownSeconds})> request2faActionOtp({
@@ -21,7 +29,19 @@ class Mock2faBackendApiClient extends BackendApiClient {
     String? userToken,
   }) async {
     request2faActionOtpCalled = true;
+    lastRequestedAction = action;
     return (success: true, cooldownSeconds: 60);
+  }
+
+  @override
+  Future<bool> deleteUserProfile({
+    String? username,
+    String? userToken,
+    String? twoFactorOtp,
+  }) async {
+    deleteUserProfileCalled = true;
+    lastActionOtp = twoFactorOtp;
+    return true;
   }
 
   @override
@@ -37,13 +57,15 @@ class Mock2faBackendApiClient extends BackendApiClient {
     );
   }
 
+  bool mockIs2faEnabled = true;
+
   @override
   Future<UserRecordDto> fetchUserProfile({String? username, String? userToken}) async {
-    return const UserRecordDto(
-      id: 'usr-cs-verified-2fa',
-      username: 'Verified2FAUser',
-      email: 'verified2fa@example.com',
-      is2faEnabled: true,
+    return UserRecordDto(
+      id: 'usr-cs-${username ?? 'user'}',
+      username: username ?? 'Verified2FAUser',
+      email: '${username ?? 'user'}@example.com',
+      is2faEnabled: mockIs2faEnabled,
       createdAt: '2026-08-10T12:00:00Z',
       emailVerifiedAt: '2026-08-10T12:30:00Z',
     );
@@ -69,6 +91,16 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
+    LocalImageCacheService.instance.setCacheBaseDirForTesting(
+        Directory.systemTemp.createTempSync('cache_test_'));
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (MethodCall methodCall) async {
+        return Directory.systemTemp.createTempSync('cache_test_').path;
+      },
+    );
   });
 
   Widget buildTestableWidget(Widget child) {
@@ -76,6 +108,34 @@ void main() {
       themeMode: ThemeMode.dark,
       darkTheme: AppTheme.darkNeumorphicTheme,
       home: child,
+    );
+  }
+
+  Widget buildTestableWidgetWithRouter(Widget child,
+      {void Function()? onAuthNavigated}) {
+    final router = GoRouter(
+      initialLocation: '/security',
+      routes: [
+        GoRoute(
+          path: '/security',
+          builder: (context, state) => child,
+        ),
+        GoRoute(
+          path: '/auth',
+          builder: (context, state) {
+            onAuthNavigated?.call();
+            return const Scaffold(body: Text('AuthScreen'));
+          },
+        ),
+      ],
+    );
+    return MaterialApp.router(
+      routerConfig: router,
+      builder: (context, c) => NeumorphicTheme(
+        themeMode: ThemeMode.dark,
+        darkTheme: AppTheme.darkNeumorphicTheme,
+        child: c ?? const SizedBox.shrink(),
+      ),
     );
   }
 
@@ -520,6 +580,224 @@ void main() {
           tester.widget<NeumorphicToggleSwitch>(find.byKey(const Key('2fa_switch')));
       expect(switchFinal.value, isTrue);
       expect(find.byKey(const Key('2fa_switch_disabled')), findsNothing);
+    });
+
+    testWidgets(
+        'Danger Zone section renders DANGER ZONE header and DELETE ACCOUNT card',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-cs-danger-zone',
+          username: 'DangerZoneUser',
+          email: 'dangerzone@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          emailVerifiedAt: '2026-08-10T12:30:00Z',
+        ),
+        userToken: 'mock-token-cs',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const ContactSecurityScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('DANGER ZONE'), findsOneWidget);
+      expect(find.text('DELETE ACCOUNT'), findsOneWidget);
+      expect(find.text('Permanently delete your account and all data'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Tapping Delete button opens delete account sheet with warning, input, and disabled confirm button until DELETE is typed',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-cs-delete-sheet',
+          username: 'DeleteSheetUser',
+          email: 'deletesheet@example.com',
+          createdAt: '2026-08-10T12:00:00Z',
+          emailVerifiedAt: '2026-08-10T12:30:00Z',
+        ),
+        userToken: 'mock-token-cs',
+      );
+
+      await tester.pumpWidget(buildTestableWidget(const ContactSecurityScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Tap Delete in Danger Zone card
+      await tester.tap(find.text('Delete'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Modal content
+      expect(find.text('Delete Account Permanently?'), findsOneWidget);
+      expect(
+          find.text(
+              'All your receipts, AI conversations, and profile data will be permanently and irrecoverably destroyed. This action cannot be undone.'),
+          findsOneWidget);
+      expect(find.text('TYPE "DELETE" TO CONFIRM'), findsOneWidget);
+
+      final confirmBtnFinder = find.byKey(const Key('confirm_delete_account_button'));
+      expect(confirmBtnFinder, findsOneWidget);
+
+      // Typing wrong casing keeps button inactive
+      final inputFinder = find.byKey(const Key('delete_account_confirm_input'));
+      await tester.enterText(inputFinder, 'delete');
+      await tester.pump();
+
+      // Enter "DELETE" verbatim
+      await tester.enterText(inputFinder, 'DELETE');
+      await tester.pump();
+
+      // Close modal
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete Account Permanently?'), findsNothing);
+    });
+
+    testWidgets(
+        'Deleting account without 2FA calls deleteUserProfile, wipes session, and navigates to /auth',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final originalClient = BackendApiClient.instance;
+      final mockClient = Mock2faBackendApiClient();
+      mockClient.mockIs2faEnabled = false;
+      BackendApiClient.instance = mockClient;
+      addTearDown(() => BackendApiClient.instance = originalClient);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-cs-delete-no2fa',
+          username: 'DeleteNo2faUser',
+          email: 'deleteno2fa@example.com',
+          is2faEnabled: false,
+          createdAt: '2026-08-10T12:00:00Z',
+          emailVerifiedAt: '2026-08-10T12:30:00Z',
+        ),
+        userToken: 'mock-token-cs',
+      );
+
+      bool authNavigated = false;
+      await tester.pumpWidget(buildTestableWidgetWithRouter(
+        const ContactSecurityScreen(),
+        onAuthNavigated: () => authNavigated = true,
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(AuthService.instance.isLoggedIn, isTrue);
+
+      // Tap Delete
+      await tester.tap(find.text('Delete'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Type "DELETE"
+      await tester.enterText(
+          find.byKey(const Key('delete_account_confirm_input')), 'DELETE');
+      await tester.pump();
+
+      // Tap Confirm Delete
+      await tester.tap(find.byKey(const Key('confirm_delete_account_button')));
+      await tester.pump();
+      for (int i = 0; i < 25 && !authNavigated; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(mockClient.deleteUserProfileCalled, isTrue);
+      expect(AuthService.instance.isLoggedIn, isFalse);
+      expect(authNavigated, isTrue);
+      expect(find.text('AuthScreen'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Deleting account with 2FA calls request2faActionOtp, prompts TwoFactorOtpSheet, and deletes account',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final originalClient = BackendApiClient.instance;
+      final mockClient = Mock2faBackendApiClient();
+      mockClient.mockIs2faEnabled = true;
+      BackendApiClient.instance = mockClient;
+      addTearDown(() => BackendApiClient.instance = originalClient);
+
+      await AuthService.instance.saveSession(
+        const UserRecordDto(
+          id: 'usr-cs-delete-2fa',
+          username: 'Delete2faUser',
+          email: 'delete2fa@example.com',
+          is2faEnabled: true,
+          createdAt: '2026-08-10T12:00:00Z',
+          emailVerifiedAt: '2026-08-10T12:30:00Z',
+        ),
+        userToken: 'mock-token-cs',
+      );
+
+      bool authNavigated = false;
+      await tester.pumpWidget(buildTestableWidgetWithRouter(
+        const ContactSecurityScreen(),
+        onAuthNavigated: () => authNavigated = true,
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(AuthService.instance.isLoggedIn, isTrue);
+
+      // Tap Delete
+      await tester.tap(find.text('Delete'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Type "DELETE"
+      await tester.enterText(
+          find.byKey(const Key('delete_account_confirm_input')), 'DELETE');
+      await tester.pump();
+
+      // Tap Confirm Delete
+      await tester.tap(find.byKey(const Key('confirm_delete_account_button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // Verify OTP requested for delete_account action
+      expect(mockClient.request2faActionOtpCalled, isTrue);
+      expect(mockClient.lastRequestedAction, 'delete_account');
+
+      // TwoFactorOtpSheet appears
+      expect(find.text('Confirm Account Deletion'), findsOneWidget);
+
+      // Enter OTP
+      await tester.enterText(find.byKey(const Key('2fa_otp_input')), '889900');
+      await tester.pump();
+      for (int i = 0; i < 25 && !authNavigated; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(mockClient.deleteUserProfileCalled, isTrue);
+      expect(mockClient.lastActionOtp, '889900');
+      expect(AuthService.instance.isLoggedIn, isFalse);
+      expect(authNavigated, isTrue);
+      expect(find.text('AuthScreen'), findsOneWidget);
     });
   });
 }

@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
@@ -706,11 +707,375 @@ class _ContactSecurityScreenState extends State<ContactSecurityScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 24),
+
+                    // Danger Zone Section Header
+                    _buildSectionHeader("DANGER ZONE", textSecondary),
+                    const SizedBox(height: 8),
+
+                    // Danger Zone Card
+                    NeumorphicCardWidget(
+                      padding: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "DELETE ACCOUNT",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.redAccent,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Permanently delete your account and all data",
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            NeumorphicTactileButton(
+                              onPressed: () => _showDeleteAccountSheet(
+                                context,
+                                textPrimary,
+                                textSecondary,
+                              ),
+                              depth: 2.5,
+                              pressedDepth: 0.0,
+                              pressedScale: 0.97,
+                              color: NeumorphicTheme.baseColor(context),
+                              boxShape: NeumorphicBoxShape.roundRect(
+                                  BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              child: const Text(
+                                "Delete",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  // ── DELETE ACCOUNT BOTTOM SHEET ─────────────────────────────────────────
+  void _showDeleteAccountSheet(
+    BuildContext context,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    if (!_isOnline) {
+      AppSnackBar.show(
+        context,
+        message: "Account deletion requires an active internet connection.",
+        isError: true,
+      );
+      return;
+    }
+
+    final router = GoRouter.maybeOf(context);
+    final confirmController = TextEditingController();
+    bool isSubmitting = false;
+    String? errorMsg;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            final isConfirmed = confirmController.text.trim() == "Delete Account Forever";
+
+            return Container(
+              decoration: BoxDecoration(
+                color: NeumorphicTheme.baseColor(modalCtx),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 16,
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag Handle
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: textSecondary.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Header Row: Red Warning Icon, Title, Close Button
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.redAccent,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Delete Account Permanently?",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                            ],                           
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded,
+                              color: textSecondary, size: 20),
+                          onPressed: () => Navigator.of(modalCtx).pop(),
+                          splashRadius: 20,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      "All your receipts, AI conversations, and profile data will be permanently and irrecoverably destroyed. This action cannot be undone.",
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.4,
+                        color: textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Confirmation Label & Input Field
+                    Text(
+                      'TYPE "Delete Account Forever" TO CONFIRM',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: textSecondary,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    NeumorphicInputFieldWidget(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 4),
+                      child: TextField(
+                        key: const Key('delete_account_confirm_input'),
+                        controller: confirmController,
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        onChanged: (_) =>
+                            setModalState(() => errorMsg = null),
+                        decoration: InputDecoration(
+                          hintText: 'Delete Account Forever',
+                          hintStyle: TextStyle(
+                            color: textSecondary.withValues(alpha: 0.4),
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    if (errorMsg != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        errorMsg!,
+                        style: const TextStyle(
+                            color: Colors.redAccent, fontSize: 12),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+
+                    // Delete Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: NeumorphicButtonWidget(
+                        key: const Key('confirm_delete_account_button'),
+                        borderRadius: 12,
+                        color: Colors.redAccent,
+                        isLoading: isSubmitting,
+                        onPressed: (!isConfirmed || isSubmitting)
+                            ? null
+                            : () async {
+                                setModalState(() {
+                                  isSubmitting = true;
+                                  errorMsg = null;
+                                });
+                                try {
+                                  if (_is2FAEnabled) {
+                                    await BackendApiClient.instance
+                                        .request2faActionOtp(
+                                            action: 'delete_account');
+
+                                    if (!modalCtx.mounted) return;
+                                    String? verifiedOtp;
+                                    await TwoFactorOtpSheet.show(
+                                      modalCtx,
+                                      title: "Confirm Account Deletion",
+                                      subtitle:
+                                          "Two-factor authentication is active. Enter the 6-digit code sent to your email to permanently delete your account.",
+                                      maskedEmail: _profile?.email,
+                                      onVerify: (otp) async {
+                                        final success = await AuthService
+                                            .instance
+                                            .deleteAccount(
+                                                twoFactorOtp: otp);
+                                        if (!success) {
+                                          throw const ApiException(
+                                              "Failed to delete account. Please verify the code and try again.");
+                                        }
+                                        verifiedOtp = otp;
+                                      },
+                                      onResend: () => BackendApiClient
+                                          .instance
+                                          .request2faActionOtp(
+                                              action: 'delete_account'),
+                                    );
+
+                                    if (verifiedOtp == null) {
+                                      setModalState(() {
+                                        isSubmitting = false;
+                                      });
+                                      return;
+                                    }
+                                  } else {
+                                    final success = await AuthService.instance
+                                        .deleteAccount();
+                                    if (!success) {
+                                      throw const ApiException(
+                                          "Failed to delete account. Please try again.");
+                                    }
+                                  }
+
+                                  AppLogger.info('UI', 'deleteAccount completed, modalCtx.mounted=${modalCtx.mounted}, context.mounted=${context.mounted}');
+                                  if (modalCtx.mounted) {
+                                    Navigator.of(modalCtx).pop();
+                                  }
+                                  if (context.mounted) {
+                                    AppSnackBar.show(
+                                      context,
+                                      message:
+                                          "Your account and all associated data have been permanently deleted.",
+                                    );
+                                  }
+                                  AppLogger.info('UI', 'Calling router.go(/auth), router=$router');
+                                  if (router != null) {
+                                    router.go('/auth');
+                                  } else if (context.mounted) {
+                                    Navigator.of(context).pushReplacementNamed('/auth');
+                                  }
+                                } on ApiException catch (e) {
+                                  AppLogger.error('UI', 'Delete account ApiException: ${e.message}');
+                                  setModalState(() {
+                                    isSubmitting = false;
+                                    errorMsg = e.message;
+                                  });
+                                  if (context.mounted) {
+                                    AppSnackBar.show(context,
+                                        message: e.message, isError: true);
+                                  }
+                                } catch (e, st) {
+                                  AppLogger.error('UI', 'Delete account unexpected error: $e', e, st);
+                                  setModalState(() {
+                                    isSubmitting = false;
+                                    errorMsg =
+                                        "An error occurred while deleting your account.";
+                                  });
+                                  if (context.mounted) {
+                                    AppSnackBar.show(
+                                      context,
+                                      message: "Failed to delete account: $e",
+                                      isError: true,
+                                    );
+                                  }
+                                }
+                              },
+                        child: Center(
+                          child: Text(
+                            isSubmitting
+                                ? "Deleting Account..."
+                                : "Delete Account Forever",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isConfirmed
+                                  ? Colors.white
+                                  : textSecondary.withValues(alpha: 0.6),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

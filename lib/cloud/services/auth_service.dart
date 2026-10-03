@@ -35,6 +35,7 @@ import '../../data/repositories/chat_message_repository.dart';
 import 'subscription_service.dart';
 import '../../services/subscription_notification_service.dart';
 import 'google_auth_service.dart';
+import '../../services/crypto_service.dart';
 
 class AuthService extends ChangeNotifier {
   AuthService._();
@@ -421,6 +422,12 @@ class AuthService extends ChangeNotifier {
       twoFactorOtp: twoFactorOtp,
     );
     if (success) {
+      try {
+        await _secureStorage.delete(key: CryptoService.masterKeyStorageKey);
+      } catch (e) {
+        AppLogger.warning(
+            'AuthService', 'Failed to delete masterKeyStorageKey: $e');
+      }
       await clearSession();
     }
     return success;

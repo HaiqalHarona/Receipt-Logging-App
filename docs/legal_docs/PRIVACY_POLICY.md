@@ -101,17 +101,22 @@ We engage a limited number of vetted third-party service providers to assist in 
 
 - **Guest Mode Data:** Exists exclusively on your device. Deleting the application or resetting data within the app permanently and irreversibly deletes all stored records.
 - **User Mode Data:** Retained in our encrypted database for as long as your account remains active.
-- **Account Deletion:** You may permanently delete your account and all associated cloud data at any time directly within the app settings (`Settings -> Account -> Delete Account`) or by contacting `support@sanctum.com`. Upon account deletion, all user profile information, encrypted receipts, storage images, and conversation histories are **permanently and irreversibly destroyed**.
+- **In-App Account Deletion:** You may permanently delete your account and all associated cloud data at any time directly within the app settings (`Settings -> Contact & Security -> Delete Account`) or by contacting `support@sanctum.com`.
+- **Crypto-Shredding of Data Encryption Keys (DEKs):** Account deletion triggers immediate **cryptographic shredding** of your unique, per-user Data Encryption Key (DEK). Because all stored receipt records, OCR extractions, images, and AI conversation histories are encrypted using envelope encryption bound to your per-user DEK, destroying this key mathematically and irreversibly renders all persisted cloud ciphertext into permanent mathematical noise that is impossible to decrypt or reconstruct.
+- **Device Fingerprint Retention under GDPR Legitimate Interest:** In accordance with **GDPR Article 6(1)(f) (Legitimate Interest)**, we retain a one-way, non-reversible cryptographic fingerprint of hardware devices (`SHA-256(device_id + salt)`). This retention is strictly limited to fraud mitigation, preventing free trial recycling abuse, and enforcing fair use. Upon account deletion, the device fingerprint is **fully unlinked** from all user identity records, email addresses, usernames, and APNS/FCM push notification tokens. It cannot be used to trace, identify, or reconstruct the identity or financial activities of the former user.
+- **Offline Backup Scrubbing & Snapshot Aging:** Encrypted disaster recovery snapshots and database backup archives are maintained under an immutable rolling retention schedule (30-day lifecycle) before being permanently scrubbed and overwritten. Because the user's per-user DEK is purged at the moment of account deletion, any residual ciphertext existing within pre-existing backup snapshots prior to their expiration remains undecryptable mathematical noise throughout the remainder of the aging lifecycle.
 
 ---
 
 ## 9. Security Safeguards
 
 We implement defense-in-depth security measures to protect your personal and financial information:
-- **Transport Layer Security:** All data transmitted between your device, our backend servers, and authorized sub-processors is encrypted using **TLS 1.3 / HTTPS**.
-- **Authenticated Encryption at Rest:** Cloud-stored receipt contents and conversational histories are secured with industry-standard authenticated encryption algorithms.
-- **Secure Password Protection:** User passwords are encrypted using state-of-the-art cryptographic hashing algorithms with unique per-user salts.
-- **Automated Threat Mitigation:** Rate limiters and monitoring systems protect user accounts against credential stuffing and automated abuse.
+- **Envelope Encryption & Per-User DEK Architecture:** SancFund employs a multi-tiered envelope encryption model. Each registered user account is provisioned with an isolated, unique Data Encryption Key (DEK) operating with authenticated **AES-256-GCM** encryption. All sensitive financial records, merchant details, OCR line items, and conversational logs are encrypted at rest under the user's specific DEK. The DEK itself is encrypted and protected by a root Key Encryption Key (KEK) hierarchy.
+- **Crypto-Shredding on Account Deletion:** By segregating each user's data under a distinct DEK, account termination instantly executes crypto-shredding: the destruction of the DEK permanently renders all associated database rows and cloud storage objects irrecoverable mathematical noise across all primary and secondary datastores.
+- **Transport Layer Security (TLS 1.3):** All data transmitted between your device, our backend servers, and authorized sub-processors is encrypted using **TLS 1.3 / HTTPS** with forward secrecy.
+- **Hardware-Backed Key Storage:** Client-side cryptographic tokens and session keys are secured using platform-native hardware enclaves (iOS Keychain with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` and Android KeyStore with EncryptedSharedPreferences).
+- **Secure Password Protection:** User passwords are encrypted using state-of-the-art cryptographic hashing algorithms with unique per-user salts. Plaintext passwords are never logged, transmitted in cleartext, or stored in persistent storage.
+- **Automated Threat Mitigation:** Rate limiters, automated threat detection, and session security systems protect user accounts against credential stuffing, brute-force attempts, and automated abuse.
 
 ---
 
