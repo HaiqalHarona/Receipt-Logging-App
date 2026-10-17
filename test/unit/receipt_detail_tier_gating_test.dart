@@ -105,8 +105,8 @@ void main() {
       // Should show the upgrade CTA chip with text "Upgrade to Premium"
       expect(find.text('Upgrade to Premium'), findsOneWidget);
 
-      // Should NOT show "No line items recorded."
-      expect(find.text('No line items recorded.'), findsNothing);
+      // Should NOT show "No itemized breakdown extracted."
+      expect(find.text('No itemized breakdown extracted.'), findsNothing);
 
       // Tapping Upgrade to Premium should navigate to /paywall
       await tester.tap(find.text('Upgrade to Premium'));
@@ -114,7 +114,7 @@ void main() {
       expect(find.text('Paywall Screen Target'), findsOneWidget);
     });
 
-    testWidgets('Premium tier with empty items displays "No line items recorded."', (tester) async {
+    testWidgets('Premium tier with empty items displays "No itemized breakdown extracted."', (tester) async {
       QuotaService.instance.setStatusForTesting(
         const QuotaStatusDto(
           success: true,
@@ -133,8 +133,8 @@ void main() {
       // Should NOT show the locked icon
       expect(find.byIcon(Icons.lock_outline_rounded), findsNothing);
 
-      // Should show "No line items recorded."
-      expect(find.text('No line items recorded.'), findsOneWidget);
+      // Should show "No itemized breakdown extracted."
+      expect(find.text('No itemized breakdown extracted.'), findsOneWidget);
     });
 
     testWidgets('Premium tier with items displays converted prices table', (tester) async {

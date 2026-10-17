@@ -5,9 +5,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../data/repositories/receipt_repository.dart';
-import '../../../../domain/models/receipt.dart';
+import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/quota_service.dart';
+import '../../../../data/repositories/receipt_repository.dart';
+import '../../../../domain/models/line_item.dart';
+import '../../../../domain/models/receipt.dart';
+import '../../../../services/app_logger_service.dart';
 import '../../../../services/currency_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
@@ -52,10 +55,40 @@ class ReceiptDetailScreen extends StatefulWidget {
   State<ReceiptDetailScreen> createState() => _ReceiptDetailScreenState();
 }
 
-class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
+class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
+    with SingleTickerProviderStateMixin {
   Receipt? _receipt;
   bool _isInitialized = false;
+  bool _isLoadingLineItems = false;
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
   final Map<String, List<ConvertedLineItem>> _convertedItemsCache = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _shimmerAnimation = Tween<double>(begin: 0.25, end: 0.65).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
+    );
+    QuotaService.instance.addListener(_onQuotaChanged);
+  }
+
+  void _onQuotaChanged() {
+    if (mounted && QuotaService.instance.isPremium) {
+      _checkAndFetchLineItemsJit();
+    }
+  }
+
+  @override
+  void dispose() {
+    QuotaService.instance.removeListener(_onQuotaChanged);
+    _shimmerController.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -75,6 +108,71 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
       }
 
       _isInitialized = true;
+      _checkAndFetchLineItemsJit();
+    }
+  }
+
+  /// JIT fetch of line items from cloud backend when user unlocks Premium.
+  Future<void> _checkAndFetchLineItemsJit() async {
+    final r = _receipt;
+    if (r == null ||
+        !QuotaService.instance.isPremium ||
+        r.lineItems.isNotEmpty ||
+        _isLoadingLineItems) {
+      return;
+    }
+    if (r.id.isEmpty) return;
+
+    setState(() {
+      _isLoadingLineItems = true;
+      if (!_shimmerController.isAnimating) {
+        _shimmerController.repeat(reverse: true);
+      }
+    });
+
+    try {
+      final recordDto = await BackendApiClient.instance.fetchReceiptById(r.id);
+      if (recordDto != null && mounted) {
+        final domainLineItems = recordDto.receipt.lineItems
+            .map((li) => LineItem(
+                  description: li.description,
+                  quantity: li.quantity,
+                  unitPrice: li.unitPrice,
+                  totalPrice: li.totalPrice,
+                ))
+            .toList();
+
+        final domainItems = domainLineItems.map((li) {
+          final parts = <String>[li.description];
+          if (li.totalPrice != null) {
+            parts.add('${r.currency} ${li.totalPrice!.toStringAsFixed(2)}');
+          } else if (li.unitPrice != null && li.quantity != null) {
+            parts.add(
+                '${li.quantity} × ${r.currency} ${li.unitPrice!.toStringAsFixed(2)}');
+          }
+          return parts.join(' — ');
+        }).toList();
+
+        _receipt = r.copyWith(
+          lineItems: domainLineItems,
+          items: domainItems.isNotEmpty ? domainItems : r.items,
+        );
+
+        await ReceiptRepository.instance.saveBatchFromCloud([_receipt!]);
+        _convertedItemsCache.clear();
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    } catch (e, st) {
+      AppLogger.error('UI', 'Error in _checkAndFetchLineItemsJit', e, st);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingLineItems = false;
+          _shimmerController.stop();
+        });
+      }
     }
   }
 
@@ -260,8 +358,11 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge(
-          [AppThemeController.instance, CurrencyService.instance]),
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        CurrencyService.instance,
+        QuotaService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -627,7 +728,10 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: 14),
-                          if (!QuotaService.instance.isPremium)
+                          if (_isLoadingLineItems)
+                            _buildLineItemsShimmer(
+                                accent, baseColor, textSecondary)
+                          else if (!QuotaService.instance.isPremium)
                             _buildLockedLineItemsPlaceholder(
                                 context, accent, textSecondary)
                           else if (r.lineItems.isEmpty)
@@ -635,7 +739,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               child: Center(
                                 child: Text(
-                                  'No line items recorded.',
+                                  'No itemized breakdown extracted.',
                                   style: TextStyle(
                                       fontSize: 13, color: textSecondary),
                                 ),
@@ -931,7 +1035,12 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
               ),
             ),
             GestureDetector(
-              onTap: () => context.push('/paywall'),
+              onTap: () async {
+                final upgraded = await context.push<bool>('/paywall');
+                if (upgraded == true || QuotaService.instance.isPremium) {
+                  await _checkAndFetchLineItemsJit();
+                }
+              },
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -963,6 +1072,124 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  /// Neumorphic animated shimmer skeleton displayed during JIT line items hydration.
+  Widget _buildLineItemsShimmer(
+      Color accent, Color base, Color textSecondary) {
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, _) {
+        final pulseOpacity = _shimmerAnimation.value;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: -1,
+                intensity: 0.7,
+                color: base.withValues(alpha: 0.5),
+                boxShape: NeumorphicBoxShape.roundRect(
+                    BorderRadius.circular(12)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.lock_open_rounded,
+                    size: 15,
+                    color: accent,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Unlocking itemized breakdown...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Table(
+              border: const TableBorder(),
+              columnWidths: const {
+                0: FlexColumnWidth(3.0),
+                1: FlexColumnWidth(1.0),
+                2: FlexColumnWidth(1.8),
+                3: FlexColumnWidth(1.8),
+              },
+              children: [
+                TableRow(
+                  children: [
+                    _buildTableHeader(
+                        'Item', textSecondary.withValues(alpha: 0.5), TextAlign.left),
+                    _buildTableHeader(
+                        'Qty', textSecondary.withValues(alpha: 0.5), TextAlign.center),
+                    _buildTableHeader(
+                        'Unit', textSecondary.withValues(alpha: 0.5), TextAlign.right),
+                    _buildTableHeader(
+                        'Total', textSecondary.withValues(alpha: 0.5), TextAlign.right),
+                  ],
+                ),
+                TableRow(
+                  children: List.generate(4, (_) => const SizedBox(height: 8)),
+                ),
+              ],
+            ),
+            ...List.generate(3, (idx) {
+              const widths = [110.0, 85.0, 130.0];
+              final itemWidth = widths[idx % widths.length];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                child: Row(
+                  children: [
+                    Container(
+                      width: itemWidth,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: pulseOpacity),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 20,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: pulseOpacity * 0.75),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Container(
+                      width: 42,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: pulseOpacity * 0.75),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Container(
+                      width: 48,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: pulseOpacity),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 }

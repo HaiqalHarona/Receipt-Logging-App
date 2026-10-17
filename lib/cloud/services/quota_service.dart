@@ -15,6 +15,12 @@ class QuotaService extends ChangeNotifier {
   QuotaStatusDto? _status;
   bool _isLoading = false;
   Timer? _countdownTimer;
+  String? _lastKnownTier;
+  VoidCallback? onTierUpgradedToPremium;
+
+  String? get lastKnownTier => _lastKnownTier;
+  @visibleForTesting
+  set lastKnownTier(String? value) => _lastKnownTier = value;
 
   QuotaStatusDto? get status => _status;
   bool get isLoading => _isLoading;
@@ -88,8 +94,18 @@ class QuotaService extends ChangeNotifier {
     try {
       final freshStatus = await BackendApiClient.instance.fetchQuotaStatus();
       if (freshStatus != null) {
+        final previousTier = _lastKnownTier;
+        final newTier = freshStatus.tier.toLowerCase();
+        _lastKnownTier = newTier;
         _status = freshStatus;
         notifyListeners();
+
+        if (previousTier == 'free' &&
+            (newTier == 'premium' || newTier == 'dev')) {
+          AppLogger.info('QuotaService',
+              'Tier upgraded: $previousTier -> $newTier. Triggering line items sync.');
+          onTierUpgradedToPremium?.call();
+        }
       }
     } catch (e, st) {
       AppLogger.error('QuotaService', 'Failed to refresh quota status', e, st);
@@ -151,6 +167,7 @@ class QuotaService extends ChangeNotifier {
   @visibleForTesting
   void setStatusForTesting(QuotaStatusDto? status) {
     _status = status;
+    _lastKnownTier = status?.tier.toLowerCase();
     notifyListeners();
   }
 

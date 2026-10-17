@@ -6,10 +6,12 @@
 // and fast delta-syncing for returning sessions.
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_logger_service.dart';
 import '../cloud/api/backend_api_client.dart';
 import '../cloud/services/auth_service.dart';
+import '../cloud/services/quota_service.dart';
 import '../data/mappers/chat_message_mapper.dart';
 import '../data/mappers/conversation_mapper.dart';
 import '../data/repositories/chat_message_repository.dart';
@@ -20,7 +22,9 @@ import '../domain/models/receipt.dart';
 import '../cloud/models/receipt_models.dart';
 
 class CloudSyncService {
-  CloudSyncService._();
+  CloudSyncService._() {
+    init();
+  }
   static final CloudSyncService instance = CloudSyncService._();
 
   static const String _keyFullSyncPrefix = 'full_cloud_sync_complete_';
@@ -32,13 +36,25 @@ class CloudSyncService {
   bool _isHydrating = false;
   bool get isHydrating => _isHydrating;
 
+  bool _isReSyncingForPremium = false;
+  bool get isReSyncingForPremium => _isReSyncingForPremium;
+
+  @visibleForTesting
+  set isReSyncingForPremium(bool value) => _isReSyncingForPremium = value;
+
   int _activeSessionId = 0;
+
+  /// Initializes the service and attaches tier upgrade observers.
+  void init() {
+    QuotaService.instance.onTierUpgradedToPremium = reSyncReceiptsForPremium;
+  }
 
   /// Cancels any in-flight background hydration loop (e.g. upon user logout).
   void cancelBackgroundSync() {
     _activeSessionId++;
     _isHydrating = false;
     _isSyncing = false;
+    _isReSyncingForPremium = false;
     AppLogger.info('CloudSync', 'Background sync cancelled.');
   }
 
@@ -320,5 +336,64 @@ class CloudSyncService {
               ))
           .toList(),
     );
+  }
+
+  /// Progressively re-syncs all historical receipts upon upgrading to Premium or Dev tier
+  /// so that complete line items are populated locally for records previously synced without them.
+  Future<void> reSyncReceiptsForPremium() async {
+    final username = AuthService.instance.currentUsername;
+    if (!AuthService.instance.isLoggedIn ||
+        username == null ||
+        _isReSyncingForPremium) {
+      return;
+    }
+    if (!QuotaService.instance.isPremium) {
+      return;
+    }
+
+    _isReSyncingForPremium = true;
+    AppLogger.info('CloudSync',
+        'Starting progressive line items re-sync for premium user $username...');
+
+    try {
+      int offset = 0;
+      const limit = 50;
+
+      while (
+          AuthService.instance.isLoggedIn && QuotaService.instance.isPremium) {
+        final records = await BackendApiClient.instance.fetchReceipts(
+          username: username,
+          limit: limit,
+          offset: offset,
+        );
+
+        if (records.isEmpty) {
+          break;
+        }
+
+        final domainReceipts =
+            records.map((r) => _recordDtoToDomain(r)).toList();
+        await ReceiptRepository.instance.saveBatchFromCloud(domainReceipts);
+
+        if (records.length < limit) {
+          break;
+        }
+
+        offset += records.length;
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        '$_keyLastSyncPrefix$username',
+        DateTime.now().toUtc().toIso8601String(),
+      );
+      AppLogger.info('CloudSync',
+          'Completed progressive line items re-sync for user $username.');
+    } catch (e, st) {
+      AppLogger.error('CloudSync', 'reSyncReceiptsForPremium error', e, st);
+    } finally {
+      _isReSyncingForPremium = false;
+    }
   }
 }
