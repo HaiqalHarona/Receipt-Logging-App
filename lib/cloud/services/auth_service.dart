@@ -12,6 +12,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:isar/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -145,6 +146,13 @@ class AuthService extends ChangeNotifier {
       } else if (_userId == null || _userId!.isEmpty) {
         // Not logged in (guest mode): sanitize any lingering cloud records from previous sessions
         await _sanitizeUnauthenticatedState();
+      }
+
+      if (_userId != null && _userId!.isNotEmpty) {
+        await LocalImageCacheService.instance.primeFromDisk();
+        if (_cachedProfile?.avatarImagePath != null || _avatarImagePath != null) {
+          unawaited(LocalImageCacheService.instance.eagerLoadAvatars());
+        }
       }
 
       AppLogger.info('AuthService',
@@ -292,22 +300,17 @@ class AuthService extends ChangeNotifier {
 
       _cachedProfile = updated;
       _avatarImagePath = updated.avatarImagePath;
-      await _persistProfile(updated);
+      await _persistProfile(updated, syncAvatars: false);
 
-      // Save directly to local session cache for all sizes
-      await LocalImageCacheService.instance.saveLocalAvatar(
-        size: 'medium',
-        bytes: imageBytes,
-      );
-      await LocalImageCacheService.instance.saveLocalAvatar(
-        size: 'small',
-        bytes: imageBytes,
-      );
-      await LocalImageCacheService.instance.saveLocalAvatar(
-        size: 'large',
-        bytes: imageBytes,
-      );
-      await LocalImageCacheService.instance.evictAvatarCache();
+      // Await eager loading of all 3 thumbnail resolutions from backend.
+      // This fetches small, medium, and large thumbnails, saves them to disk,
+      // populates _cachedAvatarBytes, clears live image cache, and bumps _avatarRevision.
+      await LocalImageCacheService.instance.eagerLoadAvatars(forceRefresh: true);
+
+      try {
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      } catch (_) {}
 
       AppLogger.info('AuthService',
           'Avatar updated in backend and cache: ${updated.avatarImagePath}');
@@ -505,8 +508,11 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> _persistProfile(UserRecordDto user,
-      {bool syncPreferences = true}) async {
+  Future<void> _persistProfile(
+    UserRecordDto user, {
+    bool syncPreferences = true,
+    bool syncAvatars = true,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyUserId, user.id);
@@ -526,6 +532,9 @@ class AuthService extends ChangeNotifier {
       }
       if (user.avatarImagePath != null) {
         await prefs.setString(_keyAvatarImagePath, user.avatarImagePath!);
+        if (syncAvatars) {
+          unawaited(LocalImageCacheService.instance.eagerLoadAvatars());
+        }
       } else {
         await prefs.remove(_keyAvatarImagePath);
       }

@@ -18,6 +18,8 @@ class LocalImageCacheService extends ChangeNotifier {
   Directory? _cacheBaseDir;
   final Map<String, Future<File?>> _inFlightAvatarFetches = {};
   final Map<String, Future<File?>> _inFlightReceiptFetches = {};
+  final Map<String, File> _cachedAvatarFiles = {};
+  final Map<String, Uint8List> _cachedAvatarBytes = {};
 
   int _avatarRevision = 0;
 
@@ -36,6 +38,122 @@ class LocalImageCacheService extends ChangeNotifier {
     }
     _cacheBaseDir = dir;
     return dir;
+  }
+
+  /// Synchronous getter for the cached avatar bytes of the given [size].
+  Uint8List? getCachedAvatarBytes(String size) {
+    if (_cachedAvatarBytes.containsKey(size)) {
+      return _cachedAvatarBytes[size];
+    }
+    final file = getCachedAvatar(size);
+    if (file != null && file.existsSync()) {
+      try {
+        final bytes = file.readAsBytesSync();
+        _cachedAvatarBytes[size] = bytes;
+        return bytes;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  /// Synchronous getter for the cached avatar [File] of the given [size].
+  ///
+  /// Checks the fast in-memory map first. If not yet in memory, checks synchronous
+  /// disk existence. If found on disk, promotes to memory and returns immediately.
+  /// Returns null if not cached, allowing UI widgets to render fallbacks without FutureBuilder flicker.
+  File? getCachedAvatar(String size) {
+    if (_cachedAvatarFiles.containsKey(size)) {
+      final memFile = _cachedAvatarFiles[size];
+      if (memFile != null && memFile.existsSync()) {
+        return memFile;
+      }
+    }
+
+    final username = AuthService.instance.currentUsername;
+    final userId = AuthService.instance.currentUserId ?? username;
+    if (userId == null || _cacheBaseDir == null) return null;
+
+    final file = File('${_cacheBaseDir!.path}/$userId/avatars/$size.jpg');
+    if (file.existsSync()) {
+      _cachedAvatarFiles[size] = file;
+      return file;
+    }
+    return null;
+  }
+
+  /// Primes the in-memory avatar cache from disk for the current authenticated user.
+  /// Called during session restore / startup so avatars can be served synchronously on frame 1.
+  Future<void> primeFromDisk() async {
+    final username = AuthService.instance.currentUsername;
+    final userId = AuthService.instance.currentUserId ?? username;
+    if (!AuthService.instance.isLoggedIn || userId == null) {
+      _cachedAvatarFiles.clear();
+      _cachedAvatarBytes.clear();
+      return;
+    }
+
+    final baseDir = await _getBaseDir();
+    final avatarDir = Directory('${baseDir.path}/$userId/avatars');
+    if (!await avatarDir.exists()) {
+      _cachedAvatarFiles.clear();
+      _cachedAvatarBytes.clear();
+      return;
+    }
+
+    for (final size in ['small', 'medium', 'large']) {
+      final file = File('${avatarDir.path}/$size.jpg');
+      if (await file.exists()) {
+        _cachedAvatarFiles[size] = file;
+        try {
+          _cachedAvatarBytes[size] = await file.readAsBytes();
+        } catch (_) {}
+      }
+    }
+    if (_cachedAvatarFiles.isNotEmpty || _cachedAvatarBytes.isNotEmpty) {
+      notifyListeners();
+    }
+  }
+
+  /// Eagerly loads all 3 avatar resolutions (`small`, `medium`, `large`) in parallel.
+  ///
+  /// Fast path: if the user does not have an avatar set (`avatarImagePath == null`) or is
+  /// not logged in, immediately cleans memory cache and returns without any HTTP calls.
+  /// When an avatar is present, fetches all resolutions concurrently and updates cache.
+  Future<void> eagerLoadAvatars({bool forceRefresh = false}) async {
+    final username = AuthService.instance.currentUsername;
+    final userId = AuthService.instance.currentUserId ?? username;
+
+    if (!AuthService.instance.isLoggedIn ||
+        username == null ||
+        userId == null) {
+      _cachedAvatarFiles.clear();
+      _cachedAvatarBytes.clear();
+      return;
+    }
+
+    // Fast path: if user has no avatar set, do not make any network requests
+    final avatarPath = AuthService.instance.cachedProfile?.avatarImagePath;
+    if (avatarPath == null || avatarPath.isEmpty) {
+      _cachedAvatarFiles.clear();
+      _cachedAvatarBytes.clear();
+      notifyListeners();
+      return;
+    }
+
+    AppLogger.debug('LocalCache',
+        'Eager loading all avatar resolutions for user $username (forceRefresh=$forceRefresh)...');
+
+    final results = await Future.wait([
+      getOrFetchAvatar(size: 'small', forceRefresh: forceRefresh),
+      getOrFetchAvatar(size: 'medium', forceRefresh: forceRefresh),
+      getOrFetchAvatar(size: 'large', forceRefresh: forceRefresh),
+    ]);
+
+    if (results[0] != null) _cachedAvatarFiles['small'] = results[0]!;
+    if (results[1] != null) _cachedAvatarFiles['medium'] = results[1]!;
+    if (results[2] != null) _cachedAvatarFiles['large'] = results[2]!;
+
+    notifyListeners();
   }
 
   /// Returns the cached avatar [File] for the given [size], or fetches it from
@@ -90,6 +208,12 @@ class LocalImageCacheService extends ChangeNotifier {
 
     final file = File('${avatarDir.path}/$size.jpg');
     if (!forceRefresh && await file.exists()) {
+      _cachedAvatarFiles[size] = file;
+      if (!_cachedAvatarBytes.containsKey(size)) {
+        try {
+          _cachedAvatarBytes[size] = await file.readAsBytes();
+        } catch (_) {}
+      }
       return file;
     }
 
@@ -102,8 +226,12 @@ class LocalImageCacheService extends ChangeNotifier {
 
     if (bytes != null && bytes.isNotEmpty) {
       await file.writeAsBytes(bytes, flush: true);
+      _cachedAvatarFiles[size] = file;
+      _cachedAvatarBytes[size] = bytes;
       try {
         await FileImage(file).evict();
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
       } catch (_) {}
       _avatarRevision++;
       AppLogger.info(
@@ -213,9 +341,14 @@ class LocalImageCacheService extends ChangeNotifier {
     }
 
     final file = File('${avatarDir.path}/$size.jpg');
-    await file.writeAsBytes(bytes, flush: true);
+    final byteList = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
+    await file.writeAsBytes(byteList, flush: true);
+    _cachedAvatarFiles[size] = file;
+    _cachedAvatarBytes[size] = byteList;
     try {
       await FileImage(file).evict();
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
     } catch (_) {}
     _avatarRevision++;
     AppLogger.info(
@@ -259,6 +392,13 @@ class LocalImageCacheService extends ChangeNotifier {
 
   /// Purges all session cached image files for the given [userId].
   Future<void> purgeUserSessionCache(String? userId) async {
+    _cachedAvatarFiles.clear();
+    _cachedAvatarBytes.clear();
+    try {
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    } catch (_) {}
+    _avatarRevision++;
     if (userId == null || userId.isEmpty) return;
     try {
       final baseDir = await _getBaseDir();
@@ -276,6 +416,13 @@ class LocalImageCacheService extends ChangeNotifier {
 
   /// Purges all user session caches across all users on disk.
   Future<void> purgeAllSessionCaches() async {
+    _cachedAvatarFiles.clear();
+    _cachedAvatarBytes.clear();
+    try {
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    } catch (_) {}
+    _avatarRevision++;
     try {
       final baseDir = await _getBaseDir();
       if (baseDir.existsSync()) {

@@ -9,6 +9,7 @@ import '../../../core/widgets/app_snack_bar.dart';
 import '../../../core/widgets/fading_edge_scroll_view.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../core/widgets/alpha_breadcrumb_badge.dart';
+import '../../../core/widgets/neumorphic_user_avatar.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../cloud/api/api_config.dart';
@@ -1786,60 +1787,13 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Widget _buildAvatarBadge(String username, Color accent) {
-    if (AuthService.instance.isLoggedIn) {
-      final profile = AuthService.instance.cachedProfile;
-      final avatarPath = profile?.avatarImagePath;
-      if (avatarPath != null &&
-          avatarPath.isNotEmpty &&
-          File(avatarPath).existsSync()) {
-        return ClipOval(
-          child: Image.file(
-            File(avatarPath),
-            fit: BoxFit.cover,
-            width: 40,
-            height: 40,
-            errorBuilder: (_, __, ___) => _buildAvatarInitial(username, accent),
-          ),
-        );
-      }
-
-      return FutureBuilder<File?>(
-        future: LocalImageCacheService.instance.getOrFetchAvatar(size: 'small'),
-        builder: (context, snapshot) {
-          if (snapshot.hasData &&
-              snapshot.data != null &&
-              snapshot.data!.existsSync()) {
-            return ClipOval(
-              child: Image.file(
-                snapshot.data!,
-                key: ValueKey(
-                    'settings_avatar_${snapshot.data!.path}_${LocalImageCacheService.instance.avatarRevision}'),
-                fit: BoxFit.cover,
-                width: 40,
-                height: 40,
-                errorBuilder: (_, __, ___) =>
-                    _buildAvatarInitial(username, accent),
-              ),
-            );
-          }
-          return _buildAvatarInitial(username, accent);
-        },
-      );
-    }
-
-    return _buildAvatarInitial(username, accent);
-  }
-
-  Widget _buildAvatarInitial(String username, Color accent) {
-    return Center(
-      child: Text(
-        username.isNotEmpty ? username[0].toUpperCase() : "U",
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: accent,
-        ),
-      ),
+    return NeumorphicUserAvatar(
+      size: 'small',
+      diameter: 40.0,
+      username: username,
+      accentColor: accent,
+      depth: 0.0,
+      standalone: false,
     );
   }
 

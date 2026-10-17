@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../cloud/api/backend_api_client.dart';
@@ -9,8 +8,8 @@ import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
-import '../../../core/widgets/bottom_nav_bar.dart';
 import '../../../core/widgets/fading_edge_scroll_view.dart';
+import '../../../core/widgets/neumorphic_user_avatar.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';
 import 'widgets/recent_transactions_list.dart';
@@ -302,96 +301,15 @@ class _DashboardScreenState extends State<DashboardScreen>
     AppThemeController controller,
     VoidCallback onTap,
   ) {
-    final base = controller.currentBaseColor;
-
-    return NeumorphicTactileButton(
-      onPressed: onTap,
+    return NeumorphicUserAvatar(
+      size: 'medium',
+      diameter: 50.0,
+      username: username,
+      accentColor: accent,
+      fallbackColor: fallbackColor,
+      onTap: onTap,
       depth: 4.0,
-      pressedDepth: 0.0,
-      pressedScale: 0.96,
-      boxShape: const NeumorphicBoxShape.circle(),
-      padding: EdgeInsets.zero,
-      color: base,
-      border: NeumorphicBorder(
-        color: accent.withValues(alpha: 0.8),
-        width: 1.5,
-      ),
-      child: SizedBox(
-        width: 50,
-        height: 50,
-        child: ClipOval(
-          child: _buildAvatarImage(path, username, accent, fallbackColor),
-        ),
-      ),
+      standalone: true,
     );
-  }
-
-  Widget _buildAvatarImage(
-    String? path,
-    String username,
-    Color accent,
-    Color fallbackColor,
-  ) {
-    if (path != null && path.isNotEmpty) {
-      if (path.startsWith('http://') || path.startsWith('https://')) {
-        return Image.network(
-          path,
-          fit: BoxFit.cover,
-          width: 50,
-          height: 50,
-          errorBuilder: (_, __, ___) => _buildAvatarFallback(username, accent),
-        );
-      } else if (File(path).existsSync()) {
-        return Image.file(
-          File(path),
-          fit: BoxFit.cover,
-          width: 50,
-          height: 50,
-          errorBuilder: (_, __, ___) => _buildAvatarFallback(username, accent),
-        );
-      } else {
-        // Fetch securely from local session image cache or authenticated backend streaming
-        return FutureBuilder<File?>(
-          future:
-              LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium'),
-          builder: (context, snapshot) {
-            if (snapshot.hasData &&
-                snapshot.data != null &&
-                snapshot.data!.existsSync()) {
-              return Image.file(
-                snapshot.data!,
-                key: ValueKey(
-                    'dash_avatar_${snapshot.data!.path}_${LocalImageCacheService.instance.avatarRevision}'),
-                fit: BoxFit.cover,
-                width: 50,
-                height: 50,
-                errorBuilder: (_, __, ___) =>
-                    _buildAvatarFallback(username, accent),
-              );
-            }
-            return _buildAvatarFallback(username, accent);
-          },
-        );
-      }
-    }
-    return _buildAvatarFallback(username, accent);
-  }
-
-  Widget _buildAvatarFallback(String username, Color accent) {
-    final initial =
-        username.trim().isNotEmpty ? username.trim()[0].toUpperCase() : '';
-    if (initial.isNotEmpty) {
-      return Center(
-        child: Text(
-          initial,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: accent,
-          ),
-        ),
-      );
-    }
-    return Icon(Icons.person_rounded, color: accent, size: 26);
   }
 }

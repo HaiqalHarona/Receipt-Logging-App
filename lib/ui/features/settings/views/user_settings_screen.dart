@@ -15,6 +15,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../core/widgets/fading_edge_scroll_view.dart';
+import '../../../core/widgets/neumorphic_user_avatar.dart';
 import '../../../../cloud/services/auth_service.dart';
 import '../../../../cloud/services/device_identity_service.dart';
 import '../../../../cloud/api/api_config.dart';
@@ -50,7 +51,6 @@ class UserSettingsScreen extends StatefulWidget {
 class _UserSettingsScreenState extends State<UserSettingsScreen>
     with WidgetsBindingObserver {
   UserRecordDto? _profile;
-  Future<File?>? _avatarFuture;
   bool _isLoading = true;
   bool _isLoggingOut = false;
   bool _isManualSyncing = false;
@@ -68,8 +68,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
     AppLogger.info('UI', 'UserSettingsScreen initialized');
     _profile = AuthService.instance.cachedProfile;
     _isLoading = _profile == null;
-    _avatarFuture =
-        LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium');
     QuotaService.instance.addListener(_onQuotaUpdated);
     LocalImageCacheService.instance.addListener(_onAvatarUpdated);
     SyncCoordinator.instance.addListener(_onSyncCoordinatorUpdated);
@@ -132,10 +130,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
 
   void _onAvatarUpdated() {
     if (mounted) {
-      setState(() {
-        _avatarFuture =
-            LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium');
-      });
+      setState(() {});
     }
   }
 
@@ -238,20 +233,10 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
       if (mounted) {
         if (success) {
           setState(() {
-            _avatarFuture = LocalImageCacheService.instance
-                .getOrFetchAvatar(size: 'medium', forceRefresh: true);
+            _profile = AuthService.instance.cachedProfile;
+            _isUploadingAvatar = false;
           });
-          await _avatarFuture;
-          PaintingBinding.instance.imageCache.clear();
-          PaintingBinding.instance.imageCache.clearLiveImages();
-          final updatedProfile =
-              await AuthService.instance.getOrFetchProfile(force: true);
-          if (mounted) {
-            setState(() {
-              _profile = updatedProfile ?? AuthService.instance.cachedProfile;
-            });
-            AppSnackBar.show(context, message: "Avatar updated successfully!");
-          }
+          AppSnackBar.show(context, message: "Avatar updated successfully!");
         } else {
           setState(() => _isUploadingAvatar = false);
           AppSnackBar.show(
@@ -2326,73 +2311,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen>
   }
 
   Widget _buildAvatarContent(String username, Color accent) {
-    if (AuthService.instance.isLoggedIn) {
-      final avatarPath = _profile?.avatarImagePath;
-      if (avatarPath != null &&
-          avatarPath.isNotEmpty &&
-          File(avatarPath).existsSync()) {
-        return ClipOval(
-          child: Image.file(
-            File(avatarPath),
-            fit: BoxFit.cover,
-            width: 60,
-            height: 60,
-            errorBuilder: (_, __, ___) => _buildAvatarInitial(username, accent),
-          ),
-        );
-      }
-
-      return FutureBuilder<File?>(
-        future: _avatarFuture ??=
-            LocalImageCacheService.instance.getOrFetchAvatar(size: 'medium'),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: accent,
-                ),
-              ),
-            );
-          }
-
-          if (snapshot.hasData &&
-              snapshot.data != null &&
-              snapshot.data!.existsSync()) {
-            return ClipOval(
-              child: Image.file(
-                snapshot.data!,
-                key: ValueKey(
-                    'user_settings_avatar_${snapshot.data!.path}_${LocalImageCacheService.instance.avatarRevision}'),
-                fit: BoxFit.cover,
-                width: 60,
-                height: 60,
-                errorBuilder: (_, __, ___) =>
-                    _buildAvatarInitial(username, accent),
-              ),
-            );
-          }
-          return _buildAvatarInitial(username, accent);
-        },
-      );
-    }
-
-    return _buildAvatarInitial(username, accent);
-  }
-
-  Widget _buildAvatarInitial(String username, Color accent) {
-    return Center(
-      child: Text(
-        username.isNotEmpty ? username[0].toUpperCase() : "U",
-        style: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: accent,
-        ),
-      ),
+    return NeumorphicUserAvatar(
+      size: 'medium',
+      diameter: 60.0,
+      username: username,
+      accentColor: accent,
+      depth: 0.0,
+      standalone: false,
     );
   }
 }
