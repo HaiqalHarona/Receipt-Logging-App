@@ -380,13 +380,6 @@ class SpendingNotificationService extends ChangeNotifier {
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>();
         granted = await androidImpl?.requestNotificationsPermission();
-        try {
-          final canExact =
-              await androidImpl?.canScheduleExactNotifications() ?? true;
-          if (!canExact) {
-            await androidImpl?.requestExactAlarmsPermission();
-          }
-        } catch (_) {}
       } else if (Platform.isIOS) {
         final iosImpl = _notificationsPlugin
             .resolvePlatformSpecificImplementation<
@@ -903,37 +896,16 @@ class SpendingNotificationService extends ChangeNotifier {
         'Scheduling weekly notification: tz.local=${tz.local.name}, '
         'scheduledDate=$scheduledDate (mode: $scheduleMode, UTC epoch: ${scheduledDate.millisecondsSinceEpoch})',
       );
-      try {
-        await _notificationsPlugin.zonedSchedule(
-          id: weeklyNotificationId,
-          scheduledDate: scheduledDate,
-          notificationDetails: details,
-          androidScheduleMode: scheduleMode,
-          title: title,
-          body: body,
-          payload: 'weekly_spending',
-          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-        );
-      } catch (scheduleError) {
-        if (scheduleMode != AndroidScheduleMode.inexactAllowWhileIdle) {
-          AppLogger.warning(
-            'Notification',
-            'Failed to schedule weekly notification with $scheduleMode, retrying with inexactAllowWhileIdle: $scheduleError',
-          );
-          await _notificationsPlugin.zonedSchedule(
-            id: weeklyNotificationId,
-            scheduledDate: scheduledDate,
-            notificationDetails: details,
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            title: title,
-            body: body,
-            payload: 'weekly_spending',
-            matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-          );
-        } else {
-          rethrow;
-        }
-      }
+      await _notificationsPlugin.zonedSchedule(
+        id: weeklyNotificationId,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        androidScheduleMode: scheduleMode,
+        title: title,
+        body: body,
+        payload: 'weekly_spending',
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
       AppLogger.info(
         'Notification',
         'Scheduled weekly spending notification at $scheduledDate',
@@ -984,37 +956,16 @@ class SpendingNotificationService extends ChangeNotifier {
         'Scheduling monthly notification: tz.local=${tz.local.name}, '
         'scheduledDate=$scheduledDate (mode: $scheduleMode, UTC epoch: ${scheduledDate.millisecondsSinceEpoch})',
       );
-      try {
-        await _notificationsPlugin.zonedSchedule(
-          id: monthlyNotificationId,
-          scheduledDate: scheduledDate,
-          notificationDetails: details,
-          androidScheduleMode: scheduleMode,
-          title: title,
-          body: body,
-          payload: 'monthly_spending',
-          matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
-        );
-      } catch (scheduleError) {
-        if (scheduleMode != AndroidScheduleMode.inexactAllowWhileIdle) {
-          AppLogger.warning(
-            'Notification',
-            'Failed to schedule monthly notification with $scheduleMode, retrying with inexactAllowWhileIdle: $scheduleError',
-          );
-          await _notificationsPlugin.zonedSchedule(
-            id: monthlyNotificationId,
-            scheduledDate: scheduledDate,
-            notificationDetails: details,
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            title: title,
-            body: body,
-            payload: 'monthly_spending',
-            matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
-          );
-        } else {
-          rethrow;
-        }
-      }
+      await _notificationsPlugin.zonedSchedule(
+        id: monthlyNotificationId,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
+        androidScheduleMode: scheduleMode,
+        title: title,
+        body: body,
+        payload: 'monthly_spending',
+        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+      );
       AppLogger.info(
         'Notification',
         'Scheduled monthly spending notification at $scheduledDate',
@@ -1029,19 +980,7 @@ class SpendingNotificationService extends ChangeNotifier {
   }
 
   Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
-    if (!_isTestEnvironment && !kIsWeb && Platform.isAndroid) {
-      try {
-        final androidImpl = _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>();
-        final canExact =
-            await androidImpl?.canScheduleExactNotifications() ?? true;
-        if (!canExact) {
-          return AndroidScheduleMode.inexactAllowWhileIdle;
-        }
-      } catch (_) {}
-    }
-    return AndroidScheduleMode.exactAllowWhileIdle;
+    return AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
 
