@@ -176,10 +176,9 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
     }
   }
 
-  /// Calculates or retrieves cached converted line item prices for active currency.
+  /// Calculates or retrieves cached line item prices in original receipt currency.
   List<ConvertedLineItem> _getConvertedLineItems(Receipt r) {
-    final targetCurrency = CurrencyService.instance.currentCurrency;
-    final cacheKey = '${r.id}_$targetCurrency';
+    final cacheKey = '${r.id}_${r.currency}';
 
     if (_convertedItemsCache.containsKey(cacheKey)) {
       return _convertedItemsCache[cacheKey]!;
@@ -192,19 +191,14 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
       final origUnit =
           item.unitPrice ?? (qty > 0 ? origTotal / qty : origTotal);
 
-      final convertedUnit =
-          CurrencyService.instance.convert(origUnit, r.currency);
-      final convertedTotal =
-          CurrencyService.instance.convert(origTotal, r.currency);
-
-      final formattedUnit = CurrencyService.instance
-          .format(convertedUnit, fromCurrencyCode: targetCurrency);
-      final formattedTotal = CurrencyService.instance
-          .format(convertedTotal, fromCurrencyCode: targetCurrency);
+      final formattedUnit =
+          CurrencyService.instance.formatOriginal(origUnit, r.currency);
+      final formattedTotal =
+          CurrencyService.instance.formatOriginal(origTotal, r.currency);
 
       list.add(ConvertedLineItem(
-        unitPrice: convertedUnit,
-        totalPrice: convertedTotal,
+        unitPrice: origUnit,
+        totalPrice: origTotal,
         formattedUnitPrice: formattedUnit,
         formattedTotalPrice: formattedTotal,
       ));
@@ -417,8 +411,13 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
 
         final r = _receipt!;
         final categoryColor = CategoryUtils.getCategoryColor(r.category);
-        final formattedPrice = CurrencyService.instance
-            .format(r.amount, fromCurrencyCode: r.currency);
+        final originalPrice = CurrencyService.instance
+            .formatOriginal(r.amount, r.currency);
+        final convertedSubtitle = CurrencyService.instance.formatConvertedSubtitle(
+          r.amount,
+          r.currency,
+          historicalRate: r.currencyRateAtReceiptDate,
+        );
         final convertedItems = _getConvertedLineItems(r);
         final allDetailTags = r.category
             .split(',')
@@ -598,13 +597,29 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
                                   ),
                                 ),
                               ),
-                              Text(
-                                formattedPrice,
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: accent,
-                                ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    originalPrice,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                      color: accent,
+                                    ),
+                                  ),
+                                  if (convertedSubtitle != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      convertedSubtitle,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: textSecondary.withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
@@ -718,7 +733,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
                                 ),
                               ),
                               Text(
-                                CurrencyService.instance.currentCurrency,
+                                r.currency,
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -863,9 +878,10 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
                           const SizedBox(height: 12),
                           _buildSummaryRow(
                             'Grand Total',
-                            formattedPrice,
+                            originalPrice,
                             textPrimary,
                             accent,
+                            subtitle: convertedSubtitle,
                             isBold: true,
                             fontSize: 16,
                           ),
@@ -924,11 +940,14 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
     String value,
     Color labelColor,
     Color valueColor, {
+    String? subtitle,
     bool isBold = false,
     double fontSize = 13,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment:
+          subtitle != null ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
         Text(
           label,
@@ -938,13 +957,29 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
             color: labelColor,
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: isBold ? FontWeight.w900 : FontWeight.bold,
-            color: valueColor,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: isBold ? FontWeight.w900 : FontWeight.bold,
+                color: valueColor,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: labelColor.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );

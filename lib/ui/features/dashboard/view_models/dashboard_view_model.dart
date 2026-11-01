@@ -239,8 +239,16 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   /// Converts a specific receipt's price into the active display currency string.
+  double _resolveAmount(Receipt r) {
+    final rate = r.currencyRateAtReceiptDate;
+    if (rate != null) {
+      return _currencyService.convertWithHistoricalRate(r.amount, rate);
+    }
+    return _currencyService.convert(r.amount, r.currency);
+  }
+
   String formatReceiptPrice(Receipt receipt) {
-    return '-${_currencyService.format(receipt.amount, fromCurrencyCode: receipt.currency)}';
+    return '-${_currencyService.formatOriginal(receipt.amount, receipt.currency)}';
   }
 
   // ── Spending Summary Carousel Aggregation & Caching ─────────────────────────
@@ -331,7 +339,7 @@ class DashboardViewModel extends ChangeNotifier {
           break;
       }
 
-      final converted = _currencyService.convert(r.amount, r.currency);
+      final converted = _resolveAmount(r);
       if (includeCurrent) {
         total += converted;
         count++;
@@ -484,7 +492,7 @@ class DashboardViewModel extends ChangeNotifier {
         final key = '${parsed.year}-${parsed.month}-${parsed.day}';
         if (dayBuckets.containsKey(key)) {
           final converted =
-              _currencyService.convert(receipt.amount, receipt.currency);
+              _resolveAmount(receipt);
           dayBuckets[key] = (dayBuckets[key] ?? 0.0) + converted;
         }
       }
@@ -528,7 +536,7 @@ class DashboardViewModel extends ChangeNotifier {
           final end = wk['end'] as DateTime;
           if (!parsed.isBefore(start) && !parsed.isAfter(end)) {
             final converted =
-                _currencyService.convert(receipt.amount, receipt.currency);
+                _resolveAmount(receipt);
             wk['amount'] = (wk['amount'] as double) + converted;
             break;
           }
@@ -559,7 +567,7 @@ class DashboardViewModel extends ChangeNotifier {
             parsed.month == now.month &&
             parsed.day <= currentDay) {
           final converted =
-              _currencyService.convert(receipt.amount, receipt.currency);
+              _resolveAmount(receipt);
           dayBuckets[parsed.day] = (dayBuckets[parsed.day] ?? 0.0) + converted;
         }
       }
@@ -628,10 +636,7 @@ class DashboardViewModel extends ChangeNotifier {
       final key = _bucketKey(DateTime(parsed.year, parsed.month, 1));
       if (!buckets.containsKey(key)) continue;
 
-      final converted = _currencyService.convert(
-        receipt.amount,
-        receipt.currency,
-      );
+      final converted = _resolveAmount(receipt);
       buckets[key] = (buckets[key] ?? 0.0) + converted;
     }
 
@@ -790,7 +795,7 @@ class DashboardViewModel extends ChangeNotifier {
       if (parsed == null) continue;
 
       final converted =
-          _currencyService.convert(receipt.amount, receipt.currency);
+          _resolveAmount(receipt);
       final rTokens = receipt.category
           .split(',')
           .map((c) => CategoryUtils.sanitize(c).trim())

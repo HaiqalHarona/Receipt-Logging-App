@@ -212,7 +212,7 @@ class HistoryViewModel extends ChangeNotifier {
   }
 
   String formatReceiptPrice(Receipt receipt) {
-    return '-${_currencyService.format(receipt.amount, fromCurrencyCode: receipt.currency)}';
+    return '-${_currencyService.formatOriginal(receipt.amount, receipt.currency)}';
   }
 
   Future<void> deleteReceipt(String id) async {

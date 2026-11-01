@@ -327,6 +327,7 @@ class CloudSyncService {
       category: r.category ?? '',
       imagePath: record.receiptImagePath,
       createdAt: DateTime.tryParse(record.createdAt)?.toUtc(),
+      currencyRateAtReceiptDate: r.currencyRateAtReceiptDate,
       lineItems: r.lineItems
           .map((l) => LineItem(
                 description: l.description,
