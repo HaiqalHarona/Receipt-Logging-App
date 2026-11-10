@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Enforce HTTPS / TLS globally for production traffic -->
+    <!-- Enforce HTTPS across all domains for production security -->
     <base-config cleartextTrafficPermitted="false" />
 
-    <!-- Whitelist local development host addresses only -->
+    <!-- Permit cleartext HTTP only for local development servers and Android emulator -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">localhost</domain>
