@@ -71,8 +71,8 @@ We integrate accessibility assessments into our development and release process:
 
 We welcome your feedback on the accessibility of SancFund. If you experience an accessibility barrier or need assistance with any feature, please contact our Accessibility Team:
 
-- **Accessibility Support:** `support@sanctum.com` (Subject: "Accessibility Feedback")
-- **Privacy & Compliance:** `support@sanctum.com`
+- **Accessibility Support:** `fayrd06@gmail.com` (Subject: "Accessibility Feedback")
+- **Privacy & Compliance:** `fayrd06@gmail.com`
 - **In-App Navigation:** `Settings -> Legal & Compliance -> Accessibility Statement`
 
 We aim to respond to accessibility inquiries within **2 business days**.
