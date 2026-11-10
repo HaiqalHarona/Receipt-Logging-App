@@ -299,7 +299,7 @@ class GoogleAuthService {
 
     // Prime local avatar cache from Supabase Storage
     unawaited(LocalImageCacheService.instance
-        .getOrFetchAvatar(size: 'medium', forceRefresh: true));
+        .eagerLoadAvatars(forceRefresh: true));
 
     // Pull down migrated receipts with their cloud UUIDs
     await CloudSyncService.instance.syncOnLogin();
@@ -378,7 +378,7 @@ class GoogleAuthService {
     }));
 
     unawaited(LocalImageCacheService.instance
-        .getOrFetchAvatar(size: 'medium'));
+        .eagerLoadAvatars());
 
     AppLogger.info(
         'GoogleAuth', 'Google login succeeded for user: ${user.username}');

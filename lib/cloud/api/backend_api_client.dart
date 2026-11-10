@@ -30,7 +30,7 @@
 ///     [saveReceipt]         — POST   /api/v1/receipts/create
 ///     [saveReceiptBatch]    — POST   /api/v1/receipts/batch
 ///     [fetchReceipts]       — GET    /api/v1/receipts/
-///     [getReceipt]          — GET    /api/v1/receipts/{id}
+///     [fetchReceiptById]    — GET    /api/v1/receipts/{id}
 ///     [deleteReceipt]       — DELETE /api/v1/receipts/{id}
 ///
 ///   AI Chat:
@@ -1326,6 +1326,38 @@ class BackendApiClient {
     return list
         .map((e) => ReceiptRecordDto.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Fetches a single receipt by ID from GET /api/v1/receipts/{receiptId}.
+  /// Returns [ReceiptRecordDto] on HTTP 200, or `null` if not found (HTTP 404) or on error.
+  Future<ReceiptRecordDto?> fetchReceiptById(
+    String receiptId, {
+    String? username,
+    String? userToken,
+  }) async {
+    final cleanId = Uri.encodeComponent(receiptId);
+    final uri = Uri.parse('${ApiConfig.baseUrl}/receipts/$cleanId');
+    final headers = ApiConfig.buildUserHeaders(
+      username: username ?? AuthService.instance.currentUsername,
+      userToken: userToken ?? AuthService.instance.currentUserToken,
+      accessToken: AuthService.instance.accessToken,
+    );
+
+    try {
+      final response = await _sendRequest('GET', uri, headers: headers);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return ReceiptRecordDto.fromJson(data);
+      }
+      AppLogger.warning(
+        'HTTP',
+        'fetchReceiptById failed for receipt $cleanId with status ${response.statusCode}: ${response.body}',
+      );
+      return null;
+    } catch (e, st) {
+      AppLogger.error('HTTP', 'fetchReceiptById error for receipt $cleanId', e, st);
+      return null;
+    }
   }
 
   /// Soft-deletes a receipt by ID. Returns `true` on success.

@@ -38,7 +38,7 @@ In Guest Mode, your data is stored locally within your device's isolated storage
 
 ### B. User Mode Accounts
 - **Account Accuracy:** If you create a user account, you agree to provide truthful, accurate, and current registration information.
-- **Credential Protection:** You are responsible for safeguarding your password and account credentials. You agree to notify us immediately at `support@sanctum.com` if you suspect any unauthorized use of your account.
+- **Credential Protection:** You are responsible for safeguarding your password and account credentials. You agree to notify us immediately at `fayrd06@gmail.com` if you suspect any unauthorized use of your account.
 - **Account Termination:** We reserve the right to suspend or terminate accounts that violate these Terms, engage in fraud, or abuse our infrastructure.
 
 ---
@@ -130,6 +130,6 @@ If any provision of these Terms is determined to be invalid or unenforceable, th
 
 For questions or notices regarding these Terms, please contact us at:
 
-- **Customer Support:** `support@sanctum.com`
-- **Legal & Compliance:** `support@sanctum.com`
+- **Customer Support:** `fayrd06@gmail.com`
+- **Legal & Compliance:** `fayrd06@gmail.com`
 - **In-App Navigation:** `Settings -> Legal & Compliance -> Terms of Service`

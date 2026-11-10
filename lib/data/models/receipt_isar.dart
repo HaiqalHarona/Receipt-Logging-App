@@ -58,6 +58,7 @@ class ReceiptIsarModel {
   String? imagePath;
   String? rawText;
   double? confidenceScore;
+  double? currencyRateAtReceiptDate;
 
   /// Embedded line-items list — mirrors receipt.line_items JSONB array.
   List<LineItemIsarModel> lineItems = [];
@@ -90,7 +91,8 @@ class ReceiptIsarModel {
       ..imagePath = receipt.imagePath
       ..createdAt = receipt.createdAt ?? DateTime.now()
       ..items = receipt.items
-      ..lineItems = receipt.lineItems.map((li) => li.toIsar()).toList();
+      ..lineItems = receipt.lineItems.map((li) => li.toIsar()).toList()
+      ..currencyRateAtReceiptDate = receipt.currencyRateAtReceiptDate;
   }
 
   Receipt toDomain() {
@@ -116,6 +118,7 @@ class ReceiptIsarModel {
       createdAt: createdAt,
       items: items,
       lineItems: domainLineItems,
+      currencyRateAtReceiptDate: currencyRateAtReceiptDate,
     );
   }
 }

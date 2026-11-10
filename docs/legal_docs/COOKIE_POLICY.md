@@ -80,6 +80,6 @@ We may update this Cookie & Local Storage Policy as our application evolves. Any
 
 If you have any questions regarding our storage practices, please contact us at:
 
-- **Privacy Inquiries:** `support@sanctum.com`
-- **Customer Support:** `support@sanctum.com`
+- **Privacy Inquiries:** `fayrd06@gmail.com`
+- **Customer Support:** `fayrd06@gmail.com`
 - **In-App Navigation:** `Settings -> Legal & Compliance -> Cookie & Storage Policy`

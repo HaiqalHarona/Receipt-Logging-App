@@ -23,6 +23,9 @@ class Receipt {
   /// Preferred over [items] when non-empty.
   final List<LineItem> lineItems;
 
+  /// Historical currency exchange rate against SGD at the time/date of receipt purchase.
+  final double? currencyRateAtReceiptDate;
+
   const Receipt({
     required this.id,
     required this.merchant,
@@ -34,6 +37,7 @@ class Receipt {
     this.createdAt,
     this.items = const [],
     this.lineItems = const [],
+    this.currencyRateAtReceiptDate,
   });
 
   Receipt copyWith({
@@ -47,6 +51,7 @@ class Receipt {
     DateTime? createdAt,
     List<String>? items,
     List<LineItem>? lineItems,
+    double? currencyRateAtReceiptDate,
   }) {
     return Receipt(
       id: id ?? this.id,
@@ -59,6 +64,8 @@ class Receipt {
       createdAt: createdAt ?? this.createdAt,
       items: items ?? this.items,
       lineItems: lineItems ?? this.lineItems,
+      currencyRateAtReceiptDate:
+          currencyRateAtReceiptDate ?? this.currencyRateAtReceiptDate,
     );
   }
 
@@ -74,6 +81,8 @@ class Receipt {
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
       'items': items,
       'lineItems': lineItems.map((li) => li.toJson()).toList(),
+      if (currencyRateAtReceiptDate != null)
+        'currency_rate_at_receipt_date': currencyRateAtReceiptDate,
     };
   }
 
@@ -116,6 +125,8 @@ class Receipt {
       createdAt: parsedCreatedAt,
       items: parsedItems,
       lineItems: parsedLineItems,
+      currencyRateAtReceiptDate: (json['currency_rate_at_receipt_date'] as num?)?.toDouble() ??
+          (json['currencyRateAtReceiptDate'] as num?)?.toDouble(),
     );
   }
 
@@ -160,7 +171,8 @@ class Receipt {
           imagePath == other.imagePath &&
           createdAt == other.createdAt &&
           listEquals(items, other.items) &&
-          listEquals(lineItems, other.lineItems);
+          listEquals(lineItems, other.lineItems) &&
+          currencyRateAtReceiptDate == other.currencyRateAtReceiptDate;
 
   @override
   int get hashCode =>
@@ -173,7 +185,8 @@ class Receipt {
       imagePath.hashCode ^
       createdAt.hashCode ^
       Object.hashAll(items) ^
-      Object.hashAll(lineItems);
+      Object.hashAll(lineItems) ^
+      currencyRateAtReceiptDate.hashCode;
 
   @override
   String toString() {

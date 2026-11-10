@@ -77,6 +77,7 @@ class ReceiptDto {
     this.category,
     this.confidenceScore = 0.0,
     this.notes,
+    this.currencyRateAtReceiptDate,
   });
 
   final String merchantName;
@@ -90,6 +91,7 @@ class ReceiptDto {
   final String rawText;
   final double confidenceScore;
   final String? notes;
+  final double? currencyRateAtReceiptDate;
 
   factory ReceiptDto.fromJson(Map<String, dynamic> json) {
     return ReceiptDto(
@@ -107,6 +109,9 @@ class ReceiptDto {
       rawText: (json['raw_text'] as String?) ?? '',
       confidenceScore: _safeToDouble(json['confidence_score']) ?? 0.0,
       notes: json['notes'] as String?,
+      currencyRateAtReceiptDate: _safeToDouble(
+          json['currency_rate_at_receipt_date'] ??
+              json['currencyRateAtReceiptDate']),
     );
   }
 
@@ -122,6 +127,7 @@ class ReceiptDto {
       currency: receipt.currency,
       category: receipt.category.isNotEmpty ? receipt.category : null,
       confidenceScore: 1.0,
+      currencyRateAtReceiptDate: receipt.currencyRateAtReceiptDate,
     );
   }
 
@@ -137,6 +143,8 @@ class ReceiptDto {
         'raw_text': rawText,
         'confidence_score': confidenceScore,
         if (notes != null) 'notes': notes,
+        if (currencyRateAtReceiptDate != null)
+          'currency_rate_at_receipt_date': currencyRateAtReceiptDate,
       };
 }
 
