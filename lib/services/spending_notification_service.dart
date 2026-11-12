@@ -980,6 +980,8 @@ class SpendingNotificationService extends ChangeNotifier {
   }
 
   Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
+    // In compliance with Google Play Store exact alarm policy, standard notifications
+    // use inexact scheduling which requires zero declaration forms or special permissions.
     return AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
