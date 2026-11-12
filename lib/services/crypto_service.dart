@@ -17,6 +17,9 @@ class CryptoService {
   /// Key name used in secure storage.
   static const String masterKeyStorageKey = 'master_data_encryption_key';
 
+  /// Storage key name for the dedicated Isar database encryption key.
+  static const String databaseKeyStorageKey = 'isar_db_encryption_key_v2';
+
   /// Android secure storage options using EncryptedSharedPreferences.
   static const AndroidOptions defaultAndroidOptions = AndroidOptions(
     encryptedSharedPreferences: true,
@@ -27,10 +30,25 @@ class CryptoService {
     accessibility: KeychainAccessibility.first_unlock_this_device,
   );
 
+  /// Android secure storage options with encrypted shared preferences and
+  /// resetOnError disabled to protect database keys from transient faults.
+  static const AndroidOptions databaseAndroidOptions = AndroidOptions(
+    encryptedSharedPreferences: true,
+    resetOnError: false,
+  );
+
+  /// iOS secure storage options configured for accessibility post-first-unlock
+  /// without iCloud backup synchronization.
+  static const IOSOptions databaseIosOptions = IOSOptions(
+    accessibility: KeychainAccessibility.first_unlock_this_device,
+    synchronizable: false,
+  );
+
   FlutterSecureStorage _storage;
   final AesGcm _algorithm = AesGcm.with256bits(nonceLength: 12);
 
   SecretKey? _masterSecretKey;
+  String? _cachedDatabaseKey;
   bool _isInitialized = false;
 
   /// Whether the cryptographic service has initialized its master key.
@@ -47,6 +65,7 @@ class CryptoService {
     List<int>? rawKey,
   }) {
     _storage = customStorage ?? const FlutterSecureStorage();
+    _cachedDatabaseKey = null;
     if (rawKey != null) {
       _masterSecretKey = SecretKey(rawKey);
       _isInitialized = true;
@@ -293,5 +312,67 @@ class CryptoService {
   List<int> _generateSecureRandomBytes(int length) {
     final random = Random.secure();
     return List<int>.generate(length, (_) => random.nextInt(256));
+  }
+
+  /// Retrieves the existing 256-bit database encryption key, or securely
+  /// generates and stores a new one using CSPRNG.
+  ///
+  /// Returns a 64-character hexadecimal key representation suitable for Isar.
+  Future<String> getOrCreateDatabaseEncryptionKey({bool forceRotate = false}) async {
+    if (!forceRotate && _cachedDatabaseKey != null && _cachedDatabaseKey!.isNotEmpty) {
+      return _cachedDatabaseKey!;
+    }
+
+    try {
+      if (!forceRotate) {
+        final existingKey = await _storage.read(
+          key: databaseKeyStorageKey,
+          aOptions: databaseAndroidOptions,
+          iOptions: databaseIosOptions,
+        );
+
+        if (existingKey != null && existingKey.trim().length >= 32) {
+          _cachedDatabaseKey = existingKey.trim();
+          return _cachedDatabaseKey!;
+        }
+      }
+
+      // Generate a fresh 256-bit (32 bytes) cryptographically secure key
+      final keyBytes = _generateSecureRandomBytes(32);
+      // Format as 64-character lowercase hex string for database compatibility
+      final hexKey = keyBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
+      try {
+        await _storage.write(
+          key: databaseKeyStorageKey,
+          value: hexKey,
+          aOptions: databaseAndroidOptions,
+          iOptions: databaseIosOptions,
+        );
+      } catch (writeError) {
+        if (kDebugMode) {
+          debugPrint('CryptoService: secure storage write skipped/failed: $writeError');
+        }
+      }
+
+      _cachedDatabaseKey = hexKey;
+      return hexKey;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('CryptoService: Error retrieving database key from Keystore/Keychain: $e');
+      }
+      // Re-throw to trigger defensive retry or app-level handling
+      throw StateError('Failed to access secure database encryption key: $e');
+    }
+  }
+
+  /// Rotates the database encryption key in secure storage (used during safe wipe).
+  Future<String> rotateDatabaseEncryptionKey() async {
+    return getOrCreateDatabaseEncryptionKey(forceRotate: true);
+  }
+
+  /// Clears in-memory cached database keys.
+  void clearCachedKeys() {
+    _cachedDatabaseKey = null;
   }
 }

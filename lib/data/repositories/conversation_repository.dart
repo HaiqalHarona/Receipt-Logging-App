@@ -21,6 +21,7 @@ import '../../cloud/api/backend_api_client.dart';
 import '../../cloud/services/auth_service.dart';
 import '../../services/app_logger_service.dart';
 import '../../services/isar_service.dart';
+import '../../services/crypto_service.dart';
 import '../models/conversation_isar.dart';
 import '../mappers/conversation_mapper.dart';
 import '../../domain/models/conversation.dart';
@@ -86,17 +87,24 @@ class ConversationRepository extends ChangeNotifier {
     final now = DateTime.now();
     final conversationId = id ?? 'local_${now.millisecondsSinceEpoch}';
 
+    final plainTitle = title;
     final model = ConversationIsarModel()
       ..conversationId = conversationId
-      ..title = title
+      ..title = plainTitle
       ..createdAt = now
       ..updatedAt = now;
 
     if (IsarService.isInitialized) {
       AppLogger.info('Isar',
-          '[ConversationRepository] Transaction write: creating conversation $conversationId ("$title")');
+          '[ConversationRepository] Transaction write: creating conversation $conversationId ("$plainTitle")');
+      final encryptedModel = ConversationIsarModel()
+        ..conversationId = conversationId
+        ..title = await CryptoService.instance.encryptText(plainTitle)
+        ..createdAt = now
+        ..updatedAt = now;
+
       await IsarService.isar.writeTxn(() async {
-        await IsarService.isar.conversationIsarModels.put(model);
+        await IsarService.isar.conversationIsarModels.put(encryptedModel);
       });
       AppLogger.debug('Isar',
           '[ConversationRepository] Saved conversation $conversationId to Isar DB.');
@@ -242,6 +250,7 @@ class ConversationRepository extends ChangeNotifier {
               .conversationIdEqualTo(c.id)
               .findFirst();
           final model = c.toIsar();
+          await model.encryptSensitiveFields();
           if (existing != null) {
             model.id = existing.id;
           }
@@ -278,6 +287,9 @@ class ConversationRepository extends ChangeNotifier {
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       AppLogger.debug('Isar',
           '[ConversationRepository] Query result: ${active.length} active (non-deleted) conversations.');
+      for (final m in active) {
+        await m.decryptSensitiveFields();
+      }
       _conversations = active.map((m) => m.toDomain()).toList();
     } catch (e, stackTrace) {
       AppLogger.error(
@@ -300,7 +312,9 @@ class ConversationRepository extends ChangeNotifier {
             .conversationIdEqualTo(id)
             .findFirst();
         if (existing != null) {
+          await existing.decryptSensitiveFields();
           mutator(existing);
+          await existing.encryptSensitiveFields();
           await IsarService.isar.conversationIsarModels.put(existing);
           AppLogger.debug('Isar',
               '[ConversationRepository] Saved mutated conversation $id to Isar DB.');

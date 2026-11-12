@@ -107,10 +107,12 @@ class ReceiptRepository extends ChangeNotifier {
         final model = ReceiptIsarModel.fromDomain(receiptToSave);
         if (existing != null) {
           model.id = existing.id;
+          model.rawText = existing.rawText;
           if (receipt.createdAt == null) {
             model.createdAt = existing.createdAt;
           }
         }
+        await model.encryptSensitiveFields();
         await isar.receiptIsarModels.put(model);
       });
       AppLogger.debug('Isar',
@@ -171,10 +173,12 @@ class ReceiptRepository extends ChangeNotifier {
           final model = ReceiptIsarModel.fromDomain(receiptToSave);
           if (existing != null) {
             model.id = existing.id;
+            model.rawText = existing.rawText;
             if (receiptToSave.createdAt == null) {
               model.createdAt = existing.createdAt;
             }
           }
+          await model.encryptSensitiveFields();
           await isar.receiptIsarModels.put(model);
         }
       });
@@ -221,10 +225,12 @@ class ReceiptRepository extends ChangeNotifier {
           final model = ReceiptIsarModel.fromDomain(receipt);
           if (existing != null) {
             model.id = existing.id;
+            model.rawText = existing.rawText;
             if (receipt.createdAt == null) {
               model.createdAt = existing.createdAt;
             }
           }
+          await model.encryptSensitiveFields();
           await isar.receiptIsarModels.put(model);
         }
       });
@@ -373,6 +379,10 @@ class ReceiptRepository extends ChangeNotifier {
                 await isar.receiptIsarModels.delete(oldModel.id);
               }
               final newModel = ReceiptIsarModel.fromDomain(syncedReceipt);
+              if (oldModel != null) {
+                newModel.rawText = oldModel.rawText;
+              }
+              await newModel.encryptSensitiveFields();
               await isar.receiptIsarModels.put(newModel);
             });
             await _loadFromIsar();
@@ -464,12 +474,14 @@ class ReceiptRepository extends ChangeNotifier {
                     .findFirst();
                 if (existing != null) {
                   model.id = existing.id;
+                  model.rawText = existing.rawText;
                   if (updatedWithCloudPath.lineItems.isEmpty &&
                       existing.lineItems.isNotEmpty) {
                     model.lineItems = existing.lineItems;
                     model.items = existing.items;
                   }
                 }
+                await model.encryptSensitiveFields();
                 await isar.receiptIsarModels.put(model);
               });
             }
@@ -532,6 +544,7 @@ class ReceiptRepository extends ChangeNotifier {
         final model = ReceiptIsarModel.fromDomain(receiptToSave);
         if (existing != null) {
           model.id = existing.id;
+          model.rawText = existing.rawText;
           if (receipt.createdAt == null) {
             model.createdAt = existing.createdAt;
           }
@@ -541,6 +554,7 @@ class ReceiptRepository extends ChangeNotifier {
             model.items = existing.items;
           }
         }
+        await model.encryptSensitiveFields();
         await isar.receiptIsarModels.put(model);
       });
       AppLogger.debug('Isar',
@@ -781,6 +795,10 @@ class ReceiptRepository extends ChangeNotifier {
       AppLogger.debug('Isar',
           '[ReceiptRepository] Query result: fetched ${isarModels.length} receiptIsarModels from Isar DB.');
 
+      for (final m in isarModels) {
+        await m.decryptSensitiveFields();
+      }
+
       // If in guest mode, repair any lingering bare UUIDs so they are recognized as guest records
       if (!AuthService.instance.isLoggedIn) {
         final needsRepair =
@@ -828,7 +846,9 @@ class ReceiptRepository extends ChangeNotifier {
               '[ReceiptRepository] Transaction write: migrating ${legacyReceipts.length} legacy receipts to Isar DB');
           await isar.writeTxn(() async {
             for (final r in legacyReceipts) {
-              await isar.receiptIsarModels.put(ReceiptIsarModel.fromDomain(r));
+              final model = ReceiptIsarModel.fromDomain(r);
+              await model.encryptSensitiveFields();
+              await isar.receiptIsarModels.put(model);
             }
           });
           AppLogger.debug('Isar',

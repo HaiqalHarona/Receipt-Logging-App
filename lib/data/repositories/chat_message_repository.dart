@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import '../../services/app_logger_service.dart';
 import '../../services/isar_service.dart';
+import '../../services/crypto_service.dart';
 import '../models/chat_message_isar.dart';
 import '../mappers/chat_message_mapper.dart';
 import '../../domain/models/chat_message.dart';
@@ -84,6 +85,9 @@ class ChatMessageRepository extends ChangeNotifier {
 
       // Apply pagination offset & limit in Dart if specified
       final paginated = isarModels.skip(offset).take(limit).toList();
+      for (final m in paginated) {
+        await m.decryptSensitiveFields();
+      }
       final messages = paginated.map((m) => m.toDomain()).toList();
 
       // Update in-memory cache when loading the same conversation
@@ -120,18 +124,26 @@ class ChatMessageRepository extends ChangeNotifier {
     final now = DateTime.now();
     final messageId = id ?? 'local_msg_${now.millisecondsSinceEpoch}';
 
+    final plainContent = content;
     final model = ChatMessageIsarModel()
       ..messageId = messageId
       ..conversationId = conversationId
       ..sender = sender
-      ..content = content
+      ..content = plainContent
       ..createdAt = now;
 
     if (IsarService.isInitialized) {
       AppLogger.info('Isar',
           '[ChatMessageRepository] Transaction write: adding message $messageId (sender: $sender) to conversation $conversationId');
+      final encryptedModel = ChatMessageIsarModel()
+        ..messageId = messageId
+        ..conversationId = conversationId
+        ..sender = sender
+        ..content = await CryptoService.instance.encryptText(plainContent)
+        ..createdAt = now;
+
       await IsarService.isar.writeTxn(() async {
-        await IsarService.isar.chatMessageIsarModels.put(model);
+        await IsarService.isar.chatMessageIsarModels.put(encryptedModel);
       });
       AppLogger.debug('Isar',
           '[ChatMessageRepository] Saved message $messageId to Isar DB.');
@@ -165,7 +177,12 @@ class ChatMessageRepository extends ChangeNotifier {
       AppLogger.info('Isar',
           '[ChatMessageRepository] Transaction write: batch saving ${messages.length} chat messages');
       await IsarService.isar.writeTxn(() async {
-        final models = messages.map((m) => m.toIsar()).toList();
+        final models = <ChatMessageIsarModel>[];
+        for (final m in messages) {
+          final isarModel = m.toIsar();
+          await isarModel.encryptSensitiveFields();
+          models.add(isarModel);
+        }
         await IsarService.isar.chatMessageIsarModels.putAll(models);
       });
       AppLogger.debug('Isar',

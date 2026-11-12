@@ -1,0 +1,28 @@
+# ==============================================================================
+# SancFund Android Release Signing Configuration Template
+# ==============================================================================
+# SECURITY NOTICE:
+# NEVER commit the active 'key.properties' file or release keystores (*.jks, *.keystore)
+# to version control. This template must contain only placeholders.
+#
+# SETUP INSTRUCTIONS:
+# 1. Copy this template to 'key.properties' in this directory (receipt_logging_app/android/):
+#      cp key.properties.example key.properties
+# 2. Update the property values below with your local or production upload key credentials.
+# 3. Verify that 'git status' does NOT show 'key.properties' as an untracked file.
+# ==============================================================================
+
+# Password used to unlock the keystore file
+storePassword=REPLACE_WITH_YOUR_STORE_PASSWORD
+
+# Password used to unlock the private key within the keystore (often identical to storePassword in PKCS12)
+keyPassword=REPLACE_WITH_YOUR_KEY_PASSWORD
+
+# The alias assigned to the key entry when created via keytool (e.g., 'upload')
+keyAlias=upload
+
+# Location of the keystore file. Supported formats:
+# - Relative to receipt_logging_app/android/ (e.g., app/upload-keystore.jks)
+# - Relative to receipt_logging_app/android/app/ (e.g., upload-keystore.jks)
+# - Absolute filesystem path (e.g., /var/secrets/upload-keystore.jks or C:/keystores/upload-keystore.jks)
+storeFile=upload-keystore.jks
