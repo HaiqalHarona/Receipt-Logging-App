@@ -15,6 +15,7 @@
 
 import 'package:isar/isar.dart';
 import '../../services/api/api_models.dart';
+import '../../services/crypto_service.dart';
 
 part 'chat_message_isar.g.dart';
 
@@ -61,6 +62,20 @@ class ChatMessageIsarModel {
       content: content,
       createdAt: createdAt.toUtc().toIso8601String(),
     );
+  }
+
+  /// Encrypts content in-place using AES-256-GCM envelope encryption.
+  Future<void> encryptSensitiveFields([CryptoService? crypto]) async {
+    if (content.isNotEmpty && !content.startsWith('enc:v1:')) {
+      content = await (crypto ?? CryptoService.instance).encryptText(content);
+    }
+  }
+
+  /// Decrypts content in-place if it contains an AES-256-GCM envelope.
+  Future<void> decryptSensitiveFields([CryptoService? crypto]) async {
+    if (content.startsWith('enc:v1:')) {
+      content = await (crypto ?? CryptoService.instance).decryptText(content);
+    }
   }
 }
 

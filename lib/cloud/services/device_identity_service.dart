@@ -36,6 +36,14 @@ class DeviceIdentityService {
     _secureStorage = storage;
   }
 
+  /// Allows unit tests to reset initialization state.
+  void resetForTesting() {
+    _deviceId = null;
+    _deviceToken = null;
+    _hasDeviceUsedTrial = false;
+    _isInitialized = false;
+  }
+
   String? _deviceId;
   String? _deviceToken;
   bool _hasDeviceUsedTrial = false;
@@ -107,20 +115,39 @@ class DeviceIdentityService {
 
         // Resolve deviceId
         _deviceId = secureDeviceId ?? prefsDeviceId;
-        if (_deviceId == null || _deviceId!.isEmpty) {
+        if (_deviceId != null &&
+            _deviceId!.startsWith('dev_fixed_debug_device')) {
+          AppLogger.warning('DeviceIdentity',
+              'Purging stale fixed dev credentials found in storage: $_deviceId');
+          try {
+            await prefs.remove(_keyDeviceId);
+            await prefs.remove(_keyDeviceToken);
+            await _secureStorage.delete(key: _keyDeviceId);
+            await _secureStorage.delete(key: _keyDeviceToken);
+          } catch (e) {
+            AppLogger.warning(
+                'DeviceIdentity', 'Error purging fixed dev credentials: $e');
+          }
           _deviceId = 'dev_${uuid.v4()}';
-          AppLogger.info('DeviceIdentity',
-              'Generated new persistent deviceId: $_deviceId');
-        } else {
-          AppLogger.info('DeviceIdentity',
-              'Loaded existing persistent deviceId: $_deviceId');
-        }
-
-        // Resolve deviceToken
-        _deviceToken = secureDeviceToken ?? prefsDeviceToken;
-        if (_deviceToken == null || _deviceToken!.isEmpty) {
           _deviceToken = 'token_${uuid.v4()}';
-          AppLogger.info('DeviceIdentity', 'Generated new deviceToken');
+          AppLogger.info('DeviceIdentity',
+              'Generated fresh random credentials: $_deviceId');
+        } else {
+          if (_deviceId == null || _deviceId!.isEmpty) {
+            _deviceId = 'dev_${uuid.v4()}';
+            AppLogger.info('DeviceIdentity',
+                'Generated new persistent deviceId: $_deviceId');
+          } else {
+            AppLogger.info('DeviceIdentity',
+                'Loaded existing persistent deviceId: $_deviceId');
+          }
+
+          // Resolve deviceToken
+          _deviceToken = secureDeviceToken ?? prefsDeviceToken;
+          if (_deviceToken == null || _deviceToken!.isEmpty) {
+            _deviceToken = 'token_${uuid.v4()}';
+            AppLogger.info('DeviceIdentity', 'Generated new deviceToken');
+          }
         }
 
         // Resolve trial used flag
@@ -250,6 +277,39 @@ class DeviceIdentityService {
     } catch (e, st) {
       AppLogger.error('DeviceIdentity', 'Token rotation error', e, st);
     }
+  }
+
+  /// Regenerates completely fresh UUID credentials (`_deviceId` and `_deviceToken`),
+  /// saves them to SharedPreferences and SecureStorage, and calls `apiClient.registerDevice`.
+  /// Used for self-healing when device tokens become desynchronized or rejected (HTTP 401).
+  Future<void> resetAndRegenerateCredentials(BackendApiClient apiClient) async {
+    final prefs = await SharedPreferences.getInstance();
+    const uuid = Uuid();
+
+    _deviceId = 'dev_${uuid.v4()}';
+    _deviceToken = 'token_${uuid.v4()}';
+
+    try {
+      await prefs.setString(_keyDeviceId, _deviceId!);
+      await prefs.setString(_keyDeviceToken, _deviceToken!);
+
+      await _secureStorage.write(key: _keyDeviceId, value: _deviceId);
+      await _secureStorage.write(key: _keyDeviceToken, value: _deviceToken);
+      AppLogger.info('DeviceIdentity',
+          'Regenerated credentials saved locally: $_deviceId');
+    } catch (e) {
+      AppLogger.warning(
+          'DeviceIdentity', 'Error persisting regenerated credentials: $e');
+    }
+
+    _isInitialized = true;
+
+    await apiClient.registerDevice(
+      deviceId: _deviceId!,
+      deviceToken: _deviceToken!,
+    );
+    AppLogger.info('DeviceIdentity',
+        'Registered regenerated device with backend: $_deviceId');
   }
 
   /// Alias for backward compatibility.

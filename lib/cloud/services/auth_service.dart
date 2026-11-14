@@ -633,6 +633,9 @@ class AuthService extends ChangeNotifier {
           'Failed to clear SyncCoordinator outbox during logout', e, st);
     }
 
+    // Clear cached encryption keys from memory
+    CryptoService.instance.clearCachedKeys();
+
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyUserId);
