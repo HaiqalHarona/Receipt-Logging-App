@@ -117,6 +117,38 @@ class BackendApiClient {
     return null;
   }
 
+  /// Checks if the response body contains the invalid device token detail.
+  bool _isInvalidDeviceTokenError(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map && body['detail'] != null) {
+        final detail = body['detail'].toString().toLowerCase();
+        if (detail.contains('invalid device authentication token')) {
+          return true;
+        }
+      }
+    } catch (_) {}
+    return response.body
+        .toLowerCase()
+        .contains('invalid device authentication token');
+  }
+
+  /// Determines whether a request is a guest-mode request based on URI and headers.
+  bool _isGuestRequest(Uri uri, Map<String, String> headers) {
+    if (uri.queryParameters['request_type']?.toLowerCase() == 'guest') {
+      return true;
+    }
+    final reqType = headers['X-Request-Type']?.toLowerCase();
+    if (reqType == 'guest') return true;
+    if ((headers.containsKey('X-Device-Name') ||
+            headers.containsKey('X-Device-Token')) &&
+        !headers.containsKey('Authorization') &&
+        !headers.containsKey('X-User-Token')) {
+      return true;
+    }
+    return false;
+  }
+
   Future<http.Response> _sendRequest(
     String method,
     Uri uri, {
@@ -168,11 +200,52 @@ class BackendApiClient {
       AppLogger.info('HTTP',
           '<-- ${response.statusCode} $methodUpper $path (${stopwatch.elapsedMilliseconds}ms)');
 
-      // Handle 401 Unauthorized token expiration transparently
+      // Handle 401 Unauthorized token expiration & guest device self-healing transparently
       if (response.statusCode == 401 &&
           !isRetry &&
           !uri.path.contains('/user/login') &&
-          !uri.path.contains('/user/refresh')) {
+          !uri.path.contains('/user/refresh') &&
+          !uri.path.contains('/devices/register')) {
+        final isInvalidDeviceToken = _isInvalidDeviceTokenError(response);
+        final isGuest = _isGuestRequest(uri, requestHeaders);
+
+        if (isInvalidDeviceToken || isGuest) {
+          AppLogger.info('HTTP',
+              '401 encountered on guest request or invalid device token, triggering device self-healing...');
+          await DeviceIdentityService.instance
+              .resetAndRegenerateCredentials(this);
+
+          // Update headers with new credentials
+          requestHeaders['X-Device-Name'] =
+              DeviceIdentityService.instance.deviceId;
+          requestHeaders['X-Device-Token'] =
+              DeviceIdentityService.instance.deviceToken;
+
+          // Update URI query parameters if device_name or device_token were present
+          var retryUri = uri;
+          if (uri.queryParameters.containsKey('device_name') ||
+              uri.queryParameters.containsKey('device_token')) {
+            final updatedParams = Map<String, String>.from(uri.queryParameters);
+            if (updatedParams.containsKey('device_name')) {
+              updatedParams['device_name'] =
+                  DeviceIdentityService.instance.deviceId;
+            }
+            if (updatedParams.containsKey('device_token')) {
+              updatedParams['device_token'] =
+                  DeviceIdentityService.instance.deviceToken;
+            }
+            retryUri = uri.replace(queryParameters: updatedParams);
+          }
+
+          return await _sendRequest(
+            method,
+            retryUri,
+            headers: requestHeaders,
+            body: body,
+            isRetry: true,
+          );
+        }
+
         final currentRefreshToken = AuthService.instance.refreshToken;
         if (currentRefreshToken != null && currentRefreshToken.isNotEmpty) {
           AppLogger.info(
@@ -915,8 +988,27 @@ class BackendApiClient {
       AppLogger.info('HTTP',
           '<-- ${response.statusCode} POST $path (${stopwatch.elapsedMilliseconds}ms)');
 
-      // Handle 401 Unauthorized with transparent token refresh (mirrors _sendRequest)
+      // Handle 401 Unauthorized with transparent token refresh or guest device self-healing (mirrors _sendRequest)
       if (response.statusCode == 401 && !isRetry) {
+        final isInvalidDeviceToken = _isInvalidDeviceTokenError(response);
+        final isGuest = requestType.trim().toLowerCase() == 'guest';
+
+        if (isInvalidDeviceToken || isGuest) {
+          AppLogger.info('HTTP',
+              '401 encountered on guest parse-many, triggering device credential self-healing...');
+          await DeviceIdentityService.instance
+              .resetAndRegenerateCredentials(this);
+          return await _parseManyReceiptImagesInternal(
+            imageFiles: imageFiles,
+            requestType: requestType,
+            deviceName: DeviceIdentityService.instance.deviceId,
+            deviceToken: DeviceIdentityService.instance.deviceToken,
+            username: username,
+            userToken: userToken,
+            isRetry: true,
+          );
+        }
+
         final currentRefreshToken = AuthService.instance.refreshToken;
         if (currentRefreshToken != null && currentRefreshToken.isNotEmpty) {
           AppLogger.info(

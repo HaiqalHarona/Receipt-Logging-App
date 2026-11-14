@@ -106,7 +106,7 @@ android {
             if (releaseSigning.storeFile != null && releaseSigning.storeFile!!.exists()) {
                 signingConfig = releaseSigning
             } else {
-                logger.warn("[TODO-35] Release signing credentials not detected. Release builds will fail signing validation unless provided via key.properties or CI environment variables.")
+                logger.warn("Release signing credentials not detected. Release builds will fail signing validation unless provided via key.properties or CI environment variables.")
                 signingConfig = releaseSigning
             }
             proguardFiles(
