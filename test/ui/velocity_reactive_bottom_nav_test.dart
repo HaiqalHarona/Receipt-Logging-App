@@ -3,7 +3,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
-import 'package:flutter/material.dart';
 import 'package:reciept_logging/ui/core/router/main_tab_shell.dart';
 import 'package:reciept_logging/ui/core/widgets/bottom_nav_bar.dart';
 import 'package:reciept_logging/services/tutorial_service.dart';

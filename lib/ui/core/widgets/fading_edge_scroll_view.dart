@@ -1,6 +1,6 @@
 // File: lib/ui/core/widgets/fading_edge_scroll_view.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 
 /// Wraps scrollable content with an opacity gradient mask on top and bottom.
 ///

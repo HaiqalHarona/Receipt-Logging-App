@@ -1,6 +1,6 @@
 // File: lib/ui/core/widgets/app_snack_bar.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../theme/theme_controller.dart';
 
 /// Reusable custom SnackBar component with rounded corners,

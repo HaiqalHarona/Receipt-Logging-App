@@ -7,7 +7,7 @@
 //   complete  — check icon, completion text, 'Review' + 'X' buttons
 //   error     — error icon, error message, optional 'Retry' + 'X' buttons
 
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../router/app_router.dart';
 import '../theme/theme_controller.dart';
 

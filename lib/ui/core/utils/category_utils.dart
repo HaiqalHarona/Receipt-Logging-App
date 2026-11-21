@@ -1,6 +1,6 @@
 // File: lib/ui/core/utils/category_utils.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../../../services/category_service.dart';
 
 /// Centralized Category Utilities for color coding, emoji stripping, and icon mapping.

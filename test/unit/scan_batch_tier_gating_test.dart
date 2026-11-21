@@ -1,6 +1,6 @@
 // File: test/unit/scan_batch_tier_gating_test.dart
 
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:reciept_logging/cloud/models/quota_models.dart';
 import 'package:reciept_logging/cloud/services/quota_service.dart';

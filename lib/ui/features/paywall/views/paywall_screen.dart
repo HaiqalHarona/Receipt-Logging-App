@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../../subscription/views/premium_paywall_sheet.dart';
 
 class PaywallScreen extends StatelessWidget {
