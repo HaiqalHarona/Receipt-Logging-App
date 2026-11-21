@@ -2,18 +2,227 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../cloud/api/api_config.dart';
 import '../cloud/api/backend_api_client.dart';
 import '../cloud/models/receipt_models.dart';
 import '../cloud/services/auth_service.dart';
+import '../cloud/services/quota_service.dart';
 import '../data/mappers/line_item_mapper.dart';
 import '../domain/models/receipt.dart';
 import '../ui/core/router/app_router.dart';
+import '../ui/core/theme/theme_controller.dart';
 import '../ui/core/widgets/scan_progress_snack_bar.dart';
 import 'app_logger_service.dart';
+import 'image_compression_service.dart';
+import 'tutorial_service.dart';
+
+enum BatchLimitAction { upgrade, trim, cancel }
+
+/// Displays an intercept bottom sheet when a user exceeds their tier batch limit
+/// (Free tier > 5 receipts, Premium tier > 10 receipts).
+Future<BatchLimitAction> _showBatchLimitSheet(
+  BuildContext context,
+  int totalCount, {
+  required bool isFreeTier,
+}) async {
+  final action = await showModalBottomSheet<BatchLimitAction>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (ctx) => BatchLimitSheetContent(
+      totalCount: totalCount,
+      isFreeTier: isFreeTier,
+    ),
+  );
+  return action ?? BatchLimitAction.cancel;
+}
+
+class BatchLimitSheetContent extends StatelessWidget {
+  const BatchLimitSheetContent({
+    super.key,
+    required this.totalCount,
+    this.isFreeTier = true,
+  });
+
+  final int totalCount;
+  final bool isFreeTier;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppThemeController.instance;
+    final bg = theme.currentBaseColor;
+    final textPrimary = theme.textColor;
+    final textSecondary = theme.secondaryTextColor;
+    final accent = theme.accentColor;
+
+    final title = isFreeTier ? 'Bulk Scan Limit (Free Tier)' : 'Bulk Scan Limit';
+    final subtitle = isFreeTier ? '5 receipts maximum on Free' : '10 receipts maximum per batch';
+    final body = isFreeTier
+        ? 'Free tier supports scanning up to 5 receipts at a time. Upgrade to Premium to scan all $totalCount receipts at once with 4x faster parallel processing!'
+        : 'Bulk scanning supports up to 10 receipts at a time to ensure optimal processing speed and reliability. You have selected $totalCount receipts.';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: (isFreeTier ? Colors.amber : accent).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isFreeTier ? Icons.bolt : Icons.layers_outlined,
+                  color: isFreeTier ? Colors.amber : accent,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            body,
+            style: TextStyle(
+              fontSize: 14.5,
+              height: 1.45,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (isFreeTier) ...[
+            // Free Tier: Primary Upgrade CTA
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.upgrade),
+              icon: const Icon(Icons.star, size: 18),
+              label: Text('Upgrade to Premium ($totalCount receipts)'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.amber.shade700,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Trim to 5 option
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.trim),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                side: BorderSide(color: textSecondary.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Scan First 5 Receipts for Free',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.cancel),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: textSecondary),
+              ),
+            ),
+          ] else ...[
+            // Premium Tier: Trim to 10 option (Primary CTA, no paywall)
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.trim),
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text('Scan First 10 Receipts'),
+              style: FilledButton.styleFrom(
+                backgroundColor: accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(BatchLimitAction.cancel),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                side: BorderSide(color: textSecondary.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 /// Singleton controller that manages one active scan batch at a time.
 ///
@@ -63,61 +272,161 @@ class ScanBatchController extends ChangeNotifier {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
+  Future<List<XFile>?> _enforceBatchLimit(
+      List<XFile> images, BuildContext? context) async {
+    final isPremium = QuotaService.instance.isPremium;
+    final limit = isPremium ? 10 : 5;
+
+    if (images.length <= limit) {
+      return images;
+    }
+
+    final navContext = context ?? rootNavigatorKey.currentContext;
+    if (navContext == null || !navContext.mounted) {
+      return images.take(limit).toList();
+    }
+
+    final action = await _showBatchLimitSheet(
+      navContext,
+      images.length,
+      isFreeTier: !isPremium,
+    );
+
+    if (action == BatchLimitAction.upgrade) {
+      appRouter.push('/paywall');
+      return null;
+    }
+    if (action == BatchLimitAction.trim) {
+      return images.take(limit).toList();
+    }
+    return null;
+  }
+
   /// Submits [images] to POST /scan/parse-many (1–10 files), navigates the user
   /// to /dashboard, and opens an SSE stream for real-time progress updates.
   ///
   /// Shows a persistent [ScanProgressSnackBar] with Cancel / Review / Retry actions.
-  Future<void> startBatchScan(List<XFile> images, [BuildContext? context]) async {
+  Future<void> startBatchScan(List<XFile> images,
+      [BuildContext? context]) async {
     if (images.isEmpty) return;
 
-    AppLogger.info('ScanBatch', 'Starting batch scan for ${images.length} image(s)');
+    final resolvedImages = await _enforceBatchLimit(images, context);
+    if (resolvedImages == null || resolvedImages.isEmpty) return;
+    images = resolvedImages;
+
+    AppLogger.info(
+        'ScanBatch', 'Starting batch scan for ${images.length} image(s)');
 
     _completedReceipts = [];
     _activeImages = List.from(images);
-    _activeImageMap = {
-      for (final xf in images)
-        (xf.name.isNotEmpty ? xf.name : xf.path.split('/').last): xf.path,
-    };
+    _activeImageMap = {};
+    for (final xf in images) {
+      final name = xf.name;
+      final path = xf.path;
+      final nameBase = _extractBasename(name);
+      final pathBase = _extractBasename(path);
+
+      if (name.isNotEmpty) {
+        _activeImageMap[name] = path;
+        _activeImageMap[name.toLowerCase()] = path;
+      }
+      if (nameBase.isNotEmpty) {
+        _activeImageMap[nameBase] = path;
+        _activeImageMap[nameBase.toLowerCase()] = path;
+      }
+      if (path.isNotEmpty) {
+        _activeImageMap[path] = path;
+        _activeImageMap[path.toLowerCase()] = path;
+      }
+      if (pathBase.isNotEmpty) {
+        _activeImageMap[pathBase] = path;
+        _activeImageMap[pathBase.toLowerCase()] = path;
+      }
+    }
 
     // ── Resolve identity credentials ─────────────────────────────────────
     final isUser = AuthService.instance.isLoggedIn &&
-        AuthService.instance.currentUsername != null &&
-        AuthService.instance.currentUserToken != null;
+        AuthService.instance.currentUsername != null;
 
     final requestType = isUser ? 'user' : 'guest';
     final deviceName = isUser ? null : ApiConfig.deviceId;
     final deviceToken = isUser ? null : ApiConfig.deviceToken;
     final username = isUser ? AuthService.instance.currentUsername : null;
-    final userToken = isUser ? AuthService.instance.currentUserToken : null;
 
-    // ── Read image bytes ──────────────────────────────────────────────────
+    // ── Read and compress image bytes for OCR scanning ────────────────────
     List<({List<int> bytes, String filename})> imageFiles;
     try {
       imageFiles = await Future.wait(images.map((xf) async {
-        final bytes = await File(xf.path).readAsBytes();
-        final filename = xf.name.isNotEmpty ? xf.name : xf.path.split('/').last;
+        final bytes = await ImageCompressionService.instance.compressForScan(xf.path);
+        var filename = _extractBasename(xf.name.isNotEmpty ? xf.name : xf.path);
+        if (filename.isEmpty) {
+          filename = 'receipt_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        }
         return (bytes: bytes as List<int>, filename: filename);
       }));
     } catch (e) {
-      AppLogger.error('ScanBatch', 'Failed to read image bytes', e);
+      AppLogger.error('ScanBatch', 'Failed to read/compress image bytes', e);
       _showError('Could not read image files. Please try again.', images);
       return;
     }
 
-    // ── POST /scan/parse-many ────────────────────────────────────────────
-    BulkJobCreateResponseDto batchResponse;
-    try {
-      batchResponse = await _api.parseManyReceiptImages(
-        imageFiles: imageFiles,
-        requestType: requestType,
-        deviceName: deviceName,
-        deviceToken: deviceToken,
-        username: username,
-        userToken: userToken,
-      );
-    } catch (e) {
-      AppLogger.error('ScanBatch', 'POST /scan/parse-many failed', e);
-      final msg = e is ApiException ? e.message : e.toString();
+    // ── POST /scan/parse-many (with hidden one-time auto-retry) ───────────
+    BulkJobCreateResponseDto? batchResponse;
+    const maxAttempts = 2;
+    Object? lastError;
+
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        batchResponse = await _api.parseManyReceiptImages(
+          imageFiles: imageFiles,
+          requestType: requestType,
+          deviceName: deviceName,
+          deviceToken: deviceToken,
+          username: username,
+        );
+        QuotaService.instance.recordLocalScanIncrement(imageFiles.length);
+        unawaited(QuotaService.instance.refreshQuota());
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+        final isRetryable = _isRetryableError(e);
+        if (!isRetryable || attempt >= maxAttempts) {
+          break;
+        }
+        AppLogger.warning(
+          'ScanBatch',
+          'Scan attempt $attempt failed ($e). Performing hidden auto-retry without showing error snackbar...',
+        );
+        // If 401 or token expired, attempt token refresh before retrying
+        if (e is ApiException && e.statusCode == 401) {
+          final currentRefreshToken = AuthService.instance.refreshToken;
+          if (currentRefreshToken != null && currentRefreshToken.isNotEmpty) {
+            try {
+              final newTokens = await _api.refreshToken(currentRefreshToken);
+              if (newTokens != null) {
+                await AuthService.instance.updateJwtTokens(
+                  accessToken: newTokens.accessToken,
+                  refreshToken: newTokens.refreshToken,
+                );
+              }
+            } catch (refErr) {
+              AppLogger.warning(
+                  'ScanBatch', 'Silent token refresh failed: $refErr');
+            }
+          }
+        }
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+    }
+
+    if (batchResponse == null) {
+      AppLogger.error(
+          'ScanBatch', 'POST /scan/parse-many failed after retry', lastError);
+      final msg = lastError is ApiException
+          ? lastError.message
+          : (lastError?.toString() ?? 'Scan failed.');
+      unawaited(QuotaService.instance.refreshQuota());
       _showError(msg, images);
       return;
     }
@@ -125,7 +434,8 @@ class ScanBatchController extends ChangeNotifier {
     _activeBatchId = batchResponse.batchId;
     notifyListeners();
     final total = batchResponse.totalJobs;
-    AppLogger.info('ScanBatch', 'Batch created: ${batchResponse.batchId} ($total jobs)');
+    AppLogger.info(
+        'ScanBatch', 'Batch created: ${batchResponse.batchId} ($total jobs)');
 
     // ── Navigate to Dashboard ────────────────────────────────────────────
     appRouter.go('/dashboard');
@@ -134,9 +444,14 @@ class ScanBatchController extends ChangeNotifier {
     await Future.delayed(const Duration(milliseconds: 250));
 
     // ── Show persistent progress SnackBar ────────────────────────────────
+    final isPremium = QuotaService.instance.isPremium;
+    final progressMsg = 'Scanning receipts (0/$total)…';
+
     ScanProgressSnackBar.show(
-      message: 'Scanning receipt${total > 1 ? 's' : ''} (0/$total)…',
+      message: progressMsg,
+      badgeText: isPremium ? 'Parallel' : 'Sequential',
       onCancel: () => _cancel(),
+      onUpgrade: !isPremium ? () => appRouter.push('/paywall') : null,
     );
 
     // ── Open SSE stream ───────────────────────────────────────────────────
@@ -147,7 +462,6 @@ class ScanBatchController extends ChangeNotifier {
       deviceName: deviceName,
       deviceToken: deviceToken,
       username: username,
-      userToken: userToken,
     );
 
     _listenSse(
@@ -167,28 +481,32 @@ class ScanBatchController extends ChangeNotifier {
     String pendingEvent = '';
     String pendingData = '';
 
-    _sseSubscription = stream.listen(
-      (chunk) {
-        // SSE is newline-delimited. Split chunk on newlines and process each line.
-        for (final rawLine in chunk.split('\n')) {
-          final line = rawLine.trimRight();
+    _sseSubscription = stream
+        .transform(const LineSplitter())
+        .listen(
+      (line) {
+        final trimmed = line.trimRight();
 
-          if (line.startsWith('event:')) {
-            pendingEvent = line.substring(6).trim();
-          } else if (line.startsWith('data:')) {
-            pendingData = line.substring(5).trim();
-          } else if (line.startsWith(':')) {
-            // keep-alive comment — ignore
-          } else if (line.isEmpty && pendingEvent.isNotEmpty) {
-            _handleSseEvent(
-              event: pendingEvent,
-              data: pendingData,
-              batchId: batchId,
-              total: total,
-            );
-            pendingEvent = '';
-            pendingData = '';
+        if (trimmed.startsWith('event:')) {
+          pendingEvent = trimmed.substring(6).trim();
+        } else if (trimmed.startsWith('data:')) {
+          final content = trimmed.length > 5 ? trimmed.substring(5).trim() : '';
+          if (pendingData.isEmpty) {
+            pendingData = content;
+          } else {
+            pendingData += '\n$content';
           }
+        } else if (trimmed.startsWith(':')) {
+          // keep-alive comment — ignore
+        } else if (trimmed.isEmpty && pendingEvent.isNotEmpty) {
+          _handleSseEvent(
+            event: pendingEvent,
+            data: pendingData,
+            batchId: batchId,
+            total: total,
+          );
+          pendingEvent = '';
+          pendingData = '';
         }
       },
       onError: (Object e) {
@@ -238,30 +556,45 @@ class ScanBatchController extends ChangeNotifier {
         final json = jsonDecode(data) as Map<String, dynamic>;
         final dto = BulkBatchStatusResponseDto.fromJson(json);
         final receipts = dto.completedJobsList
-            .map((job) => _jobToReceipt(job, _activeImageMap))
+            .asMap()
+            .entries
+            .map((entry) => _jobToReceipt(
+                  entry.value,
+                  _activeImageMap,
+                  _activeImages,
+                  entry.key,
+                ))
             .toList();
         final failedJobs = dto.failedJobsList;
 
-        AppLogger.info(
-            'ScanBatch', 'Batch $batchId complete: ${receipts.length}/$total receipts parsed, ${failedJobs.length} failed');
+        AppLogger.info('ScanBatch',
+            'Batch $batchId complete: ${receipts.length}/$total receipts parsed, ${failedJobs.length} failed');
 
         if (receipts.isEmpty) {
           // All jobs failed
           _completedReceipts = [];
           notifyListeners();
           final count = total > 0 ? total : dto.jobs.length;
+          final firstError =
+              failedJobs.isNotEmpty ? failedJobs.first.error : null;
           final message = count == 1
-              ? (failedJobs.isNotEmpty && failedJobs.first.filename != null
-                  ? 'Scan failed for ${failedJobs.first.filename}. Please try again.'
-                  : 'Scan failed for receipt. Please try again.')
+              ? (firstError != null && firstError.isNotEmpty
+                  ? firstError
+                  : (failedJobs.isNotEmpty && failedJobs.first.filename != null
+                      ? 'Scan failed for ${failedJobs.first.filename}. Please try again.'
+                      : 'Scan failed for receipt. Please try again.'))
               : 'Scan failed for $count receipts. Please try again.';
 
           _showError(message, _activeImages.isNotEmpty ? _activeImages : null);
         } else if (failedJobs.isNotEmpty) {
           // Partial success: some completed, some failed
           _completedReceipts = receipts;
+          if (TutorialService.instance.isActive) {
+            TutorialService.instance.setStep(3);
+          }
           notifyListeners();
-          final failedNames = failedJobs.map((j) => j.filename ?? 'receipt').join(', ');
+          final failedNames =
+              failedJobs.map((j) => j.filename ?? 'receipt').join(', ');
           final message =
               '${receipts.length}/$total receipt${receipts.length != 1 ? 's' : ''} ready. Failed: $failedNames';
 
@@ -275,6 +608,9 @@ class ScanBatchController extends ChangeNotifier {
         } else {
           // Full success: all jobs completed
           _completedReceipts = receipts;
+          if (TutorialService.instance.isActive) {
+            TutorialService.instance.setStep(3);
+          }
           notifyListeners();
           ScanProgressSnackBar.showComplete(
             message:
@@ -285,21 +621,29 @@ class ScanBatchController extends ChangeNotifier {
             },
           );
         }
-      } catch (e) {
-        AppLogger.error('ScanBatch', 'Failed to parse batch_complete payload', e);
+      } catch (e, st) {
+        AppLogger.error(
+            'ScanBatch', 'Failed to parse batch_complete payload: $e\nPayload was: $data', e, st);
         _completedReceipts = [];
         notifyListeners();
-        _showError('Scan completed but results could not be read.', _activeImages.isNotEmpty ? _activeImages : null);
+        _showError('Scan completed but results could not be read.',
+            _activeImages.isNotEmpty ? _activeImages : null);
       }
     } else if (event == 'progress') {
       try {
         final json = jsonDecode(data) as Map<String, dynamic>;
         final completed = (json['completed_jobs'] as int?) ?? 0;
         final totalJobs = (json['total_jobs'] as int?) ?? total;
-        AppLogger.info('ScanBatch', 'Batch $batchId progress: $completed/$totalJobs completed');
+        AppLogger.info('ScanBatch',
+            'Batch $batchId progress: $completed/$totalJobs completed');
+        final isPremium = QuotaService.instance.isPremium;
+        final progressMsg = 'Scanning receipts ($completed/$totalJobs)…';
+
         ScanProgressSnackBar.show(
-          message: 'Scanning receipt${totalJobs > 1 ? 's' : ''} ($completed/$totalJobs)…',
+          message: progressMsg,
+          badgeText: isPremium ? 'Parallel' : 'Sequential',
           onCancel: () => _cancel(),
+          onUpgrade: !isPremium ? () => appRouter.push('/paywall') : null,
         );
       } catch (e) {
         AppLogger.warning('ScanBatch', 'Failed to parse progress event: $e');
@@ -311,7 +655,8 @@ class ScanBatchController extends ChangeNotifier {
       _activeBatchId = null;
       _completedReceipts = [];
       notifyListeners();
-      _showError('Scan timed out. Please try again.', _activeImages.isNotEmpty ? _activeImages : null);
+      _showError('Scan timed out. Please try again.',
+          _activeImages.isNotEmpty ? _activeImages : null);
     } else if (event == 'error') {
       _isTerminalEventReceived = true;
       _sseSubscription?.cancel();
@@ -339,38 +684,138 @@ class ScanBatchController extends ChangeNotifier {
     _activeBatchId = null;
     _isTerminalEventReceived = false;
     _completedReceipts = [];
+    _activeImages = [];
+    _activeImageMap = {};
     ScanProgressSnackBar.dismiss();
     notifyListeners();
   }
 
-  // ── Error Snack ───────────────────────────────────────────────────────────
+  // ── Error & Helpers ───────────────────────────────────────────────────────
+
+  static String _extractBasename(String pathOrName) {
+    if (pathOrName.isEmpty) return '';
+    final lastSlash = pathOrName.lastIndexOf('/');
+    final lastBackslash = pathOrName.lastIndexOf('\\');
+    final cut = lastSlash > lastBackslash ? lastSlash : lastBackslash;
+    return cut >= 0 ? pathOrName.substring(cut + 1) : pathOrName;
+  }
+
+  bool _isRetryableError(Object e) {
+    if (e is RateLimitException) return false;
+    if (e is ApiException) {
+      if (e.statusCode == 429 || e.statusCode == 400) return false;
+      final lowerMsg = e.message.toLowerCase();
+      if (lowerMsg.contains('quota') ||
+          lowerMsg.contains('rate limit') ||
+          lowerMsg.contains('exceeds maximum allowed size')) {
+        return false;
+      }
+      return true;
+    }
+    final str = e.toString().toLowerCase();
+    if (str.contains('quota') || str.contains('429')) return false;
+    return true;
+  }
+
+  static const String _kFriendlyErrorMessage =
+      'Oops, something went wrong! Please try again later.';
+
+  String _sanitizeErrorMessage(String? raw) {
+    if (raw == null || raw.isEmpty) return _kFriendlyErrorMessage;
+    final lower = raw.toLowerCase();
+    // Preserve descriptive quota exhaustion messages containing countdown/UTC
+    if (lower.contains('quota reached') ||
+        lower.contains('resets in') ||
+        lower.contains('00:00 utc') ||
+        lower.contains('daily scan quota') ||
+        lower.contains('daily chat token quota')) {
+      return raw;
+    }
+    if (lower.contains('token usage limit') ||
+        lower.contains('high demand') ||
+        lower.contains('429') ||
+        lower.contains('500') ||
+        lower.contains('502') ||
+        lower.contains('503') ||
+        lower.contains('504') ||
+        lower.contains('quota') ||
+        lower.contains('resource_exhausted') ||
+        lower.contains('resourceexhausted') ||
+        lower.contains('rate limit') ||
+        lower.contains('too many requests') ||
+        lower.contains('internal error') ||
+        lower.contains('oops, something went wrong')) {
+      return _kFriendlyErrorMessage;
+    }
+    return raw;
+  }
 
   void _showError(String message, List<XFile>? retryImages) {
+    final lower = message.toLowerCase();
+    if (lower.contains('quota') || lower.contains('429')) {
+      unawaited(QuotaService.instance.refreshQuota());
+    }
+    final friendlyMessage = _sanitizeErrorMessage(message);
+    if (TutorialService.instance.isActive) {
+      TutorialService.instance.notifyScanFailed(friendlyMessage);
+    }
     ScanProgressSnackBar.showError(
-      message: message,
-      onRetry: retryImages != null
-          ? () => startBatchScan(retryImages)
-          : null,
+      message: friendlyMessage,
+      onRetry: retryImages != null ? () => startBatchScan(retryImages) : null,
     );
   }
 
   // ── Job → Domain mapper ───────────────────────────────────────────────────
 
-  Receipt _jobToReceipt(BulkJobStatusDto job, Map<String, String> imagePathMap) {
+  Receipt _jobToReceipt(
+    BulkJobStatusDto job,
+    Map<String, String> imagePathMap,
+    List<XFile> orderedImages,
+    int jobIndex,
+  ) {
     final dto = job.data!;
-    final id = job.jobId.isNotEmpty ? job.jobId : 'res-${DateTime.now().millisecondsSinceEpoch}';
+    final isGuest = !AuthService.instance.isLoggedIn;
+    final id = isGuest
+        ? 'res-guest-${job.jobId.isNotEmpty ? job.jobId : DateTime.now().millisecondsSinceEpoch}'
+        : 'res-scan-${job.jobId.isNotEmpty ? job.jobId : DateTime.now().millisecondsSinceEpoch}';
     final lineItems = dto.lineItems.map((li) => li.toDomain()).toList();
     final items = dto.lineItems.map((li) {
       final parts = <String>[li.description];
       if (li.totalPrice != null) {
         parts.add('${dto.currency} ${li.totalPrice!.toStringAsFixed(2)}');
       } else if (li.unitPrice != null && li.quantity != null) {
-        parts.add('${li.quantity} × ${dto.currency} ${li.unitPrice!.toStringAsFixed(2)}');
+        parts.add(
+            '${li.quantity} × ${dto.currency} ${li.unitPrice!.toStringAsFixed(2)}');
       }
       return parts.join(' — ');
     }).toList();
 
-    final imagePath = job.filename != null ? imagePathMap[job.filename] : null;
+    // Pass 1: exact filename match or basename match in active image map
+    String? imagePath;
+    if (job.filename != null && job.filename!.isNotEmpty) {
+      final raw = job.filename!;
+      final base = _extractBasename(raw);
+      imagePath = imagePathMap[raw] ??
+          imagePathMap[raw.toLowerCase()] ??
+          imagePathMap[base] ??
+          imagePathMap[base.toLowerCase()];
+    }
+
+    // Pass 2: fallback to active images by index or single item
+    if (imagePath == null ||
+        imagePath.isEmpty ||
+        !File(imagePath).existsSync()) {
+      if (orderedImages.length == 1) {
+        imagePath = orderedImages.first.path;
+      } else if (jobIndex >= 0 && jobIndex < orderedImages.length) {
+        imagePath = orderedImages[jobIndex].path;
+      }
+    }
+
+    AppLogger.info(
+      'ScanBatch',
+      'Mapped job ${job.jobId} (filename=${job.filename}) to imagePath=$imagePath (guest=$isGuest)',
+    );
 
     return Receipt(
       id: id,
@@ -389,8 +834,18 @@ class ScanBatchController extends ChangeNotifier {
     try {
       final dt = DateTime.parse(raw);
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${months[dt.month - 1]} ${dt.day.toString().padLeft(2, '0')}, ${dt.year}';
     } catch (_) {
@@ -401,11 +856,20 @@ class ScanBatchController extends ChangeNotifier {
   String _normaliseCategory(String? raw) {
     if (raw == null || raw.isEmpty) return '';
     final lower = raw.toLowerCase();
-    if (lower.contains('grocer') || lower.contains('supermarket')) return 'Groceries';
-    if (lower.contains('dining') || lower.contains('restaurant') || lower.contains('food')) return 'Dining';
-    if (lower.contains('transport') || lower.contains('fuel') || lower.contains('gas')) return 'Transport';
-    if (lower.contains('shop') || lower.contains('retail') || lower.contains('clothe')) return 'Shopping';
-    if (lower.contains('electron') || lower.contains('tech') || lower.contains('gadget')) return 'Electronics';
+    if (lower.contains('grocer') || lower.contains('supermarket'))
+      return 'Groceries';
+    if (lower.contains('dining') ||
+        lower.contains('restaurant') ||
+        lower.contains('food')) return 'Dining';
+    if (lower.contains('transport') ||
+        lower.contains('fuel') ||
+        lower.contains('gas')) return 'Transport';
+    if (lower.contains('shop') ||
+        lower.contains('retail') ||
+        lower.contains('clothe')) return 'Shopping';
+    if (lower.contains('electron') ||
+        lower.contains('tech') ||
+        lower.contains('gadget')) return 'Electronics';
     return '';
   }
 }

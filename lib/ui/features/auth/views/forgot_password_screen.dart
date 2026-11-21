@@ -1,5 +1,6 @@
 // File: lib/ui/features/auth/views/forgot_password_screen.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -28,7 +29,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _onSendResetCode() async {
     final identifier = _identifierController.text.trim();
     if (identifier.isEmpty) {
-      setState(() => _errorMessage = 'Please enter your email or mobile number.');
+      setState(
+          () => _errorMessage = 'Please enter your email or mobile number.');
       return;
     }
 
@@ -38,19 +40,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     try {
-      final res = await BackendApiClient.instance.initiatePasswordReset(identifier);
+      final res =
+          await BackendApiClient.instance.initiatePasswordReset(identifier);
 
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      final devOtp = res['dev_otp'] as String?;
+      final message = res['message'] as String? ??
+          'If an account exists, a reset code has been sent.';
+      final devOtp = kDebugMode ? res['dev_otp'] as String? : null;
 
       AppSnackBar.show(
         context,
-        message: devOtp != null
-            ? 'Reset code: $devOtp (Logged to otp_dev.log)'
-            : 'Reset code requested! Check otp_dev.log for code.',
-        duration: const Duration(seconds: 5),
+        message: devOtp != null ? 'Dev OTP: $devOtp' : message,
+        duration: const Duration(seconds: 4),
       );
 
       // Navigate to OTP verification screen
@@ -87,7 +90,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    NeumorphicIconBadge(
+                    NeumorphicCircularButton(
                       icon: Icons.arrow_back_rounded,
                       iconSize: 20,
                       onTap: () => context.pop(),
@@ -138,10 +141,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
-                      Icon(Icons.contact_mail_rounded, color: textSecondary, size: 20),
+                      Icon(Icons.contact_mail_rounded,
+                          color: textSecondary, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -149,11 +154,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           keyboardType: TextInputType.emailAddress,
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           onChanged: (_) {
-                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                            if (_errorMessage != null)
+                              setState(() => _errorMessage = null);
                           },
                           decoration: InputDecoration(
                             hintText: "user@example.com or +60123456789",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -165,7 +173,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   const SizedBox(height: 8),
                   Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    style:
+                        const TextStyle(color: Colors.redAccent, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 32),
@@ -181,7 +190,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.5, color: Colors.white),
                             )
                           : const Text(
                               "Send Reset Code",

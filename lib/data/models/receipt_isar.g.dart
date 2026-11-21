@@ -37,59 +37,64 @@ const ReceiptIsarModelSchema = CollectionSchema(
       name: r'currency',
       type: IsarType.string,
     ),
-    r'date': PropertySchema(
+    r'currencyRateAtReceiptDate': PropertySchema(
       id: 4,
+      name: r'currencyRateAtReceiptDate',
+      type: IsarType.double,
+    ),
+    r'date': PropertySchema(
+      id: 5,
       name: r'date',
       type: IsarType.string,
     ),
     r'deletedAt': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'deletedAt',
       type: IsarType.dateTime,
     ),
     r'imagePath': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'imagePath',
       type: IsarType.string,
     ),
     r'items': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'items',
       type: IsarType.stringList,
     ),
     r'lineItems': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'lineItems',
       type: IsarType.objectList,
       target: r'LineItemIsarModel',
     ),
     r'merchant': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'merchant',
       type: IsarType.string,
     ),
     r'rawText': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'rawText',
       type: IsarType.string,
     ),
     r'receiptId': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'receiptId',
       type: IsarType.string,
     ),
     r'subtotal': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'subtotal',
       type: IsarType.double,
     ),
     r'taxAmount': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'taxAmount',
       type: IsarType.double,
     ),
     r'totalAmount': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'totalAmount',
       type: IsarType.double,
     )
@@ -239,22 +244,23 @@ void _receiptIsarModelSerialize(
   writer.writeDouble(offsets[1], object.confidenceScore);
   writer.writeDateTime(offsets[2], object.createdAt);
   writer.writeString(offsets[3], object.currency);
-  writer.writeString(offsets[4], object.date);
-  writer.writeDateTime(offsets[5], object.deletedAt);
-  writer.writeString(offsets[6], object.imagePath);
-  writer.writeStringList(offsets[7], object.items);
+  writer.writeDouble(offsets[4], object.currencyRateAtReceiptDate);
+  writer.writeString(offsets[5], object.date);
+  writer.writeDateTime(offsets[6], object.deletedAt);
+  writer.writeString(offsets[7], object.imagePath);
+  writer.writeStringList(offsets[8], object.items);
   writer.writeObjectList<LineItemIsarModel>(
-    offsets[8],
+    offsets[9],
     allOffsets,
     LineItemIsarModelSchema.serialize,
     object.lineItems,
   );
-  writer.writeString(offsets[9], object.merchant);
-  writer.writeString(offsets[10], object.rawText);
-  writer.writeString(offsets[11], object.receiptId);
-  writer.writeDouble(offsets[12], object.subtotal);
-  writer.writeDouble(offsets[13], object.taxAmount);
-  writer.writeDouble(offsets[14], object.totalAmount);
+  writer.writeString(offsets[10], object.merchant);
+  writer.writeString(offsets[11], object.rawText);
+  writer.writeString(offsets[12], object.receiptId);
+  writer.writeDouble(offsets[13], object.subtotal);
+  writer.writeDouble(offsets[14], object.taxAmount);
+  writer.writeDouble(offsets[15], object.totalAmount);
 }
 
 ReceiptIsarModel _receiptIsarModelDeserialize(
@@ -268,24 +274,25 @@ ReceiptIsarModel _receiptIsarModelDeserialize(
   object.confidenceScore = reader.readDoubleOrNull(offsets[1]);
   object.createdAt = reader.readDateTime(offsets[2]);
   object.currency = reader.readString(offsets[3]);
-  object.date = reader.readString(offsets[4]);
-  object.deletedAt = reader.readDateTimeOrNull(offsets[5]);
+  object.currencyRateAtReceiptDate = reader.readDoubleOrNull(offsets[4]);
+  object.date = reader.readString(offsets[5]);
+  object.deletedAt = reader.readDateTimeOrNull(offsets[6]);
   object.id = id;
-  object.imagePath = reader.readStringOrNull(offsets[6]);
-  object.items = reader.readStringList(offsets[7]) ?? [];
+  object.imagePath = reader.readStringOrNull(offsets[7]);
+  object.items = reader.readStringList(offsets[8]) ?? [];
   object.lineItems = reader.readObjectList<LineItemIsarModel>(
-        offsets[8],
+        offsets[9],
         LineItemIsarModelSchema.deserialize,
         allOffsets,
         LineItemIsarModel(),
       ) ??
       [];
-  object.merchant = reader.readString(offsets[9]);
-  object.rawText = reader.readStringOrNull(offsets[10]);
-  object.receiptId = reader.readString(offsets[11]);
-  object.subtotal = reader.readDoubleOrNull(offsets[12]);
-  object.taxAmount = reader.readDoubleOrNull(offsets[13]);
-  object.totalAmount = reader.readDouble(offsets[14]);
+  object.merchant = reader.readString(offsets[10]);
+  object.rawText = reader.readStringOrNull(offsets[11]);
+  object.receiptId = reader.readString(offsets[12]);
+  object.subtotal = reader.readDoubleOrNull(offsets[13]);
+  object.taxAmount = reader.readDoubleOrNull(offsets[14]);
+  object.totalAmount = reader.readDouble(offsets[15]);
   return object;
 }
 
@@ -305,14 +312,16 @@ P _receiptIsarModelDeserializeProp<P>(
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readDoubleOrNull(offset)) as P;
     case 5:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 7:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 8:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 9:
       return (reader.readObjectList<LineItemIsarModel>(
             offset,
             LineItemIsarModelSchema.deserialize,
@@ -320,17 +329,17 @@ P _receiptIsarModelDeserializeProp<P>(
             LineItemIsarModel(),
           ) ??
           []) as P;
-    case 9:
-      return (reader.readString(offset)) as P;
     case 10:
-      return (reader.readStringOrNull(offset)) as P;
-    case 11:
       return (reader.readString(offset)) as P;
+    case 11:
+      return (reader.readStringOrNull(offset)) as P;
     case 12:
-      return (reader.readDoubleOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 13:
       return (reader.readDoubleOrNull(offset)) as P;
     case 14:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 15:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1611,6 +1620,90 @@ extension ReceiptIsarModelQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'currency',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterFilterCondition>
+      currencyRateAtReceiptDateIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'currencyRateAtReceiptDate',
+      ));
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterFilterCondition>
+      currencyRateAtReceiptDateIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'currencyRateAtReceiptDate',
+      ));
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterFilterCondition>
+      currencyRateAtReceiptDateEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'currencyRateAtReceiptDate',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterFilterCondition>
+      currencyRateAtReceiptDateGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'currencyRateAtReceiptDate',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterFilterCondition>
+      currencyRateAtReceiptDateLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'currencyRateAtReceiptDate',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterFilterCondition>
+      currencyRateAtReceiptDateBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'currencyRateAtReceiptDate',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
       ));
     });
   }
@@ -3081,6 +3174,20 @@ extension ReceiptIsarModelQuerySortBy
     });
   }
 
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterSortBy>
+      sortByCurrencyRateAtReceiptDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currencyRateAtReceiptDate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterSortBy>
+      sortByCurrencyRateAtReceiptDateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currencyRateAtReceiptDate', Sort.desc);
+    });
+  }
+
   QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterSortBy> sortByDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'date', Sort.asc);
@@ -3265,6 +3372,20 @@ extension ReceiptIsarModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterSortBy>
+      thenByCurrencyRateAtReceiptDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currencyRateAtReceiptDate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterSortBy>
+      thenByCurrencyRateAtReceiptDateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currencyRateAtReceiptDate', Sort.desc);
+    });
+  }
+
   QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QAfterSortBy> thenByDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'date', Sort.asc);
@@ -3434,6 +3555,13 @@ extension ReceiptIsarModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QDistinct>
+      distinctByCurrencyRateAtReceiptDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'currencyRateAtReceiptDate');
+    });
+  }
+
   QueryBuilder<ReceiptIsarModel, ReceiptIsarModel, QDistinct> distinctByDate(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3536,6 +3664,13 @@ extension ReceiptIsarModelQueryProperty
   QueryBuilder<ReceiptIsarModel, String, QQueryOperations> currencyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'currency');
+    });
+  }
+
+  QueryBuilder<ReceiptIsarModel, double?, QQueryOperations>
+      currencyRateAtReceiptDateProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'currencyRateAtReceiptDate');
     });
   }
 

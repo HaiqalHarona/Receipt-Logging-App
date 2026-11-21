@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../services/isar_service.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../data/seeders/receipt_seeder.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 
@@ -54,19 +55,15 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
             children: [
               // Top Bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Row(
                   children: [
-                    NeumorphicButton(
-                      style: NeumorphicStyle(
-                        depth: 3,
-                        intensity: 0.8,
-                        boxShape: const NeumorphicBoxShape.circle(),
-                        color: NeumorphicTheme.baseColor(context),
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      onPressed: () => context.pop(),
-                      child: Icon(Icons.arrow_back_rounded, color: textPrimary, size: 20),
+                    NeumorphicCircularButton(
+                      icon: Icons.arrow_back_rounded,
+                      iconSize: 20,
+                      depth: 3.0,
+                      onTap: () => context.pop(),
                     ),
                     const SizedBox(width: 16),
                     Text(
@@ -78,16 +75,12 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                       ),
                     ),
                     const Spacer(),
-                    NeumorphicButton(
-                      style: NeumorphicStyle(
-                        depth: 3,
-                        intensity: 0.8,
-                        boxShape: const NeumorphicBoxShape.circle(),
-                        color: NeumorphicTheme.baseColor(context),
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      onPressed: () => ReceiptRepository.instance.init(),
-                      child: Icon(Icons.refresh_rounded, color: accent, size: 20),
+                    NeumorphicCircularButton(
+                      icon: Icons.refresh_rounded,
+                      iconColor: accent,
+                      iconSize: 20,
+                      depth: 3.0,
+                      onTap: () => ReceiptRepository.instance.init(),
                     ),
                   ],
                 ),
@@ -96,7 +89,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
               // Content Area
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -105,7 +99,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                         style: NeumorphicStyle(
                           depth: -2,
                           intensity: 0.7,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+                          boxShape: NeumorphicBoxShape.roundRect(
+                              BorderRadius.circular(16)),
                           color: NeumorphicTheme.baseColor(context),
                         ),
                         padding: const EdgeInsets.all(16),
@@ -114,7 +109,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.storage_rounded, color: accent, size: 18),
+                                Icon(Icons.storage_rounded,
+                                    color: accent, size: 18),
                                 const SizedBox(width: 8),
                                 Text(
                                   "Isar Storage Info",
@@ -126,7 +122,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                                 ),
                                 const Spacer(),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: accent.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(8),
@@ -145,7 +142,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                             const SizedBox(height: 12),
                             Text(
                               "Database Path:",
-                              style: TextStyle(fontSize: 11, color: textSecondary),
+                              style:
+                                  TextStyle(fontSize: 11, color: textSecondary),
                             ),
                             const SizedBox(height: 2),
                             Text(
@@ -159,7 +157,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                             const SizedBox(height: 12),
                             Text(
                               "Web Inspector:",
-                              style: TextStyle(fontSize: 11, color: textSecondary),
+                              style:
+                                  TextStyle(fontSize: 11, color: textSecondary),
                             ),
                             const SizedBox(height: 2),
                             Text(
@@ -190,19 +189,22 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                           ),
                           Row(
                             children: [
-                              NeumorphicButton(
-                                style: NeumorphicStyle(
-                                  depth: 2,
-                                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-                                  color: accent.withValues(alpha: 0.15),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              NeumorphicTactileButton(
+                                depth: 2.5,
+                                pressedDepth: 0.0,
+                                pressedScale: 0.97,
+                                color: accent.withValues(alpha: 0.15),
+                                boxShape: NeumorphicBoxShape.roundRect(
+                                    BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
                                 onPressed: () async {
                                   await ReceiptSeeder.seedDatabase();
                                   if (context.mounted) {
                                     AppSnackBar.show(
                                       context,
-                                      message: 'Seeded 24 receipts across 12 months!',
+                                      message:
+                                          'Seeded 24 receipts across 12 months!',
                                     );
                                   }
                                 },
@@ -217,13 +219,16 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                               ),
                               if (receipts.isNotEmpty) ...[
                                 const SizedBox(width: 8),
-                                NeumorphicButton(
-                                  style: NeumorphicStyle(
-                                    depth: 2,
-                                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-                                    color: Colors.redAccent.withValues(alpha: 0.1),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                NeumorphicTactileButton(
+                                  depth: 2.5,
+                                  pressedDepth: 0.0,
+                                  pressedScale: 0.97,
+                                  color:
+                                      Colors.redAccent.withValues(alpha: 0.1),
+                                  boxShape: NeumorphicBoxShape.roundRect(
+                                      BorderRadius.circular(8)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
                                   onPressed: () {
                                     _showClearConfirmDialog(context);
                                   },
@@ -250,7 +255,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                             child: Text(
                               "Isar database is empty.\nScan or add receipts to view them here.",
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: textSecondary, fontSize: 13),
+                              style:
+                                  TextStyle(color: textSecondary, fontSize: 13),
                             ),
                           ),
                         )
@@ -259,7 +265,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: receipts.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final r = receipts[index];
                             final isExpanded = _selectedReceiptJson == r.id;
@@ -267,7 +274,8 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                             return Neumorphic(
                               style: NeumorphicStyle(
                                 depth: 2,
-                                boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
+                                boxShape: NeumorphicBoxShape.roundRect(
+                                    BorderRadius.circular(14)),
                                 color: NeumorphicTheme.baseColor(context),
                               ),
                               padding: const EdgeInsets.all(14),
@@ -301,17 +309,20 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                                     children: [
                                       Text(
                                         r.date,
-                                        style: TextStyle(fontSize: 12, color: textSecondary),
+                                        style: TextStyle(
+                                            fontSize: 12, color: textSecondary),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
                                         "•",
-                                        style: TextStyle(fontSize: 12, color: textSecondary),
+                                        style: TextStyle(
+                                            fontSize: 12, color: textSecondary),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
                                         r.category,
-                                        style: TextStyle(fontSize: 12, color: textSecondary),
+                                        style: TextStyle(
+                                            fontSize: 12, color: textSecondary),
                                       ),
                                       const Spacer(),
                                       GestureDetector(
@@ -322,7 +333,9 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                                           });
                                         },
                                         child: Text(
-                                          isExpanded ? "Hide JSON" : "View JSON",
+                                          isExpanded
+                                              ? "Hide JSON"
+                                              : "View JSON",
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
@@ -338,11 +351,13 @@ class _DbViewerScreenState extends State<DbViewerScreen> {
                                       width: double.infinity,
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.15),
+                                        color: Colors.black
+                                            .withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
-                                        const JsonEncoder.withIndent('  ').convert(r.toJson()),
+                                        const JsonEncoder.withIndent('  ')
+                                            .convert(r.toJson()),
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontFamily: 'monospace',

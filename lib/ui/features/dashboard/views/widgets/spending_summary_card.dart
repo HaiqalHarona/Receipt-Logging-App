@@ -27,14 +27,16 @@ class SpendingSummaryCard extends StatefulWidget {
 }
 
 class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
-  static const int _periodCount = 6;
+  static const int _periodCount = 8;
   static const List<SpendingSummaryPeriod> _periods = [
-    SpendingSummaryPeriod.oneMonth,     // 0: 1m
-    SpendingSummaryPeriod.threeMonths,  // 1: 3m
-    SpendingSummaryPeriod.sixMonths,    // 2: 6m
-    SpendingSummaryPeriod.twelveMonths, // 3: 12m
-    SpendingSummaryPeriod.ytd,          // 4: YTD
-    SpendingSummaryPeriod.allTime,      // 5: All
+    SpendingSummaryPeriod.oneWeek, // 0: 1w
+    SpendingSummaryPeriod.fourWeeks, // 1: 4w
+    SpendingSummaryPeriod.oneMonth, // 2: 1m
+    SpendingSummaryPeriod.threeMonths, // 3: 3m
+    SpendingSummaryPeriod.sixMonths, // 4: 6m
+    SpendingSummaryPeriod.twelveMonths, // 5: 12m
+    SpendingSummaryPeriod.ytd, // 6: YTD
+    SpendingSummaryPeriod.allTime, // 7: All
   ];
 
   late final PageController _pageController;
@@ -42,18 +44,22 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
 
   int _targetIndexForTimeline(TimelineFilter filter) {
     switch (filter) {
-      case TimelineFilter.thisMonth:
+      case TimelineFilter.oneWeek:
         return 0;
-      case TimelineFilter.threeMonths:
+      case TimelineFilter.fourWeeks:
         return 1;
-      case TimelineFilter.sixMonths:
+      case TimelineFilter.thisMonth:
         return 2;
-      case TimelineFilter.twelveMonths:
+      case TimelineFilter.threeMonths:
         return 3;
-      case TimelineFilter.ytd:
+      case TimelineFilter.sixMonths:
         return 4;
-      case TimelineFilter.allTime:
+      case TimelineFilter.twelveMonths:
         return 5;
+      case TimelineFilter.ytd:
+        return 6;
+      case TimelineFilter.allTime:
+        return 7;
     }
   }
 
@@ -72,7 +78,8 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
 
   @override
   Widget build(BuildContext context) {
-    final activeIndex = _targetIndexForTimeline(widget.viewModel.selectedTimeline);
+    final activeIndex =
+        _targetIndexForTimeline(widget.viewModel.selectedTimeline);
 
     if (_currentPage != activeIndex) {
       _currentPage = activeIndex;
@@ -89,20 +96,25 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
       }
     }
 
+    final baseBg = NeumorphicTheme.baseColor(context);
+
     return Neumorphic(
       style: NeumorphicStyle(
-        depth: -3, // Indented recessed container
+        depth: -2.5,
         intensity: 0.8,
-        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-        color: NeumorphicTheme.baseColor(context),
+        color: baseBg,
+        boxShape: NeumorphicBoxShape.roundRect(
+          BorderRadius.circular(12),
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SizedBox(
-        height: 98,
+        height: MediaQuery.textScalerOf(context).scale(98).clamp(98.0, 145.0),
         width: double.infinity,
         child: PageView.builder(
           controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(), // Disabled manual swiping
+          physics:
+              const NeverScrollableScrollPhysics(), // Disabled manual swiping
           itemCount: _periodCount,
           itemBuilder: (context, realIndex) {
             final period = _periods[realIndex];
@@ -116,17 +128,23 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      summary.title,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
-                        color: widget.textSecondary,
+                    Expanded(
+                      child: Text(
+                        summary.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                          color: widget.textSecondary,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: widget.accent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
@@ -157,7 +175,8 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
                 const SizedBox(height: 2),
 
                 // Row 3: Comparison Badge (Red if +%, Green if -%, Gray if 0%, Omitted for All-Time)
-                if (summary.percentageChange != null && summary.comparisonLabel != null) ...[
+                if (summary.percentageChange != null &&
+                    summary.comparisonLabel != null) ...[
                   _buildComparisonBadge(summary),
                   const SizedBox(height: 2),
                 ],
@@ -195,7 +214,9 @@ class _SpendingSummaryCardState extends State<SpendingSummaryCard> {
 
     final IconData badgeIcon = isIncrease
         ? Icons.trending_up_rounded
-        : (isDecrease ? Icons.trending_down_rounded : Icons.trending_flat_rounded);
+        : (isDecrease
+            ? Icons.trending_down_rounded
+            : Icons.trending_flat_rounded);
 
     final String prefix = isIncrease ? '+' : '';
     final String badgeText = '$prefix${change.toStringAsFixed(1)}%';

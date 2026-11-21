@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
-import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/app_logger_service.dart';
 import '../../../core/utils/category_utils.dart';
 
@@ -81,7 +80,8 @@ class HistoryViewModel extends ChangeNotifier {
     } else {
       _selectedCategories.add(category);
     }
-    AppLogger.debug('VM', 'HistoryViewModel toggleCategory "$category" (active: $_selectedCategories)');
+    AppLogger.debug('VM',
+        'HistoryViewModel toggleCategory "$category" (active: $_selectedCategories)');
     notifyListeners();
   }
 
@@ -104,7 +104,9 @@ class HistoryViewModel extends ChangeNotifier {
     if (_sortField != field) {
       _sortField = field;
       _sortStep = 1;
-      _sortAscending = field == HistorySortField.date ? false : true; // Date defaults to Newest first
+      _sortAscending = field == HistorySortField.date
+          ? false
+          : true; // Date defaults to Newest first
     } else if (_sortStep == 1) {
       _sortStep = 2;
       _sortAscending = !_sortAscending;
@@ -113,14 +115,28 @@ class HistoryViewModel extends ChangeNotifier {
       _sortStep = 0;
       _sortAscending = true;
     }
-    AppLogger.debug('VM', 'HistoryViewModel toggleSort field: $field, step: $_sortStep, asc: $_sortAscending');
+    AppLogger.debug('VM',
+        'HistoryViewModel toggleSort field: $field, step: $_sortStep, asc: $_sortAscending');
     notifyListeners();
   }
 
   DateTime _parseDate(String dateStr) {
     try {
       final parts = dateStr.trim().split(' ');
-      final months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      final months = [
+        'jan',
+        'feb',
+        'mar',
+        'apr',
+        'may',
+        'jun',
+        'jul',
+        'aug',
+        'sep',
+        'oct',
+        'nov',
+        'dec'
+      ];
       if (parts.length == 3) {
         final monthStr = parts[0].toLowerCase().substring(0, 3);
         final month = months.indexOf(monthStr) + 1;
@@ -142,9 +158,15 @@ class HistoryViewModel extends ChangeNotifier {
         final merchantMatch = r.merchant.toLowerCase().contains(_searchQuery);
         final categoryMatch = r.category.toLowerCase().contains(_searchQuery);
         final dateMatch = r.date.toLowerCase().contains(_searchQuery);
-        final itemsMatch = r.items.any((item) => item.toLowerCase().contains(_searchQuery));
-        final lineItemsMatch = r.lineItems.any((li) => li.description.toLowerCase().contains(_searchQuery));
-        return merchantMatch || categoryMatch || dateMatch || itemsMatch || lineItemsMatch;
+        final itemsMatch =
+            r.items.any((item) => item.toLowerCase().contains(_searchQuery));
+        final lineItemsMatch = r.lineItems
+            .any((li) => li.description.toLowerCase().contains(_searchQuery));
+        return merchantMatch ||
+            categoryMatch ||
+            dateMatch ||
+            itemsMatch ||
+            lineItemsMatch;
       }).toList();
     }
 
@@ -168,7 +190,8 @@ class HistoryViewModel extends ChangeNotifier {
     // 3. Sorting
     if (_sortField == HistorySortField.name) {
       result.sort((a, b) {
-        final comp = a.merchant.toLowerCase().compareTo(b.merchant.toLowerCase());
+        final comp =
+            a.merchant.toLowerCase().compareTo(b.merchant.toLowerCase());
         return _sortAscending ? comp : -comp;
       });
     } else if (_sortField == HistorySortField.amount) {
@@ -189,32 +212,7 @@ class HistoryViewModel extends ChangeNotifier {
   }
 
   String formatReceiptPrice(Receipt receipt) {
-    return '-${_currencyService.format(receipt.amount, fromCurrencyCode: receipt.currency)}';
-  }
-
-  bool _isLoadingMore = false;
-  bool get isLoadingMore => _isLoadingMore;
-
-  /// Lazy loads the next page of receipts from the backend when scrolling near bottom.
-  Future<void> loadNextPage() async {
-    if (_isLoadingMore) return;
-    _isLoadingMore = true;
-    AppLogger.debug('VM', 'HistoryViewModel loadNextPage started (offset: ${_repository.receipts.length})');
-    notifyListeners();
-    try {
-      final count = await CloudSyncService.instance.fetchMoreReceipts(
-        offset: _repository.receipts.length,
-      );
-      AppLogger.info('VM', 'HistoryViewModel loadNextPage fetched $count new receipts');
-      if (count > 0) {
-        notifyListeners();
-      }
-    } catch (e) {
-      AppLogger.error('VM', 'HistoryViewModel loadNextPage error: $e', e);
-    } finally {
-      _isLoadingMore = false;
-      notifyListeners();
-    }
+    return '-${_currencyService.formatOriginal(receipt.amount, receipt.currency)}';
   }
 
   Future<void> deleteReceipt(String id) async {

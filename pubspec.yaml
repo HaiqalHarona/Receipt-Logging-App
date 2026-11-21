@@ -2,7 +2,7 @@ name: reciept_logging
 description: "Receipt Scanner & Expense Tracker — scan receipts, log data, track spending."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+6
 
 environment:
   sdk: ^3.5.0
@@ -30,15 +30,18 @@ dependencies:
   go_router: ^14.8.1
 
   # ── Camera & On-Device OCR ──────────────────────────────────────────────────
-  camera: ^0.11.0+2
+  camera: ^0.12.1
   google_mlkit_text_recognition: ^0.15.0
   image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
 
   # ── Neumorphic UI ────────────────────────────────────────────────────────────
   flutter_neumorphic_plus: ^3.3.0
+  flutter_markdown: ^0.7.5
 
   # ── Supabase Client ──────────────────────────────────────────────────────────
   supabase_flutter: ^2.8.4
+  google_sign_in: ^6.2.2
 
   # ── HTTP / API Client ────────────────────────────────────────────────────────
   http: ^1.2.2
@@ -58,6 +61,15 @@ dependencies:
   collection: ^1.18.0
   flutter_dotenv: ^6.0.1
   shared_preferences: ^2.3.5
+  cryptography: ^2.9.0
+  open_filex: ^4.7.0
+  share_plus: ^13.3.0
+  flutter_local_notifications: ^22.3.0
+  timezone: ^0.11.1
+  purchases_flutter: ^10.12.0
+  url_launcher: ^6.3.1
+dependency_overrides:
+  win32: ^5.15.0
 
 dev_dependencies:
   flutter_test:
@@ -74,4 +86,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
+    - docs/legal_docs/
+    - assets/images/
+  # Note: .env is excluded from release assets for security. Configure via --dart-define or --dart-define-from-file.

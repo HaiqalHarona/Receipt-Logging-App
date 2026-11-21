@@ -1,16 +1,24 @@
 // File: lib/ui/features/receipt_detail/views/receipt_detail_screen.dart
 
 import 'dart:convert';
-import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../cloud/api/backend_api_client.dart';
+import '../../../../cloud/services/quota_service.dart';
 import '../../../../data/repositories/receipt_repository.dart';
+import '../../../../domain/models/line_item.dart';
 import '../../../../domain/models/receipt.dart';
+import '../../../../services/app_logger_service.dart';
 import '../../../../services/currency_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/utils/category_utils.dart';
+import '../../../core/widgets/app_gradient_background.dart';
 import '../../../core/widgets/app_snack_bar.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
+import '../../../core/widgets/receipt_image_thumbnail.dart';
 
 enum _MenuAction { copyId, copyJson, delete }
 
@@ -47,10 +55,40 @@ class ReceiptDetailScreen extends StatefulWidget {
   State<ReceiptDetailScreen> createState() => _ReceiptDetailScreenState();
 }
 
-class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
+class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
+    with SingleTickerProviderStateMixin {
   Receipt? _receipt;
   bool _isInitialized = false;
+  bool _isLoadingLineItems = false;
+  late AnimationController _shimmerController;
+  late Animation<double> _shimmerAnimation;
   final Map<String, List<ConvertedLineItem>> _convertedItemsCache = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _shimmerAnimation = Tween<double>(begin: 0.25, end: 0.65).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
+    );
+    QuotaService.instance.addListener(_onQuotaChanged);
+  }
+
+  void _onQuotaChanged() {
+    if (mounted && QuotaService.instance.isPremium) {
+      _checkAndFetchLineItemsJit();
+    }
+  }
+
+  @override
+  void dispose() {
+    QuotaService.instance.removeListener(_onQuotaChanged);
+    _shimmerController.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -70,13 +108,77 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
       }
 
       _isInitialized = true;
+      _checkAndFetchLineItemsJit();
     }
   }
 
-  /// Calculates or retrieves cached converted line item prices for active currency.
+  /// JIT fetch of line items from cloud backend when user unlocks Premium.
+  Future<void> _checkAndFetchLineItemsJit() async {
+    final r = _receipt;
+    if (r == null ||
+        !QuotaService.instance.isPremium ||
+        r.lineItems.isNotEmpty ||
+        _isLoadingLineItems) {
+      return;
+    }
+    if (r.id.isEmpty) return;
+
+    setState(() {
+      _isLoadingLineItems = true;
+      if (!_shimmerController.isAnimating) {
+        _shimmerController.repeat(reverse: true);
+      }
+    });
+
+    try {
+      final recordDto = await BackendApiClient.instance.fetchReceiptById(r.id);
+      if (recordDto != null && mounted) {
+        final domainLineItems = recordDto.receipt.lineItems
+            .map((li) => LineItem(
+                  description: li.description,
+                  quantity: li.quantity,
+                  unitPrice: li.unitPrice,
+                  totalPrice: li.totalPrice,
+                ))
+            .toList();
+
+        final domainItems = domainLineItems.map((li) {
+          final parts = <String>[li.description];
+          if (li.totalPrice != null) {
+            parts.add('${r.currency} ${li.totalPrice!.toStringAsFixed(2)}');
+          } else if (li.unitPrice != null && li.quantity != null) {
+            parts.add(
+                '${li.quantity} × ${r.currency} ${li.unitPrice!.toStringAsFixed(2)}');
+          }
+          return parts.join(' — ');
+        }).toList();
+
+        _receipt = r.copyWith(
+          lineItems: domainLineItems,
+          items: domainItems.isNotEmpty ? domainItems : r.items,
+        );
+
+        await ReceiptRepository.instance.saveBatchFromCloud([_receipt!]);
+        _convertedItemsCache.clear();
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    } catch (e, st) {
+      AppLogger.error('UI', 'Error in _checkAndFetchLineItemsJit', e, st);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingLineItems = false;
+          _shimmerController.stop();
+        });
+      }
+    }
+  }
+
+  /// Calculates or retrieves cached line item prices in original receipt currency.
   List<ConvertedLineItem> _getConvertedLineItems(Receipt r) {
-    final targetCurrency = CurrencyService.instance.currentCurrency;
-    final cacheKey = '${r.id}_$targetCurrency';
+    final cacheKey = '${r.id}_${r.currency}';
 
     if (_convertedItemsCache.containsKey(cacheKey)) {
       return _convertedItemsCache[cacheKey]!;
@@ -86,17 +188,17 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
     for (final item in r.lineItems) {
       final qty = item.quantity ?? 1.0;
       final origTotal = item.totalPrice ?? 0.0;
-      final origUnit = item.unitPrice ?? (qty > 0 ? origTotal / qty : origTotal);
+      final origUnit =
+          item.unitPrice ?? (qty > 0 ? origTotal / qty : origTotal);
 
-      final convertedUnit = CurrencyService.instance.convert(origUnit, r.currency);
-      final convertedTotal = CurrencyService.instance.convert(origTotal, r.currency);
-
-      final formattedUnit = CurrencyService.instance.format(convertedUnit, fromCurrencyCode: targetCurrency);
-      final formattedTotal = CurrencyService.instance.format(convertedTotal, fromCurrencyCode: targetCurrency);
+      final formattedUnit =
+          CurrencyService.instance.formatOriginal(origUnit, r.currency);
+      final formattedTotal =
+          CurrencyService.instance.formatOriginal(origTotal, r.currency);
 
       list.add(ConvertedLineItem(
-        unitPrice: convertedUnit,
-        totalPrice: convertedTotal,
+        unitPrice: origUnit,
+        totalPrice: origTotal,
         formattedUnitPrice: formattedUnit,
         formattedTotalPrice: formattedTotal,
       ));
@@ -108,7 +210,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
 
   void _openEditor() async {
     if (_receipt == null) return;
-    await context.push('/verification', extra: _receipt);
+    await context.push('/edit-receipt', extra: _receipt);
 
     // Refresh static detail display from repository upon returning
     if (!mounted) return;
@@ -118,7 +220,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
     );
     setState(() {
       _receipt = updated;
-      _convertedItemsCache.clear(); // Clear cache to recalculate for updated receipt
+      _convertedItemsCache
+          .clear(); // Clear cache to recalculate for updated receipt
     });
   }
 
@@ -167,7 +270,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.warning_amber_rounded, color: Colors.red.shade400, size: 36),
+                Icon(Icons.warning_amber_rounded,
+                    color: Colors.red.shade400, size: 36),
                 const SizedBox(height: 12),
                 Text(
                   'Delete Receipt?',
@@ -187,31 +291,30 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: NeumorphicButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: controller.currentBaseColor,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Text(
-                          'Cancel',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontWeight: FontWeight.bold,
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(ctx).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Cancel',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: NeumorphicButton(
+                      child: NeumorphicButtonWidget(
                         onPressed: () async {
                           Navigator.of(ctx).pop();
                           if (_receipt != null) {
-                            await ReceiptRepository.instance.deleteReceipt(_receipt!.id);
+                            await ReceiptRepository.instance
+                                .deleteReceipt(_receipt!.id);
                           }
                           if (!mounted) return;
                           AppSnackBar.show(
@@ -221,18 +324,17 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                           );
                           context.pop();
                         },
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          color: Colors.red.shade400,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
-                        ),
+                        color: Colors.red.shade700,
+                        borderRadius: 12,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: const Text(
-                          'Delete',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                        child: const Center(
+                          child: Text(
+                            'Delete',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -250,7 +352,11 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([AppThemeController.instance, CurrencyService.instance]),
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        CurrencyService.instance,
+        QuotaService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -259,31 +365,45 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
         final baseColor = controller.currentBaseColor;
 
         if (_receipt == null) {
-          return NeumorphicBackground(
+          return AppGradientBackground(
             child: Scaffold(
               backgroundColor: Colors.transparent,
-              appBar: AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: Center(
-                  child: NeumorphicButton(
-                    onPressed: () => context.pop(),
-                    style: NeumorphicStyle(
-                      depth: 3,
-                      boxShape: const NeumorphicBoxShape.circle(),
-                      color: baseColor,
+              body: SafeArea(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          NeumorphicCircularButton(
+                            icon: Icons.arrow_back_rounded,
+                            iconSize: 20,
+                            onTap: () => context.pop(),
+                          ),
+                          Text(
+                            'Receipt Details',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 40),
+                        ],
+                      ),
                     ),
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: textPrimary),
-                  ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'No receipt selected.',
+                          style: TextStyle(color: textSecondary),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                title: Text(
-                  'Receipt Details',
-                  style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-              ),
-              body: Center(
-                child: Text('No receipt selected.', style: TextStyle(color: textSecondary)),
               ),
             ),
           );
@@ -291,7 +411,13 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
 
         final r = _receipt!;
         final categoryColor = CategoryUtils.getCategoryColor(r.category);
-        final formattedPrice = CurrencyService.instance.format(r.amount, fromCurrencyCode: r.currency);
+        final originalPrice = CurrencyService.instance
+            .formatOriginal(r.amount, r.currency);
+        final convertedSubtitle = CurrencyService.instance.formatConvertedSubtitle(
+          r.amount,
+          r.currency,
+          historicalRate: r.currencyRateAtReceiptDate,
+        );
         final convertedItems = _getConvertedLineItems(r);
         final allDetailTags = r.category
             .split(',')
@@ -300,113 +426,129 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
             .toSet()
             .toList();
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: Center(
-                child: NeumorphicButton(
-                  onPressed: () => context.pop(),
-                  style: NeumorphicStyle(
-                    depth: 3,
-                    boxShape: const NeumorphicBoxShape.circle(),
-                    color: baseColor,
-                  ),
-                  padding: const EdgeInsets.all(8),
-                  child: Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: textPrimary),
-                ),
-              ),
-              title: Text(
-                'Receipt Details',
-                style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              centerTitle: true,
-              actions: [
-                // Top-Right 3-Dot Overflow Menu Button
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Center(
-                    child: PopupMenuButton<_MenuAction>(
-                      onSelected: (action) => _handleMenuAction(action, r),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      color: baseColor,
-                      elevation: 6,
-                      icon: Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: 3,
-                          boxShape: const NeumorphicBoxShape.circle(),
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // Standardized Custom Top Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        NeumorphicCircularButton(
+                          icon: Icons.arrow_back_rounded,
+                          iconSize: 20,
+                          onTap: () => context.pop(),
+                        ),
+                        Text(
+                          'Receipt Details',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
+                          ),
+                        ),
+                        // Top-Right 3-Dot Overflow Menu Button
+                        PopupMenuButton<_MenuAction>(
+                          onSelected: (action) => _handleMenuAction(action, r),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                           color: baseColor,
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: Icon(Icons.more_vert_rounded, color: textPrimary, size: 18),
-                      ),
-                      itemBuilder: (ctx) => [
-                        PopupMenuItem<_MenuAction>(
-                          value: _MenuAction.copyId,
-                          child: Row(
-                            children: [
-                              Icon(Icons.content_copy_rounded, size: 16, color: accent),
-                              const SizedBox(width: 10),
-                              Text('Copy Receipt ID', style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                            ],
+                          elevation: 6,
+                          child: const IgnorePointer(
+                            child: NeumorphicCircularButton(
+                              icon: Icons.more_vert_rounded,
+                              iconSize: 20,
+                              padding: 8,
+                              depth: 4.0,
+                              enabled: true,
+                            ),
                           ),
-                        ),
-                        PopupMenuItem<_MenuAction>(
-                          value: _MenuAction.copyJson,
-                          child: Row(
-                            children: [
-                              Icon(Icons.code_rounded, size: 16, color: accent),
-                              const SizedBox(width: 10),
-                              Text('Copy as JSON', style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        PopupMenuItem<_MenuAction>(
-                          value: _MenuAction.delete,
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red.shade400),
-                              const SizedBox(width: 10),
-                              Text('Delete Receipt', style: TextStyle(color: Colors.red.shade400, fontSize: 13, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
+                          itemBuilder: (ctx) => [
+                            PopupMenuItem<_MenuAction>(
+                              value: _MenuAction.copyId,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.content_copy_rounded,
+                                      size: 16, color: accent),
+                                  const SizedBox(width: 10),
+                                  Text('Copy Receipt ID',
+                                      style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<_MenuAction>(
+                              value: _MenuAction.copyJson,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.code_rounded,
+                                      size: 16, color: accent),
+                                  const SizedBox(width: 10),
+                                  Text('Copy as JSON',
+                                      style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            PopupMenuItem<_MenuAction>(
+                              value: _MenuAction.delete,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline_rounded,
+                                      size: 16, color: Colors.red.shade400),
+                                  const SizedBox(width: 10),
+                                  Text('Delete Receipt',
+                                      style: TextStyle(
+                                          color: Colors.red.shade400,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            body: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Column(
-                  children: [
+                  Expanded(
+                    child: FadingEdgeScrollView(
+                      fadeHeightTop: 20,
+                      fadeHeightBottom: 28,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        child: Column(
+                          children: [
                     // ── Header Card ─────────────────────────────────────────
                     Neumorphic(
                       style: NeumorphicStyle(
                         depth: 4,
                         intensity: 0.8,
                         color: baseColor,
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+                        boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(20)),
                       ),
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          // 1. Circle Top Centre Image (Indented depth: -3)
+                          // 1. Top Centre Receipt Image (90x90 Rounded Square with Fullscreen Zoom)
                           Center(
-                            child: Neumorphic(
-                              style: NeumorphicStyle(
-                                depth: -3, // Task 2: Indented avatar icon
-                                intensity: 0.85,
-                                color: categoryColor.withValues(alpha: 0.15),
-                                boxShape: const NeumorphicBoxShape.circle(),
-                              ),
-                              padding: const EdgeInsets.all(18),
-                              child: _buildCircleImageContent(r, categoryColor),
+                            child: _buildReceiptImageHeader(
+                              r,
+                              categoryColor,
+                              textSecondary,
+                              accent,
+                              baseColor,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -455,13 +597,29 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                   ),
                                 ),
                               ),
-                              Text(
-                                formattedPrice,
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: accent,
-                                ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    originalPrice,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                      color: accent,
+                                    ),
+                                  ),
+                                  if (convertedSubtitle != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      convertedSubtitle,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: textSecondary.withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
@@ -475,15 +633,18 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                               spacing: 6,
                               runSpacing: 6,
                               children: allDetailTags.map((tag) {
-                                final tagColor = CategoryUtils.getCategoryColor(tag);
+                                final tagColor =
+                                    CategoryUtils.getCategoryColor(tag);
                                 return Neumorphic(
                                   style: NeumorphicStyle(
                                     depth: -2,
                                     intensity: 0.8,
                                     color: tagColor.withValues(alpha: 0.2),
-                                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                                    boxShape: NeumorphicBoxShape.roundRect(
+                                        BorderRadius.circular(12)),
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -512,31 +673,31 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                           // 5. Small Rectangle Edit Button with Icon
                           Align(
                             alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: _openEditor,
-                              child: Neumorphic(
-                                style: NeumorphicStyle(
-                                  depth: 3,
-                                  intensity: 0.8,
-                                  color: baseColor,
-                                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(8)),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.edit_rounded, size: 14, color: accent),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Edit',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: accent,
-                                      ),
+                            child: NeumorphicTactileButton(
+                              onPressed: _openEditor,
+                              depth: 3.0,
+                              pressedDepth: 0.0,
+                              pressedScale: 0.97,
+                              color: baseColor,
+                              boxShape: NeumorphicBoxShape.roundRect(
+                                  BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit_rounded,
+                                      size: 14, color: accent),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Edit',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: accent,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -552,7 +713,8 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                         depth: 4,
                         intensity: 0.8,
                         color: baseColor,
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
+                        boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(20)),
                       ),
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -571,7 +733,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                 ),
                               ),
                               Text(
-                                CurrencyService.instance.currentCurrency,
+                                r.currency,
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -581,14 +743,20 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: 14),
-
-                          if (r.lineItems.isEmpty)
+                          if (_isLoadingLineItems)
+                            _buildLineItemsShimmer(
+                                accent, baseColor, textSecondary)
+                          else if (!QuotaService.instance.isPremium)
+                            _buildLockedLineItemsPlaceholder(
+                                context, accent, textSecondary)
+                          else if (r.lineItems.isEmpty)
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               child: Center(
                                 child: Text(
-                                  'No line items recorded.',
-                                  style: TextStyle(fontSize: 13, color: textSecondary),
+                                  'No itemized breakdown extracted.',
+                                  style: TextStyle(
+                                      fontSize: 13, color: textSecondary),
                                 ),
                               ),
                             )
@@ -599,23 +767,30 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                               columnWidths: const {
                                 0: FlexColumnWidth(3.0), // Description
                                 1: FlexColumnWidth(1.0), // Qty
-                                2: FlexColumnWidth(1.8), // Unit Price (Converted)
-                                3: FlexColumnWidth(1.8), // Total Price (Converted)
+                                2: FlexColumnWidth(
+                                    1.8), // Unit Price (Converted)
+                                3: FlexColumnWidth(
+                                    1.8), // Total Price (Converted)
                               },
                               children: [
                                 // Table Header Row
                                 TableRow(
                                   children: [
-                                    _buildTableHeader('Item', textSecondary, TextAlign.left),
-                                    _buildTableHeader('Qty', textSecondary, TextAlign.center),
-                                    _buildTableHeader('Unit', textSecondary, TextAlign.right),
-                                    _buildTableHeader('Total', textSecondary, TextAlign.right),
+                                    _buildTableHeader(
+                                        'Item', textSecondary, TextAlign.left),
+                                    _buildTableHeader(
+                                        'Qty', textSecondary, TextAlign.center),
+                                    _buildTableHeader(
+                                        'Unit', textSecondary, TextAlign.right),
+                                    _buildTableHeader('Total', textSecondary,
+                                        TextAlign.right),
                                   ],
                                 ),
 
                                 // Spacing row
                                 TableRow(
-                                  children: List.generate(4, (_) => const SizedBox(height: 8)),
+                                  children: List.generate(
+                                      4, (_) => const SizedBox(height: 8)),
                                 ),
 
                                 // Table Data Rows with Cached Converted Currency
@@ -623,52 +798,71 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                   final item = r.lineItems[idx];
                                   final converted = convertedItems[idx];
                                   final qty = item.quantity ?? 1.0;
-                                  final qtyStr = qty % 1 == 0 ? qty.toInt().toString() : qty.toStringAsFixed(1);
+                                  final qtyStr = qty % 1 == 0
+                                      ? qty.toInt().toString()
+                                      : qty.toStringAsFixed(1);
+                                  final isDiscount = (item.totalPrice != null &&
+                                          item.totalPrice! < 0) ||
+                                      (item.unitPrice != null &&
+                                          item.unitPrice! < 0);
+                                  const discountColor = Color(0xFF34C759);
 
                                   return TableRow(
                                     children: [
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
                                         child: Text(
                                           item.description,
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
-                                            color: textPrimary,
+                                            color: isDiscount
+                                                ? discountColor
+                                                : textPrimary,
                                           ),
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
                                         child: Text(
                                           qtyStr,
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: textSecondary,
+                                            color: isDiscount
+                                                ? discountColor
+                                                : textSecondary,
                                           ),
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
                                         child: Text(
                                           converted.formattedUnitPrice,
                                           textAlign: TextAlign.right,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: textSecondary,
+                                            color: isDiscount
+                                                ? discountColor
+                                                : textSecondary,
                                           ),
                                         ),
                                       ),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
                                         child: Text(
                                           converted.formattedTotalPrice,
                                           textAlign: TextAlign.right,
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
-                                            color: textPrimary,
+                                            color: isDiscount
+                                                ? discountColor
+                                                : textPrimary,
                                           ),
                                         ),
                                       ),
@@ -677,16 +871,17 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
                                 }),
                               ],
                             ),
-
                           const SizedBox(height: 16),
-                          Divider(color: textSecondary.withValues(alpha: 0.15), height: 1),
+                          Divider(
+                              color: textSecondary.withValues(alpha: 0.15),
+                              height: 1),
                           const SizedBox(height: 12),
-
                           _buildSummaryRow(
                             'Grand Total',
-                            formattedPrice,
+                            originalPrice,
                             textPrimary,
                             accent,
+                            subtitle: convertedSubtitle,
                             isBold: true,
                             fontSize: 16,
                           ),
@@ -698,28 +893,30 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
               ),
             ),
           ),
-        );
-      },
+        ],
+      ),
+    ),
+  ),
+);
+},
     );
   }
 
-  Widget _buildCircleImageContent(Receipt r, Color categoryColor) {
-    if (r.imagePath != null && r.imagePath!.isNotEmpty && File(r.imagePath!).existsSync()) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(40),
-        child: Image.file(
-          File(r.imagePath!),
-          width: 44,
-          height: 44,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-
-    return Icon(
-      CategoryUtils.getCategoryIcon(r.category),
-      size: 32,
-      color: categoryColor,
+  Widget _buildReceiptImageHeader(
+    Receipt r,
+    Color categoryColor,
+    Color textSecondary,
+    Color accent,
+    Color baseColor,
+  ) {
+    return ReceiptImageThumbnail(
+      imagePath: r.imagePath,
+      receiptId: r.id,
+      merchant: r.merchant,
+      categoryColor: categoryColor,
+      textSecondary: textSecondary,
+      accent: accent,
+      baseColor: baseColor,
     );
   }
 
@@ -743,11 +940,14 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
     String value,
     Color labelColor,
     Color valueColor, {
+    String? subtitle,
     bool isBold = false,
     double fontSize = 13,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment:
+          subtitle != null ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
         Text(
           label,
@@ -757,15 +957,274 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen> {
             color: labelColor,
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: isBold ? FontWeight.w900 : FontWeight.bold,
-            color: valueColor,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: isBold ? FontWeight.w900 : FontWeight.bold,
+                color: valueColor,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: labelColor.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
+    );
+  }
+
+  Widget _buildLockedLineItemsPlaceholder(
+      BuildContext context, Color accent, Color textSecondary) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 4.5, sigmaY: 4.5),
+              child: IgnorePointer(
+                child: Column(
+                  children: [
+                    Table(
+                      border: const TableBorder(),
+                      columnWidths: const {
+                        0: FlexColumnWidth(3.0),
+                        1: FlexColumnWidth(1.0),
+                        2: FlexColumnWidth(1.8),
+                        3: FlexColumnWidth(1.8),
+                      },
+                      children: [
+                        TableRow(
+                          children: [
+                            _buildTableHeader('Item', textSecondary, TextAlign.left),
+                            _buildTableHeader('Qty', textSecondary, TextAlign.center),
+                            _buildTableHeader('Unit', textSecondary, TextAlign.right),
+                            _buildTableHeader('Total', textSecondary, TextAlign.right),
+                          ],
+                        ),
+                        TableRow(
+                          children: List.generate(4, (_) => const SizedBox(height: 8)),
+                        ),
+                      ],
+                    ),
+                    ...List.generate(
+                      3,
+                      (idx) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              width: 24,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Container(
+                              width: 44,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Container(
+                              width: 44,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: textSecondary.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () async {
+                final upgraded = await context.push<bool>('/paywall');
+                if (upgraded == true || QuotaService.instance.isPremium) {
+                  await _checkAndFetchLineItemsJit();
+                }
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.4),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline_rounded, size: 15, color: accent),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Upgrade to Premium',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Neumorphic animated shimmer skeleton displayed during JIT line items hydration.
+  Widget _buildLineItemsShimmer(
+      Color accent, Color base, Color textSecondary) {
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, _) {
+        final pulseOpacity = _shimmerAnimation.value;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Neumorphic(
+              style: NeumorphicStyle(
+                depth: -1,
+                intensity: 0.7,
+                color: base.withValues(alpha: 0.5),
+                boxShape: NeumorphicBoxShape.roundRect(
+                    BorderRadius.circular(12)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.lock_open_rounded,
+                    size: 15,
+                    color: accent,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Unlocking itemized breakdown...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Table(
+              border: const TableBorder(),
+              columnWidths: const {
+                0: FlexColumnWidth(3.0),
+                1: FlexColumnWidth(1.0),
+                2: FlexColumnWidth(1.8),
+                3: FlexColumnWidth(1.8),
+              },
+              children: [
+                TableRow(
+                  children: [
+                    _buildTableHeader(
+                        'Item', textSecondary.withValues(alpha: 0.5), TextAlign.left),
+                    _buildTableHeader(
+                        'Qty', textSecondary.withValues(alpha: 0.5), TextAlign.center),
+                    _buildTableHeader(
+                        'Unit', textSecondary.withValues(alpha: 0.5), TextAlign.right),
+                    _buildTableHeader(
+                        'Total', textSecondary.withValues(alpha: 0.5), TextAlign.right),
+                  ],
+                ),
+                TableRow(
+                  children: List.generate(4, (_) => const SizedBox(height: 8)),
+                ),
+              ],
+            ),
+            ...List.generate(3, (idx) {
+              const widths = [110.0, 85.0, 130.0];
+              final itemWidth = widths[idx % widths.length];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                child: Row(
+                  children: [
+                    Container(
+                      width: itemWidth,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: pulseOpacity),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 20,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: pulseOpacity * 0.75),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Container(
+                      width: 42,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: pulseOpacity * 0.75),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Container(
+                      width: 48,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: pulseOpacity),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 }

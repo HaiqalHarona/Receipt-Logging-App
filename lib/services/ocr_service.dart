@@ -32,7 +32,7 @@ class OcrService {
     final List<Receipt> results = [];
     for (int i = 0; i < imagePaths.length; i++) {
       if (i > 0) {
-        // Pause 1.5 seconds between batch images to respect Gemini API rate limits
+        // Pause 1.5 seconds between batch images to respect API rate limits
         await Future.delayed(const Duration(milliseconds: 1500));
       }
       results.add(await _processSingleImage(
@@ -75,8 +75,7 @@ class OcrService {
     String? backendErrorDetails;
     try {
       final bool isUser = AuthService.instance.isLoggedIn &&
-          AuthService.instance.currentUsername != null &&
-          AuthService.instance.currentUserToken != null;
+          AuthService.instance.currentUsername != null;
 
       final dto = await _api.parseReceiptImage(
         imageBytes: bytes,
@@ -85,11 +84,11 @@ class OcrService {
         deviceName: isUser ? null : ApiConfig.deviceId,
         deviceToken: isUser ? null : ApiConfig.deviceToken,
         username: isUser ? AuthService.instance.currentUsername : null,
-        userToken: isUser ? AuthService.instance.currentUserToken : null,
       );
 
       if (dto != null) {
-        AppLogger.info('OcrService', 'Backend Vision API parsed receipt successfully');
+        AppLogger.info(
+            'OcrService', 'Backend Vision API parsed receipt successfully');
         return _dtoToReceipt(dto, imagePath: imagePath);
       }
     } catch (e) {
@@ -98,22 +97,25 @@ class OcrService {
       } else {
         backendErrorDetails = e.toString();
       }
-      AppLogger.warning('OcrService', 'Backend Vision API error ($e). Attempting on-device MLKit OCR fallback...');
+      AppLogger.warning('OcrService',
+          'Backend Vision API error ($e). Attempting on-device MLKit OCR fallback...');
     }
 
     // Fall back to On-Device Google MLKit Text Recognition if backend fails
     final mlKitReceipt = await _parseWithMlKit(imagePath);
     if (mlKitReceipt != null) {
-      final errorPrefix = backendErrorDetails != null && backendErrorDetails.isNotEmpty
-          ? 'Backend Error: $backendErrorDetails. '
-          : 'Backend parse failed. ';
+      final errorPrefix =
+          backendErrorDetails != null && backendErrorDetails.isNotEmpty
+              ? 'Backend Error: $backendErrorDetails. '
+              : 'Backend parse failed. ';
       onFallbackMessage?.call(
         '${errorPrefix}Used on-device OCR as fallback — results may be less accurate.',
       );
       return mlKitReceipt;
     }
 
-    throw Exception('Receipt parsing failed. Please ensure the image is clear and well-lit.');
+    throw Exception(
+        'Receipt parsing failed. Please ensure the image is clear and well-lit.');
   }
 
   /// Parses text locally using Google MLKit Text Recognition on the phone.
@@ -121,7 +123,8 @@ class OcrService {
     try {
       final inputImage = InputImage.fromFilePath(imagePath);
       final textRecognizer = TextRecognizer();
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      final RecognizedText recognizedText =
+          await textRecognizer.processImage(inputImage);
       await textRecognizer.close();
 
       if (recognizedText.text.trim().isEmpty) return null;
@@ -135,7 +138,9 @@ class OcrService {
       final merchant = lines.isNotEmpty ? lines.first : 'Scanned Receipt';
 
       double totalAmount = 0.0;
-      final totalRegex = RegExp(r'(?:total|amount|due|pay|sum|balance)[\s:]*\$?([0-9]+\.[0-9]{2})', caseSensitive: false);
+      final totalRegex = RegExp(
+          r'(?:total|amount|due|pay|sum|balance)[\s:]*\$?([0-9]+\.[0-9]{2})',
+          caseSensitive: false);
       final priceRegex = RegExp(r'\$?([0-9]+\.[0-9]{2})');
 
       for (final line in lines) {
@@ -213,8 +218,18 @@ class OcrService {
     try {
       final dt = DateTime.parse(raw);
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${months[dt.month - 1]} ${dt.day.toString().padLeft(2, '0')}, ${dt.year}';
     } catch (_) {
@@ -226,11 +241,20 @@ class OcrService {
   String _normaliseCategory(String? raw) {
     if (raw == null || raw.isEmpty) return '';
     final lower = raw.toLowerCase();
-    if (lower.contains('grocer') || lower.contains('supermarket')) return 'Groceries';
-    if (lower.contains('dining') || lower.contains('restaurant') || lower.contains('food')) return 'Dining';
-    if (lower.contains('transport') || lower.contains('fuel') || lower.contains('gas')) return 'Transport';
-    if (lower.contains('shop') || lower.contains('retail') || lower.contains('clothe')) return 'Shopping';
-    if (lower.contains('electron') || lower.contains('tech') || lower.contains('gadget')) return 'Electronics';
+    if (lower.contains('grocer') || lower.contains('supermarket'))
+      return 'Groceries';
+    if (lower.contains('dining') ||
+        lower.contains('restaurant') ||
+        lower.contains('food')) return 'Dining';
+    if (lower.contains('transport') ||
+        lower.contains('fuel') ||
+        lower.contains('gas')) return 'Transport';
+    if (lower.contains('shop') ||
+        lower.contains('retail') ||
+        lower.contains('clothe')) return 'Shopping';
+    if (lower.contains('electron') ||
+        lower.contains('tech') ||
+        lower.contains('gadget')) return 'Electronics';
     return '';
   }
 }

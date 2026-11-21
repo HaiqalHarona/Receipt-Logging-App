@@ -1,11 +1,20 @@
-import 'dart:io';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../cloud/api/backend_api_client.dart';
+import '../../../../cloud/models/subscription_models.dart';
+import '../../../../cloud/services/auth_service.dart';
+import '../../../../services/app_logger_service.dart';
+import '../../../../services/local_image_cache_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../../core/widgets/app_gradient_background.dart';
+import '../../../core/widgets/fading_edge_scroll_view.dart';
+import '../../../core/widgets/neumorphic_user_avatar.dart';
 import '../view_models/dashboard_view_model.dart';
 import 'widgets/monthly_spending_graph_card.dart';
 import 'widgets/recent_transactions_list.dart';
+import '../../subscription/widgets/discount_offer_banner.dart';
+import '../../subscription/widgets/downgrade_popup.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,14 +23,70 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAliveClientMixin {
+class _DashboardScreenState extends State<DashboardScreen>
+    with AutomaticKeepAliveClientMixin {
   final DashboardViewModel _viewModel = DashboardViewModel();
+  SubscriptionStatusDto? _subStatus;
+  String? _subStatusUserId;
 
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    AuthService.instance.addListener(_onAuthChanged);
+    _loadSubscriptionStatusAndCheckDowngrade();
+  }
+
+  void _onAuthChanged() {
+    final currentUserId = AuthService.instance.currentUserId;
+    if (!AuthService.instance.isLoggedIn || currentUserId == null) {
+      if (_subStatus != null || _subStatusUserId != null) {
+        setState(() {
+          _subStatus = null;
+          _subStatusUserId = null;
+        });
+      }
+    } else if (currentUserId != _subStatusUserId) {
+      _loadSubscriptionStatusAndCheckDowngrade();
+    }
+  }
+
+  Future<void> _loadSubscriptionStatusAndCheckDowngrade() async {
+    if (!AuthService.instance.isLoggedIn) {
+      if (_subStatus != null || _subStatusUserId != null) {
+        setState(() {
+          _subStatus = null;
+          _subStatusUserId = null;
+        });
+      }
+      return;
+    }
+    final userId = AuthService.instance.currentUserId;
+    try {
+      final status = await BackendApiClient.instance.getSubscriptionStatus();
+      if (mounted) {
+        setState(() {
+          _subStatus = status;
+          _subStatusUserId = userId;
+        });
+      }
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            DowngradePopupHelper.checkAndShow(context);
+          }
+        });
+      }
+    } catch (e) {
+      AppLogger.warning('Dashboard', 'Failed checking subscription status: $e');
+    }
+  }
+
+  @override
   void dispose() {
+    AuthService.instance.removeListener(_onAuthChanged);
     _viewModel.dispose();
     super.dispose();
   }
@@ -30,136 +95,195 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
   Widget build(BuildContext context) {
     super.build(context);
     return AnimatedBuilder(
-      animation: Listenable.merge([AppThemeController.instance, _viewModel]),
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        _viewModel,
+        LocalImageCacheService.instance,
+        AuthService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
         final textSecondary = controller.secondaryTextColor;
         final accent = controller.accentColor;
 
-        return NeumorphicBackground(
+        return AppGradientBackground(
           child: Scaffold(
             backgroundColor: Colors.transparent,
             extendBody: true,
             body: SafeArea(
               bottom: false,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 120),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _viewModel.isLoggedIn &&
-                                        _viewModel.username != null &&
-                                        _viewModel.username!.isNotEmpty
-                                    ? "Welcome back, ${_viewModel.username}."
-                                    : "Welcome back",
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Here is your spending breakdown",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+              child: FadingEdgeScrollView(
+                fadeHeightTop: 20,
+                fadeHeightBottom: 28,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    left: 24,
+                    right: 24,
+                    top: 16,
+                    bottom: 20,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: _viewModel.isLoggedIn &&
+                                    _viewModel.username != null &&
+                                    _viewModel.username!.isNotEmpty
+                                ? Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Welcome back,",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _viewModel.username!,
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Welcome back",
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "Here is your spending breakdown",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: textSecondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (_viewModel.isLoggedIn)
-                          GestureDetector(
-                            onTap: () => context.push('/user-settings'),
-                            child: _buildAvatarWidget(_viewModel.avatarImagePath, accent, textSecondary, controller),
-                          )
-                        else
-                          NeumorphicButtonWidget(
-                            color: Colors.transparent,
-                            borderRadius: 10,
-                            depth: 4,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            onPressed: () => context.push('/login'),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.login_rounded, size: 13, color: accent),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "Login",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                          const SizedBox(width: 12),
+                          if (_viewModel.isLoggedIn)
+                            _buildAvatarWidget(
+                                _viewModel.avatarImagePath,
+                                _viewModel.username ?? 'User',
+                                accent,
+                                textSecondary,
+                                controller,
+                                () => context.push('/user-settings'),
+                            )
+                          else
+                            NeumorphicTactileButton(
+                              onPressed: () => context.push('/auth'),
+                              depth: 4.0,
+                              pressedDepth: 0.0,
+                              pressedScale: 0.96,
+                              boxShape: const NeumorphicBoxShape.circle(),
+                              color: controller.currentBaseColor,
+                              border: NeumorphicBorder(
+                                color: controller.isDarkMode
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.white.withValues(alpha: 0.6),
+                                width: 0.8,
+                              ),
+                              child: SizedBox(
+                                width: 38,
+                                height: 38,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.person_outline_rounded,
+                                    size: 20,
                                     color: accent,
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
 
-                    // Monthly Spending Line Graph (encompasses indented summary carousel)
-                    MonthlySpendingGraphCard(
-                      viewModel: _viewModel,
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                      accent: accent,
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Recent Receipts Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Recent Receipts",
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: textPrimary,
-                          ),
+                      // 7-Day Downgrade Discount Urgency Banner
+                      if (AuthService.instance.isLoggedIn &&
+                          _subStatus != null &&
+                          _subStatus!.trialStartAt != null &&
+                          _subStatus!.tier != 'premium' &&
+                          _subStatus!.isDiscountActive &&
+                          (_subStatus!.discountDaysRemaining == null ||
+                              _subStatus!.discountDaysRemaining! > 0) &&
+                          _subStatusUserId == AuthService.instance.currentUserId)
+                        DiscountOfferBanner(
+                          status: _subStatus,
+                          onOfferClaimed: _loadSubscriptionStatusAndCheckDowngrade,
                         ),
-                        GestureDetector(
-                          onTap: () => context.go('/history'),
-                          child: Text(
-                            "See All",
+                      const SizedBox(height: 8),
+
+                      // Monthly Spending Line Graph (encompasses indented summary carousel)
+                      MonthlySpendingGraphCard(
+                        viewModel: _viewModel,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        accent: accent,
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Recent Receipts Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Recent Receipts",
                             style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: accent,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: textPrimary,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
+                          GestureDetector(
+                            onTap: () => context.go('/history'),
+                            child: Text(
+                              "See All",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: accent,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
 
-                    // Dynamic Recent Receipts List
-                    RecentTransactionsList(
-                      viewModel: _viewModel,
-                      textPrimary: textPrimary,
-                      textSecondary: textSecondary,
-                      accent: accent,
-                    ),
-                  ],
+                      // Dynamic Recent Receipts List
+                      RecentTransactionsList(
+                        viewModel: _viewModel,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        accent: accent,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -171,50 +295,21 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
 
   Widget _buildAvatarWidget(
     String? path,
+    String username,
     Color accent,
     Color fallbackColor,
     AppThemeController controller,
+    VoidCallback onTap,
   ) {
-    final isDark = controller.themeMode == ThemeMode.dark;
-    final base = controller.currentBaseColor;
-
-    return Neumorphic(
-      style: NeumorphicStyle(
-        depth: 4,
-        intensity: 0.85,
-        boxShape: const NeumorphicBoxShape.circle(),
-        color: base,
-        border: NeumorphicBorder(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.6),
-          width: 0.8,
-        ),
-      ),
-      child: SizedBox(
-        width: 38,
-        height: 38,
-        child: ClipOval(
-          child: _buildAvatarImage(path, accent, fallbackColor),
-        ),
-      ),
+    return NeumorphicUserAvatar(
+      size: 'medium',
+      diameter: 50.0,
+      username: username,
+      accentColor: accent,
+      fallbackColor: fallbackColor,
+      onTap: onTap,
+      depth: 4.0,
+      standalone: true,
     );
-  }
-
-  Widget _buildAvatarImage(String? path, Color accent, Color fallbackColor) {
-    if (path != null && path.isNotEmpty) {
-      if (path.startsWith('http://') || path.startsWith('https://')) {
-        return Image.network(
-          path,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(Icons.person_rounded, color: accent, size: 22),
-        );
-      } else {
-        return Image.file(
-          File(path),
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => Icon(Icons.person_rounded, color: accent, size: 22),
-        );
-      }
-    }
-    return Icon(Icons.person_rounded, color: accent, size: 22);
   }
 }

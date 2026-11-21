@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 
 import 'main_tab_shell.dart';
 import '../../features/verification/views/verification_screen.dart';
+import '../../features/edit_receipt/views/edit_receipt_screen.dart';
 import '../../features/receipt_detail/views/receipt_detail_screen.dart';
 import '../../features/analytics/views/analytics_screen.dart';
 import '../../features/paywall/views/paywall_screen.dart';
@@ -15,31 +16,25 @@ import '../../features/auth/views/reset_password_screen.dart';
 import '../../features/settings/views/customization_screen.dart';
 import '../../features/settings/views/db_viewer_screen.dart';
 import '../../features/settings/views/user_settings_screen.dart';
+import '../../features/settings/views/contact_security_screen.dart';
 import '../../features/scanner/views/scanner_screen.dart';
+import '../../features/ai_assistant/views/chat_detail_screen.dart';
+import '../../features/onboarding/views/onboarding_screen.dart';
+import '../../features/settings/views/legal_document_screen.dart';
+import '../../features/settings/views/policies_tour_screen.dart';
+import '../../../../domain/models/conversation.dart';
 
 import '../../../cloud/services/auth_service.dart';
 import '../../../../services/scan_batch_controller.dart';
+import '../../../../services/onboarding_service.dart';
+import '../../../../services/tutorial_service.dart';
+import '../../../../services/legal_document_service.dart';
 
-Page<dynamic> _buildNeumorphicPage({required GoRouterState state, required Widget child}) {
-  return CustomTransitionPage<void>(
+Page<dynamic> _buildInstantPage(
+    {required GoRouterState state, required Widget child}) {
+  return NoTransitionPage<void>(
     key: state.pageKey,
     child: child,
-    transitionDuration: const Duration(milliseconds: 280),
-    reverseTransitionDuration: const Duration(milliseconds: 220),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final curvedAnimation = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      );
-      return FadeTransition(
-        opacity: curvedAnimation,
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.98, end: 1.0).animate(curvedAnimation),
-          child: child,
-        ),
-      );
-    },
   );
 }
 
@@ -52,13 +47,25 @@ final GoRouter appRouter = GoRouter(
   refreshListenable: Listenable.merge([
     AuthService.instance,
     ScanBatchController.instance,
+    OnboardingService.instance,
+    TutorialService.instance,
   ]),
   initialLocation: '/dashboard',
   redirect: (BuildContext context, GoRouterState state) {
+    final hasCompletedOnboarding =
+        OnboardingService.instance.hasCompletedOnboarding;
+    final path = state.matchedLocation;
+
+    if (!hasCompletedOnboarding &&
+        path != '/onboarding' &&
+        !path.startsWith('/legal')) {
+      return '/onboarding';
+    }
+
     final isLoggedIn = AuthService.instance.isLoggedIn;
     final isScanning = ScanBatchController.instance.isScanning;
-    final path = state.matchedLocation;
-    final isAuthRoute = path == '/login' || path == '/signup' || path == '/auth';
+    final isAuthRoute =
+        path == '/login' || path == '/signup' || path == '/auth';
 
     if (isScanning && path == '/scanner') {
       return '/dashboard';
@@ -66,8 +73,8 @@ final GoRouter appRouter = GoRouter(
     if (isLoggedIn && isAuthRoute) {
       return '/dashboard';
     }
-    if (!isLoggedIn && path == '/user-settings') {
-      return '/dashboard';
+    if (!isLoggedIn && (path.startsWith('/user-settings') || path == '/paywall')) {
+      return '/auth';
     }
     return null;
   },
@@ -79,53 +86,87 @@ final GoRouter appRouter = GoRouter(
       routes: [
         GoRoute(
           path: '/dashboard',
-          pageBuilder: (context, state) => const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SizedBox.shrink()),
         ),
         GoRoute(
           path: '/history',
-          pageBuilder: (context, state) => const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SizedBox.shrink()),
         ),
         GoRoute(
           path: '/ai-assistant',
-          pageBuilder: (context, state) => const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SizedBox.shrink()),
         ),
         GoRoute(
           path: '/settings',
-          pageBuilder: (context, state) => const NoTransitionPage(child: SizedBox.shrink()),
+          pageBuilder: (context, state) {
+            if (state.uri.queryParameters['highlight'] == 'plan') {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) {
+                  context.push('/user-settings?highlight=plan');
+                }
+              });
+            }
+            return const NoTransitionPage(child: SizedBox.shrink());
+          },
         ),
       ],
     ),
     GoRoute(
+      path: '/chat',
+      pageBuilder: (context, state) => _buildInstantPage(
+        state: state,
+        child: ChatDetailScreen(
+          conversation: state.extra as Conversation?,
+        ),
+      ),
+    ),
+    GoRoute(
       path: '/verification',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const VerificationScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const VerificationScreen()),
     ),
     GoRoute(
       path: '/receipt-detail',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ReceiptDetailScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const ReceiptDetailScreen()),
+    ),
+    GoRoute(
+      path: '/edit-receipt',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const EditReceiptScreen()),
     ),
     GoRoute(
       path: '/analytics',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const AnalyticsScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const AnalyticsScreen()),
     ),
     GoRoute(
       path: '/paywall',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const PaywallScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const PaywallScreen()),
     ),
     GoRoute(
       path: '/auth',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const AuthScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const AuthScreen()),
     ),
     GoRoute(
       path: '/login',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const LoginScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const LoginScreen()),
     ),
     GoRoute(
       path: '/signup',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const SignUpScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const SignUpScreen()),
     ),
     GoRoute(
       path: '/forgot-password',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ForgotPasswordScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const ForgotPasswordScreen()),
     ),
     GoRoute(
       path: '/verify-otp',
@@ -133,7 +174,7 @@ final GoRouter appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>? ?? {};
         final identifier = extra['identifier'] as String? ?? '';
         final devOtp = extra['dev_otp'] as String?;
-        return _buildNeumorphicPage(
+        return _buildInstantPage(
           state: state,
           child: OtpVerificationScreen(
             identifier: identifier,
@@ -147,7 +188,7 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
         final resetToken = extra['reset_token'] as String? ?? '';
-        return _buildNeumorphicPage(
+        return _buildInstantPage(
           state: state,
           child: ResetPasswordScreen(resetToken: resetToken),
         );
@@ -155,19 +196,61 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/customization',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const CustomizationScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const CustomizationScreen()),
     ),
     GoRoute(
       path: '/settings/db-viewer',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const DbViewerScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const DbViewerScreen()),
     ),
     GoRoute(
       path: '/user-settings',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const UserSettingsScreen()),
+      pageBuilder: (context, state) {
+        final highlightPlan =
+            state.uri.queryParameters['highlight'] == 'plan' ||
+                (state.extra as Map<String, dynamic>?)?['highlight'] == 'plan';
+        return _buildInstantPage(
+          state: state,
+          child: UserSettingsScreen(highlightPlan: highlightPlan),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/user-settings/contact-security',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const ContactSecurityScreen()),
     ),
     GoRoute(
       path: '/scanner',
-      pageBuilder: (context, state) => _buildNeumorphicPage(state: state, child: const ScannerScreen()),
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const ScannerScreen()),
+    ),
+    GoRoute(
+      path: '/onboarding',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const OnboardingScreen()),
+    ),
+    GoRoute(
+      path: '/legal/:type',
+      pageBuilder: (context, state) {
+        final typeStr = state.pathParameters['type'];
+        final docType = LegalDocType.fromString(typeStr);
+        return _buildInstantPage(
+          state: state,
+          child: LegalDocumentScreen(initialDocType: docType),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/legal',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const LegalDocumentScreen()),
+    ),
+    GoRoute(
+      path: '/settings/policies-tour',
+      pageBuilder: (context, state) =>
+          _buildInstantPage(state: state, child: const PoliciesTourScreen()),
     ),
   ],
 );

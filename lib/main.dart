@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ui/core/router/app_router.dart';
@@ -8,17 +11,40 @@ import 'data/models/receipt_isar.dart';
 import 'data/models/conversation_isar.dart';
 import 'data/models/chat_message_isar.dart';
 import 'data/repositories/receipt_repository.dart';
+import 'data/repositories/conversation_repository.dart';
 
 import 'services/device_identity_service.dart';
 import 'services/api/backend_api_client.dart';
 import 'cloud/services/auth_service.dart';
 import 'services/cloud_sync_service.dart';
+import 'services/currency_service.dart';
 import 'services/app_logger_service.dart';
+import 'services/crypto_service.dart';
+import 'services/sync_coordinator.dart';
+import 'services/onboarding_service.dart';
+import 'services/tutorial_service.dart';
+import 'services/spending_notification_service.dart';
+import 'cloud/services/quota_service.dart';
+import 'cloud/api/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   await AppLogger.init();
-  await dotenv.load(fileName: ".env");
+
+  // Load .env if present in development assets or ignore gracefully when using --dart-define
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (_) {
+    AppLogger.debug('Config',
+        'No .env asset loaded; using environment definitions or defaults.');
+  }
+
+  // Initialize crypto service and secure storage keys
+  await CryptoService.instance.init();
 
   // Initialize database, repositories, and persistent device identity
   await IsarService.init(schemas: [
@@ -26,10 +52,36 @@ void main() async {
     ConversationIsarModelSchema,
     ChatMessageIsarModelSchema,
   ]);
-  await ReceiptRepository.instance.init();
   await DeviceIdentityService.instance.init(BackendApiClient.instance);
   await AuthService.instance.init();
-  await CloudSyncService.instance.syncOnLogin();
+  await ReceiptRepository.instance.init();
+  await ConversationRepository.instance.init();
+  await CurrencyService.instance.init();
+  await OnboardingService.instance.init();
+  await TutorialService.instance.init();
+  await AppThemeController.instance.loadPersistedTheme();
+
+  // Non-blocking background synchronization & quota checks
+  unawaited(CloudSyncService.instance.syncOnLogin());
+  unawaited(SyncCoordinator.instance.init());
+  QuotaService.instance.init();
+  // Await notification service init so the native timezone MethodChannel is
+  // registered by the time _configureLocalTimezone() is called. Previously
+  // unawaited() caused a race where the channel wasn't ready yet, causing
+  // tz.local to silently fall back to UTC and alarms to fire at the wrong time.
+  await SpendingNotificationService.instance.init();
+
+  // Catch unhandled Flutter framework errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    AppLogger.error('FlutterError', details.exceptionAsString(),
+        details.exception, details.stack);
+  };
+
+  // Catch unhandled platform/isolate asynchronous errors
+  PlatformDispatcher.instance.onError = (error, stack) {
+    AppLogger.error('PlatformError', error.toString(), error, stack);
+    return true;
+  };
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     bool isDebug = false;
@@ -54,14 +106,13 @@ void main() async {
   runApp(const ReceiptLoggerApp());
 }
 
-
 class ReceiptLoggerApp extends StatelessWidget {
   const ReceiptLoggerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Receipt Logger',
+      title: ApiConfig.appName,
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       routerConfig: appRouter,
@@ -76,10 +127,12 @@ class ReceiptLoggerApp extends StatelessWidget {
               accentColor: controller.accentColor,
               variantColor: controller.currentBaseColor,
               lightSource: LightSource.topLeft,
-              depth: 5,
+              depth: controller.neuDepth,
               intensity: 0.88,
               shadowDarkColor: controller.shadowDarkColor,
               shadowLightColor: controller.shadowLightColor,
+              shadowDarkColorEmboss: controller.shadowDarkColorEmboss,
+              shadowLightColorEmboss: controller.shadowLightColorEmboss,
               textTheme: TextTheme(
                 bodyLarge: TextStyle(color: controller.textColor),
                 bodyMedium: TextStyle(color: controller.secondaryTextColor),
@@ -91,21 +144,42 @@ class ReceiptLoggerApp extends StatelessWidget {
               accentColor: controller.accentColor,
               variantColor: controller.currentBaseColor,
               lightSource: LightSource.topLeft,
-              depth: 6,
+              depth: controller.neuDepth,
               intensity: 0.80,
               shadowDarkColor: controller.shadowDarkColor,
               shadowLightColor: controller.shadowLightColor,
+              shadowDarkColorEmboss: controller.shadowDarkColorEmboss,
+              shadowLightColorEmboss: controller.shadowLightColorEmboss,
               textTheme: TextTheme(
                 bodyLarge: TextStyle(color: controller.textColor),
                 bodyMedium: TextStyle(color: controller.secondaryTextColor),
               ),
             );
 
-            return NeumorphicTheme(
-              themeMode: controller.themeMode,
-              darkTheme: customDarkTheme,
-              theme: customLightTheme,
-              child: child!,
+            final overlayStyle = SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness:
+                  controller.isDarkMode ? Brightness.light : Brightness.dark,
+              statusBarBrightness:
+                  controller.isDarkMode ? Brightness.dark : Brightness.light,
+              systemNavigationBarColor: controller.currentBaseColor,
+              systemNavigationBarIconBrightness:
+                  controller.isDarkMode ? Brightness.light : Brightness.dark,
+            );
+
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: overlayStyle,
+              child: NeumorphicTheme(
+                themeMode: controller.themeMode,
+                darkTheme: customDarkTheme,
+                theme: customLightTheme,
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(controller.fontScale),
+                  ),
+                  child: child!,
+                ),
+              ),
             );
           },
         );

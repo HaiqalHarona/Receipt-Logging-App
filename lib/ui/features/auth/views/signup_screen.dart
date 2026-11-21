@@ -1,5 +1,4 @@
-// File: lib/ui/features/auth/views/signup_screen.dart
-
+import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -7,8 +6,18 @@ import '../../../core/theme/theme_controller.dart';
 import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../cloud/api/backend_api_client.dart';
 import '../../../../cloud/services/auth_service.dart';
+import '../../../../cloud/services/device_identity_service.dart';
+import '../../../../services/subscription_notification_service.dart';
+import '../../../../data/repositories/receipt_repository.dart';
+import '../../../../data/repositories/conversation_repository.dart';
+import '../../../../data/repositories/chat_message_repository.dart';
+import '../../../../services/category_service.dart';
+import '../../../../services/cloud_sync_service.dart';
 import '../../../../services/data_export_service.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../cloud/api/api_config.dart';
+import '../../../../cloud/services/google_auth_service.dart';
+import '../widgets/google_sign_in_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -21,11 +30,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _isTrialEligible = true;
 
   // Inline field-level error states
   String? _usernameError;
@@ -41,6 +53,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/dashboard');
       });
+    }
+    _checkTrialEligibility();
+  }
+
+  Future<void> _checkTrialEligibility() async {
+    // Check locally first (SecureStorage / prefs)
+    if (DeviceIdentityService.instance.hasDeviceUsedTrial) {
+      if (mounted) setState(() => _isTrialEligible = false);
+      return;
+    }
+    // Verify with backend against device registry
+    final eligible = await DeviceIdentityService.instance
+        .checkTrialEligibility(BackendApiClient.instance);
+    if (mounted) {
+      setState(() => _isTrialEligible = eligible);
     }
   }
 
@@ -70,8 +97,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (username.isEmpty) {
       usernameErr = 'Username is required.';
       valid = false;
-    } else if (username.length < 3) {
-      usernameErr = 'Username must be at least 3 characters.';
+    } else if (!RegExp(r'^[a-zA-Z0-9_]{3,10}$').hasMatch(username)) {
+      usernameErr =
+          'Username must be 3-10 characters (letters, numbers, underscores only).';
       valid = false;
     }
 
@@ -86,8 +114,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (password.isEmpty) {
       passwordErr = 'Password is required.';
       valid = false;
-    } else if (password.length < 6) {
-      passwordErr = 'Password must be at least 6 characters.';
+    } else if (password.length < 8) {
+      passwordErr = 'Password must be at least 8 characters.';
+      valid = false;
+    } else if (!RegExp(r'[A-Z]').hasMatch(password)) {
+      passwordErr = 'Password must contain at least one uppercase letter.';
+      valid = false;
+    } else if (!RegExp(r'[a-z]').hasMatch(password)) {
+      passwordErr = 'Password must contain at least one lowercase letter.';
+      valid = false;
+    } else if (!RegExp(r'[0-9]').hasMatch(password)) {
+      passwordErr = 'Password must contain at least one number.';
+      valid = false;
+    } else if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) {
+      passwordErr = 'Password must contain at least one special character.';
       valid = false;
     }
 
@@ -131,22 +171,62 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final guestData = await DataExportService.instance.exportGuestData();
       final hasGuestData = (guestData['receipts'] as List).isNotEmpty ||
           (guestData['conversations'] as List).isNotEmpty ||
-          (guestData['chat_messages'] as List).isNotEmpty;
+          (guestData['chat_messages'] as List).isNotEmpty ||
+          (guestData['custom_categories'] as List).isNotEmpty;
 
       final user = await BackendApiClient.instance.createUser(
         username: username,
         email: email,
         password: password,
+        preferences: {
+          'trial_device_id': DeviceIdentityService.instance.deviceId,
+        },
+      );
+
+      // Obtain signed JWT session tokens
+      final loginResp = await BackendApiClient.instance.loginUser(
+        username: username,
+        password: password,
       );
 
       // Auto login: persist session and link hardware device
       // Pass migrateData only when there is actual guest data to migrate.
-      await AuthService.instance.saveSession(user, userToken: password);
+      await AuthService.instance.saveSession(
+        user,
+        accessToken: loginResp.accessToken,
+        refreshToken: loginResp.refreshToken,
+      );
       await AuthService.instance.linkCurrentDevice(
         user,
-        userToken: password,
         migrateData: hasGuestData ? guestData : null,
       );
+
+      // Check if user was granted 14-day trial and schedule notifications
+      final isTrial = user.tier == 'premium' || (user.preferences['is_in_trial'] == true);
+      if (isTrial) {
+        await DeviceIdentityService.instance.markTrialUsed();
+        final trialStartStr = user.preferences['trial_start_at'] as String?;
+        final trialStart = trialStartStr != null
+            ? (DateTime.tryParse(trialStartStr) ?? DateTime.now())
+            : DateTime.now();
+        unawaited(SubscriptionNotificationService.instance
+            .scheduleTrialWelcomeNotification());
+        unawaited(SubscriptionNotificationService.instance
+            .scheduleTrialExpiryNotification(trialStart));
+      }
+
+      // Once migration to Supabase succeeds:
+      // 1. Purge local temporary guest stores (they now live in Supabase)
+      await ReceiptRepository.instance.clearAll();
+      await ConversationRepository.instance.clearAll();
+      await ChatMessageRepository.instance.clearAll();
+      await CategoryService.instance.clearAll();
+
+      // 2. Force re-fetch profile so migrated custom categories load into CategoryService
+      await AuthService.instance.getOrFetchProfile(force: true);
+
+      // 3. Trigger initial cloud sync to download migrated receipts with Supabase UUIDs
+      await CloudSyncService.instance.syncOnLogin();
 
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -158,8 +238,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         message: 'Account created! Welcome, ${user.username}!',
       );
 
-      // Navigate to dashboard, clearing the auth stack
-      context.go('/dashboard');
+      // Navigate to user settings and highlight Plan & Usage widget if trial was redeemed, else dashboard
+      if (isTrial) {
+        context.go('/dashboard');
+        context.push('/user-settings?highlight=plan');
+      } else {
+        context.go('/dashboard');
+      }
     } on ApiException catch (e) {
       setState(() => _isLoading = false);
 
@@ -167,12 +252,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (detail.contains('username')) {
         setState(() => _usernameError = 'This username is already taken.');
       } else if (detail.contains('email')) {
-        setState(() => _emailError = 'An account with this email already exists.');
+        setState(
+            () => _emailError = 'An account with this email already exists.');
       } else {
         // Fallback: surface the server message as a username error
         setState(() => _usernameError = e.message);
       }
-      AppLogger.error('UI', 'SignUp ApiException: ${e.statusCode} - ${e.message}', e);
+      AppLogger.error(
+          'UI', 'SignUp ApiException: ${e.statusCode} - ${e.message}', e);
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
@@ -186,6 +273,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  // ── PASSWORD STRENGTH HELPER ─────────────────────────────────────────────
+
+  int _calculatePasswordStrength(String pass) {
+    if (pass.isEmpty) return 0;
+    int score = 0;
+    if (pass.length >= 6) score++;
+    if (pass.length >= 8 && RegExp(r'[0-9]').hasMatch(pass)) score++;
+    if (RegExp(r'[A-Z]').hasMatch(pass) && RegExp(r'[a-z]').hasMatch(pass))
+      score++;
+    if (RegExp(r'[!@#\$&*~-]').hasMatch(pass) || pass.length >= 12) score++;
+    return score.clamp(1, 4);
+  }
+
+  Color _getPasswordStrengthColor(int strength, Color accent) {
+    switch (strength) {
+      case 1:
+        return Colors.redAccent;
+      case 2:
+        return Colors.orangeAccent;
+      case 3:
+        return Colors.amber;
+      case 4:
+        return accent;
+      default:
+        return Colors.transparent;
+    }
+  }
+
+  String _getPasswordStrengthLabel(int strength) {
+    switch (strength) {
+      case 1:
+        return "Weak (min 6 characters)";
+      case 2:
+        return "Fair (add numbers & mix case)";
+      case 3:
+        return "Good";
+      case 4:
+        return "Strong";
+      default:
+        return "";
+    }
+  }
+
   // ── HELPERS ─────────────────────────────────────────────────────────────────
 
   Widget _buildFieldError(String? error) {
@@ -194,7 +324,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       padding: const EdgeInsets.only(top: 6, left: 4),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 13),
+          const Icon(Icons.error_outline_rounded,
+              color: Colors.redAccent, size: 13),
           const SizedBox(width: 5),
           Expanded(
             child: Text(
@@ -207,12 +338,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  Widget _buildSectionLabel(String label, Color textSecondary) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: textSecondary.withValues(alpha: 0.8),
+          letterSpacing: 0.9,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = AppThemeController.instance;
     final textPrimary = controller.textColor;
     final textSecondary = controller.secondaryTextColor;
     final accent = controller.accentColor;
+    final passText = _passwordController.text;
+    final strength = _calculatePasswordStrength(passText);
 
     return NeumorphicBackground(
       child: Scaffold(
@@ -223,34 +371,51 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Navigation Bar
+                // Top Navigation Back Pill
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    NeumorphicIconBadge(
-                      icon: Icons.arrow_back_rounded,
-                      iconSize: 20,
-                      onTap: () {
-                        AppLogger.info('UI', 'User tapped Back on SignUpScreen');
-                        context.pop();
+                    NeumorphicTactileButton(
+                      onPressed: () {
+                        AppLogger.info(
+                            'UI', 'User tapped Back on SignUpScreen');
+                        if (GoRouter.of(context).canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/auth');
+                        }
                       },
-                    ),
-                    Text(
-                      "Sign Up",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: textPrimary,
+                      depth: 4.0,
+                      pressedDepth: 0.0,
+                      pressedScale: 0.97,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
+                      color: controller.currentBaseColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_back_rounded,
+                              color: textPrimary, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Back",
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 40),
                   ],
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
                 // Welcome Header
                 Text(
-                  "Create Account",
+                  "Create ${ApiConfig.appName} Account",
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -258,196 +423,316 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  "Sign up to start tracking and managing your expenses",
+                  "Sign up to ${ApiConfig.appName} to start tracking and managing your expenses",
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
+                    height: 1.4,
                     color: textSecondary,
                   ),
+                ),
+                // ── 14-Day Free Premium Reverse Trial Banner ─────────────────
+                if (_isTrialEligible) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          accent.withValues(alpha: 0.16),
+                          accent.withValues(alpha: 0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: accent.withValues(alpha: 0.35),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Text('🎁', style: TextStyle(fontSize: 18)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Here's a Gift For You",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                "Get 14 days of Premium upon email verification. Ineligible if email was previously used for a trial or purchase.",
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: textSecondary,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+
+                // ── Visual Progress Stepper ──────────────────────────────────
+                Row(
+                  children: [
+                    _buildStepperPill(
+                        "1. Account", true, accent, textSecondary),
+                    const SizedBox(width: 6),
+                    _buildStepperPill("2. Security", passText.isNotEmpty,
+                        accent, textSecondary),
+                    const SizedBox(width: 6),
+                    _buildStepperPill(
+                        "3. Complete", false, accent, textSecondary),
+                  ],
                 ),
                 const SizedBox(height: 28),
 
-                // ── USERNAME ─────────────────────────────────────────────────
-                Text(
-                  "USERNAME",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
+                // ── SECTION 1: ACCOUNT INFORMATION ────────────────────────────
+                _buildSectionLabel("ACCOUNT INFORMATION", textSecondary),
+                NeumorphicCardWidget(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.person_rounded, color: textSecondary, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _usernameController,
-                          style: TextStyle(color: textPrimary, fontSize: 14),
-                          autocorrect: false,
-                          onChanged: (_) {
-                            if (_usernameError != null) setState(() => _usernameError = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "Choose a username",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
-                            border: InputBorder.none,
+                      // Username Input
+                      Row(
+                        children: [
+                          Icon(Icons.person_rounded,
+                              color: textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _usernameController,
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
+                              autocorrect: false,
+                              onChanged: (_) {
+                                if (_usernameError != null) {
+                                  setState(() => _usernameError = null);
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Choose a username",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                    fontSize: 14),
+                                border: InputBorder.none,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
+                      ),
+                      Divider(
+                        height: 16,
+                        thickness: 0.5,
+                        color: textSecondary.withValues(alpha: 0.15),
+                      ),
+                      // Email Input
+                      Row(
+                        children: [
+                          Icon(Icons.email_rounded,
+                              color: textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
+                              autocorrect: false,
+                              onChanged: (_) {
+                                if (_emailError != null) {
+                                  setState(() => _emailError = null);
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: "user@example.com",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                    fontSize: 14),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 _buildFieldError(_usernameError),
-                const SizedBox(height: 16),
-
-                // ── EMAIL ─────────────────────────────────────────────────────
-                Text(
-                  "EMAIL ADDRESS",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      Icon(Icons.email_rounded, color: textSecondary, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          style: TextStyle(color: textPrimary, fontSize: 14),
-                          autocorrect: false,
-                          onChanged: (_) {
-                            if (_emailError != null) setState(() => _emailError = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "user@example.com",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 _buildFieldError(_emailError),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-                // ── PASSWORD ──────────────────────────────────────────────────
-                Text(
-                  "PASSWORD",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
+                // ── SECTION 2: SECURITY CREDENTIALS ───────────────────────────
+                _buildSectionLabel("SECURITY CREDENTIALS", textSecondary),
+                NeumorphicCardWidget(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.lock_rounded, color: textSecondary, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          style: TextStyle(color: textPrimary, fontSize: 14),
-                          onChanged: (_) {
-                            if (_passwordError != null) setState(() => _passwordError = null);
-                            // Also clear confirm error when password is edited
-                            if (_confirmPasswordError != null) setState(() => _confirmPasswordError = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "••••••••••••",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
-                            border: InputBorder.none,
+                      // Password Input
+                      Row(
+                        children: [
+                          Icon(Icons.lock_rounded,
+                              color: textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
+                              onChanged: (_) {
+                                setState(() {
+                                  if (_passwordError != null)
+                                    _passwordError = null;
+                                  if (_confirmPasswordError != null) {
+                                    _confirmPasswordError = null;
+                                  }
+                                });
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Password (min 6 characters)",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                    fontSize: 14),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            child: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                              color: textSecondary,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Password Strength Indicator Bar
+                      if (passText.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: List.generate(4, (index) {
+                            final isActive = index < strength;
+                            final color =
+                                _getPasswordStrengthColor(strength, accent);
+                            return Expanded(
+                              child: Container(
+                                height: 3.5,
+                                margin: EdgeInsets.only(
+                                    left: index == 0 ? 0 : 4,
+                                    right: index == 3 ? 0 : 4),
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? color
+                                      : textSecondary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getPasswordStrengthLabel(strength),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: _getPasswordStrengthColor(strength, accent),
                           ),
                         ),
+                        const SizedBox(height: 4),
+                      ],
+
+                      Divider(
+                        height: 16,
+                        thickness: 0.5,
+                        color: textSecondary.withValues(alpha: 0.15),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                        child: Icon(
-                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                          color: textSecondary,
-                          size: 20,
-                        ),
+
+                      // Confirm Password Input
+                      Row(
+                        children: [
+                          Icon(Icons.lock_outline_rounded,
+                              color: textSecondary, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _confirmPasswordController,
+                              obscureText: _obscureConfirmPassword,
+                              style:
+                                  TextStyle(color: textPrimary, fontSize: 14),
+                              onChanged: (_) {
+                                if (_confirmPasswordError != null) {
+                                  setState(() => _confirmPasswordError = null);
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: "Confirm your password",
+                                hintStyle: TextStyle(
+                                    color: textSecondary.withValues(alpha: 0.6),
+                                    fontSize: 14),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                            child: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                              color: textSecondary,
+                              size: 20,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 _buildFieldError(_passwordError),
-                const SizedBox(height: 16),
-
-                // ── CONFIRM PASSWORD ──────────────────────────────────────────
-                Text(
-                  "CONFIRM PASSWORD",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      Icon(Icons.lock_outline_rounded, color: textSecondary, size: 20),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _confirmPasswordController,
-                          obscureText: _obscureConfirmPassword,
-                          style: TextStyle(color: textPrimary, fontSize: 14),
-                          onChanged: (_) {
-                            if (_confirmPasswordError != null) setState(() => _confirmPasswordError = null);
-                          },
-                          decoration: InputDecoration(
-                            hintText: "••••••••••••",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
-                        child: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                          color: textSecondary,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 _buildFieldError(_confirmPasswordError),
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
 
-                // Sign Up Button
+                // ── Create Account CTA Button ─────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -464,49 +749,216 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                             )
                           : const Text(
-                              "Sign Up",
+                              "Create Account",
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: 0.2,
                               ),
                             ),
                     ),
                   ),
                 ),
+                if (_isTrialEligible) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 13,
+                        color: textSecondary.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          "Verify your email to activate your 14-day trial. Ineligible if email previously used for trial or purchase.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: textSecondary.withValues(alpha: 0.7),
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 20),
 
-                // Already have an account link
+                // ── Or Divider ───────────────────────────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: Text(
+                        "or sign up with",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── Google Sign Up Button ────────────────────────────────────
+                GoogleSignInButton(
+                  isLoading: _isGoogleLoading,
+                  label: "Sign up with Google",
+                  onPressed: () {
+                    GoogleAuthService.instance.signInWithGoogle(
+                      context,
+                      onLoadingChanged: (loading) {
+                        if (mounted) setState(() => _isGoogleLoading = loading);
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // ── Legal Terms Disclaimer ──────────────────────────────────
                 Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      AppLogger.info('UI', 'User tapped Log In link on SignUpScreen');
-                      if (GoRouter.of(context).canPop()) {
-                        context.pop();
-                      } else {
-                        context.go('/login');
-                      }
-                    },
-                    child: RichText(
-                      text: TextSpan(
-                        style: TextStyle(fontSize: 13, color: textSecondary),
-                        children: [
-                          const TextSpan(text: "Already have an account? "),
-                          TextSpan(
-                            text: "Log In",
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          "By creating an account, you agree to our ",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textSecondary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.push('/legal/terms'),
+                          child: Text(
+                            "Terms of Service",
                             style: TextStyle(
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: accent,
                               decoration: TextDecoration.underline,
                               decorationColor: accent,
                             ),
                           ),
-                        ],
+                        ),
+                        Text(
+                          " and ",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textSecondary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.push('/legal/privacy'),
+                          child: Text(
+                            "Privacy Policy",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: accent,
+                              decoration: TextDecoration.underline,
+                              decorationColor: accent,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ".",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textSecondary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Centered Log In Link ──────────────────────────────────────
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      AppLogger.info(
+                          'UI', 'User tapped Log In link on SignUpScreen');
+                      if (GoRouter.of(context).canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/login');
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: RichText(
+                        text: TextSpan(
+                          style:
+                              TextStyle(fontSize: 13.5, color: textSecondary),
+                          children: [
+                            const TextSpan(text: "Already have an account? "),
+                            TextSpan(
+                              text: "Log In",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: accent,
+                                decoration: TextDecoration.underline,
+                                decorationColor: accent,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepperPill(
+      String label, bool isActive, Color accent, Color textSecondary) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive
+              ? accent.withValues(alpha: 0.15)
+              : textSecondary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color:
+                isActive ? accent.withValues(alpha: 0.35) : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              color: isActive ? accent : textSecondary.withValues(alpha: 0.6),
             ),
           ),
         ),

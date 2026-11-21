@@ -7,7 +7,7 @@
 //   complete  — check icon, completion text, 'Review' + 'X' buttons
 //   error     — error icon, error message, optional 'Retry' + 'X' buttons
 
-import 'package:flutter/material.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import '../router/app_router.dart';
 import '../theme/theme_controller.dart';
 
@@ -27,13 +27,22 @@ class ScanProgressSnackBar {
   /// Shows the **scanning** state SnackBar.
   ///
   /// [onCancel] — called when the user taps 'Cancel'. Closes the SSE stream.
+  /// [onUpgrade] — optional callback when user taps the speed upgrade chip.
+  /// [badgeText] — optional badge label (e.g. 'Sequential' or 'Parallel').
   static void show({
     BuildContext? context,
     required String message,
     required VoidCallback onCancel,
+    VoidCallback? onUpgrade,
+    String? badgeText,
   }) {
     _present(
-      _ScanSnackBarConfig.scanning(message: message, onCancel: onCancel),
+      _ScanSnackBarConfig.scanning(
+        message: message,
+        onCancel: onCancel,
+        onUpgrade: onUpgrade,
+        badgeText: badgeText,
+      ),
       context: context,
     );
   }
@@ -116,31 +125,45 @@ class _ScanSnackBarConfig {
     this.onCancel,
     this.onReview,
     this.onRetry,
+    this.onUpgrade,
+    this.badgeText,
   });
 
   factory _ScanSnackBarConfig.scanning({
     required String message,
     required VoidCallback onCancel,
+    VoidCallback? onUpgrade,
+    String? badgeText,
   }) =>
-      _ScanSnackBarConfig(state: _ScanState.scanning, message: message, onCancel: onCancel);
+      _ScanSnackBarConfig(
+        state: _ScanState.scanning,
+        message: message,
+        onCancel: onCancel,
+        onUpgrade: onUpgrade,
+        badgeText: badgeText,
+      );
 
   factory _ScanSnackBarConfig.complete({
     required String message,
     required VoidCallback onReview,
   }) =>
-      _ScanSnackBarConfig(state: _ScanState.complete, message: message, onReview: onReview);
+      _ScanSnackBarConfig(
+          state: _ScanState.complete, message: message, onReview: onReview);
 
   factory _ScanSnackBarConfig.error({
     required String message,
     VoidCallback? onRetry,
   }) =>
-      _ScanSnackBarConfig(state: _ScanState.error, message: message, onRetry: onRetry);
+      _ScanSnackBarConfig(
+          state: _ScanState.error, message: message, onRetry: onRetry);
 
   final _ScanState state;
   final String message;
   final VoidCallback? onCancel;
   final VoidCallback? onReview;
   final VoidCallback? onRetry;
+  final VoidCallback? onUpgrade;
+  final String? badgeText;
 
   bool get isScanning => state == _ScanState.scanning;
   bool get isComplete => state == _ScanState.complete;
@@ -153,10 +176,12 @@ class _ScanProgressSnackBarWidget extends StatefulWidget {
   const _ScanProgressSnackBarWidget();
 
   @override
-  State<_ScanProgressSnackBarWidget> createState() => _ScanProgressSnackBarWidgetState();
+  State<_ScanProgressSnackBarWidget> createState() =>
+      _ScanProgressSnackBarWidgetState();
 }
 
-class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget>
+class _ScanProgressSnackBarWidgetState
+    extends State<_ScanProgressSnackBarWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
 
@@ -196,7 +221,9 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
 
         final Color bg = config.isError
             ? Colors.red.shade900
-            : (controller.isDarkMode ? const Color(0xFF2C2C2E) : const Color(0xFF1C1C1E));
+            : (controller.isDarkMode
+                ? const Color(0xFF2C2C2E)
+                : const Color(0xFF1C1C1E));
         final Color accent = config.isError
             ? Colors.redAccent
             : config.isComplete
@@ -212,29 +239,25 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 6, top: 10, bottom: 10),
+                  padding: const EdgeInsets.only(
+                      left: 14, right: 6, top: 10, bottom: 10),
                   child: Row(
                     children: [
                       // Leading icon
-                      _LeadingIcon(config: config, pulseController: _pulseController, accent: accent),
+                      _LeadingIcon(
+                          config: config,
+                          pulseController: _pulseController,
+                          accent: accent),
                       const SizedBox(width: 10),
 
                       // Message
                       Expanded(
-                        child: Text(
-                          config.message,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: _ProgressMessage(config: config),
                       ),
 
                       // Action button: Cancel / Review / Retry
-                      _ActionButton(config: config, accent: accent, context: context),
+                      _ActionButton(
+                          config: config, accent: accent, context: context),
 
                       // Close 'X' button
                       InkWell(
@@ -242,7 +265,8 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
                         onTap: () => ScanProgressSnackBar.dismiss(),
                         child: const Padding(
                           padding: EdgeInsets.all(6),
-                          child: Icon(Icons.close_rounded, color: Colors.white54, size: 18),
+                          child: Icon(Icons.close_rounded,
+                              color: Colors.white54, size: 18),
                         ),
                       ),
                     ],
@@ -250,7 +274,10 @@ class _ScanProgressSnackBarWidgetState extends State<_ScanProgressSnackBarWidget
                 ),
 
                 // Bottom indicator line: pulsing for scanning, solid for complete/error
-                _BottomIndicator(config: config, accent: accent, pulseController: _pulseController),
+                _BottomIndicator(
+                    config: config,
+                    accent: accent,
+                    pulseController: _pulseController),
               ],
             ),
           ),
@@ -383,5 +410,128 @@ class _BottomIndicator extends StatelessWidget {
 
     // Static solid indicator for complete / error
     return Container(height: 3, color: accent);
+  }
+}
+
+class _ProgressMessage extends StatelessWidget {
+  const _ProgressMessage({required this.config});
+
+  final _ScanSnackBarConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    if (config.badgeText != null && config.badgeText!.isNotEmpty) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              config.message,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          _MinimalistBadge(
+            badgeText: config.badgeText!,
+            onTap: config.onUpgrade,
+          ),
+        ],
+      );
+    }
+
+    if (config.onUpgrade != null && config.message.contains('• ⚡')) {
+      final parts = config.message.split('• ⚡');
+      final text = parts.first.replaceAll('(Sequential)', '').trim();
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          _MinimalistBadge(
+            badgeText: 'Sequential',
+            onTap: config.onUpgrade,
+          ),
+        ],
+      );
+    }
+
+    return Text(
+      config.message,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 13.5,
+        fontWeight: FontWeight.w500,
+      ),
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+class _MinimalistBadge extends StatelessWidget {
+  const _MinimalistBadge({
+    required this.badgeText,
+    this.onTap,
+  });
+
+  final String badgeText;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSequential = badgeText.toLowerCase() == 'sequential';
+    final borderColor = isSequential
+        ? Colors.amber.shade400.withValues(alpha: 0.7)
+        : const Color(0xFF10B981);
+    final bgColor = isSequential
+        ? Colors.amber.withValues(alpha: 0.12)
+        : const Color(0xFF10B981).withValues(alpha: 0.12);
+    final textColor = isSequential
+        ? Colors.amber.shade200
+        : const Color(0xFF6EE7B7);
+
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: borderColor, width: 0.8),
+      ),
+      child: Text(
+        badgeText,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+
+    if (onTap != null) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: badge,
+      );
+    }
+    return badge;
   }
 }

@@ -1,79 +1,348 @@
+// File: lib/ui/features/auth/views/auth_screen.dart
+
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_controller.dart';
+import '../../../../services/app_logger_service.dart';
+import '../../../../cloud/api/api_config.dart';
+import '../../../core/widgets/alpha_breadcrumb_badge.dart';
+import '../../../../cloud/services/google_auth_service.dart';
+import '../widgets/google_sign_in_button.dart';
 
-class AuthScreen extends StatelessWidget {
+class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
   @override
+  State<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  bool _isGoogleLoading = false;
+
+  @override
   Widget build(BuildContext context) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        final controller = AppThemeController.instance;
+        final textPrimary = controller.textColor;
+        final textSecondary = controller.secondaryTextColor;
+        final accent = controller.accentColor;
+        final canPop = GoRouter.maybeOf(context)?.canPop() ?? false;
 
-    return NeumorphicBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+        return NeumorphicBackground(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    "🧾 Receipt Logger",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: textPrimary,
+                  // Top Navigation / Close Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (canPop)
+                          NeumorphicTactileButton(
+                            onPressed: () {
+                              AppLogger.info(
+                                  'UI', 'User tapped Back on AuthScreen');
+                              context.pop();
+                            },
+                            depth: 4.0,
+                            pressedDepth: 0.0,
+                            pressedScale: 0.97,
+                            boxShape: NeumorphicBoxShape.roundRect(
+                                BorderRadius.circular(12)),
+                            color: controller.currentBaseColor,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.arrow_back_rounded,
+                                    color: textPrimary, size: 18),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "Back",
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          const SizedBox(width: 40),
+                        const Spacer(),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Sign in to sync your expenses",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 36),
 
-                  // Email Input
-                  _buildInputField(
-                    context: context,
-                    label: "EMAIL ADDRESS",
-                    hint: "nino@example.com",
-                    icon: Icons.email_rounded,
-                  ),
-                  const SizedBox(height: 20),
+                  // Main Content
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 28, vertical: 12),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // App Logo Badge
+                            Neumorphic(
+                              style: NeumorphicStyle(
+                                depth: 6,
+                                intensity: 0.9,
+                                boxShape: const NeumorphicBoxShape.circle(),
+                                color: controller.currentBaseColor,
+                                border: NeumorphicBorder(
+                                  color: accent.withValues(alpha: 0.35),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Container(
+                                width: 88,
+                                height: 88,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: RadialGradient(
+                                    colors: [
+                                      accent.withValues(alpha: 0.20),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.receipt_long_rounded,
+                                  color: accent,
+                                  size: 44,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
 
-                  // Password Input
-                  _buildInputField(
-                    context: context,
-                    label: "PASSWORD",
-                    hint: "••••••••••••",
-                    icon: Icons.lock_rounded,
-                    isObscure: true,
-                  ),
-                  const SizedBox(height: 32),
+                            // App Title & Tagline
+                            Text(
+                              ApiConfig.appName,
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Smart receipt scanning & automated expense management",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                height: 1.4,
+                                color: textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
 
-                  // Sign In CTA Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: NeumorphicButtonWidget(
-                      onPressed: () {
-                        context.go('/dashboard');
-                      },
-                      child: const Center(
-                        child: Text(
-                          "Sign In",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                            // Feature Badges Card
+                            NeumorphicCardWidget(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 16),
+                              child: Column(
+                                children: [
+                                  _buildFeatureRow(
+                                    icon: Icons.flash_on_rounded,
+                                    title: "AI Vision Parsing",
+                                    subtitle:
+                                        "Clean & structured line-item extraction",
+                                    accent: accent,
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildFeatureRow(
+                                    icon: Icons.auto_graph_rounded,
+                                    title: "Smart Spending Insights",
+                                    subtitle:
+                                        "Interactive analytics & expense breakdown",
+                                    accent: accent,
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildFeatureRow(
+                                    icon: Icons.cloud_sync_rounded,
+                                    title: "Multi-Device Sync",
+                                    subtitle:
+                                        "Seamless cloud backup when signed in",
+                                    accent: accent,
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 36),
+
+                            // ── Primary Action: Sign In ───────────────────────
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: NeumorphicButtonWidget(
+                                onPressed: () {
+                                  AppLogger.info('UI',
+                                      'User tapped Sign In on AuthScreen');
+                                  context.push('/login');
+                                },
+                                child: const Center(
+                                  child: Text(
+                                    "Sign In",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // ── Secondary Action: Create Account ──────────────
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: NeumorphicTactileButton(
+                                onPressed: () {
+                                  AppLogger.info('UI',
+                                      'User tapped Create Account on AuthScreen');
+                                  context.push('/signup');
+                                },
+                                depth: 4.0,
+                                pressedDepth: 0.0,
+                                pressedScale: 0.98,
+                                boxShape: NeumorphicBoxShape.roundRect(
+                                    BorderRadius.circular(14)),
+                                color: controller.currentBaseColor,
+                                border: NeumorphicBorder(
+                                  color: accent.withValues(alpha: 0.5),
+                                  width: 1.2,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    "Create Account",
+                                    style: TextStyle(
+                                      color: accent,
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            // ── Google Sign-In ────────────────────────────────
+                            GoogleSignInButton(
+                              isLoading: _isGoogleLoading,
+                              label: "Continue with Google",
+                              onPressed: () {
+                                GoogleAuthService.instance.signInWithGoogle(
+                                  context,
+                                  onLoadingChanged: (loading) {
+                                    if (mounted) {
+                                      setState(() => _isGoogleLoading = loading);
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 24),
+
+                            // ── Continue as Guest ─────────────────────────────
+                            GestureDetector(
+                              onTap: () {
+                                AppLogger.info('UI',
+                                    'User tapped Continue as Guest on AuthScreen');
+                                if (canPop) {
+                                  context.pop();
+                                } else {
+                                  context.go('/dashboard');
+                                }
+                              },
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "Continue as Guest",
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 16,
+                                      color: textSecondary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => context.push('/legal/privacy'),
+                                  child: Text(
+                                    "Privacy Policy",
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color:
+                                          textSecondary.withValues(alpha: 0.8),
+                                      decoration: TextDecoration.underline,
+                                      decorationColor:
+                                          textSecondary.withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  "  •  ",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: textSecondary.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => context.push('/legal/terms'),
+                                  child: Text(
+                                    "Terms of Service",
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color:
+                                          textSecondary.withValues(alpha: 0.8),
+                                      decoration: TextDecoration.underline,
+                                      decorationColor:
+                                          textSecondary.withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            const AlphaBreadcrumbBadge(compact: true),
+                          ],
                         ),
                       ),
                     ),
@@ -82,46 +351,48 @@ class AuthScreen extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildInputField({
-    required BuildContext context,
-    required String label,
-    required String hint,
+  Widget _buildFeatureRow({
     required IconData icon,
-    bool isObscure = false,
+    required String title,
+    required String subtitle,
+    required Color accent,
+    required Color textPrimary,
+    required Color textSecondary,
   }) {
-    final isDark = NeumorphicTheme.isUsingDark(context);
-    final textPrimary = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
-    final textSecondary = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: textSecondary,
-            letterSpacing: 0.5,
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent.withValues(alpha: 0.12),
           ),
+          child: Icon(icon, color: accent, size: 17),
         ),
-        const SizedBox(height: 6),
-        NeumorphicInputFieldWidget(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: textSecondary, size: 20),
-              const SizedBox(width: 12),
               Text(
-                hint,
+                title,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                   color: textPrimary,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: textSecondary,
                 ),
               ),
             ],
@@ -131,4 +402,3 @@ class AuthScreen extends StatelessWidget {
     );
   }
 }
-

@@ -17,14 +17,21 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
+import '../../cloud/api/backend_api_client.dart';
+import '../../cloud/services/auth_service.dart';
 import '../../services/app_logger_service.dart';
 import '../../services/isar_service.dart';
+import '../../services/crypto_service.dart';
 import '../models/conversation_isar.dart';
 import '../mappers/conversation_mapper.dart';
 import '../../domain/models/conversation.dart';
 
 class ConversationRepository extends ChangeNotifier {
-  ConversationRepository._();
+  ConversationRepository._() {
+    AuthService.instance.addListener(() {
+      notifyListeners();
+    });
+  }
 
   static final ConversationRepository instance = ConversationRepository._();
 
@@ -33,8 +40,14 @@ class ConversationRepository extends ChangeNotifier {
 
   /// Returns an immutable snapshot of all active (non-deleted) conversations,
   /// sorted by [updatedAt] descending (most recently active first).
-  List<Conversation> get conversations =>
-      List.unmodifiable(_conversations.where((c) => c.isActive));
+  /// When unauthenticated (guest mode), filters out any cloud user conversations (UUIDs).
+  List<Conversation> get conversations {
+    if (!AuthService.instance.isLoggedIn) {
+      return List.unmodifiable(
+          _conversations.where((c) => c.isActive && !_isUuid(c.id)));
+    }
+    return List.unmodifiable(_conversations.where((c) => c.isActive));
+  }
 
   // ── LIFECYCLE ─────────────────────────────────────────────────────────────────
 
@@ -42,19 +55,23 @@ class ConversationRepository extends ChangeNotifier {
   /// Safe to call multiple times — only loads once.
   Future<void> init() async {
     if (_isInitialized && _conversations.isNotEmpty) return;
-    AppLogger.info('Isar', '[ConversationRepository] Initializing conversation repository...');
+    AppLogger.info('Isar',
+        '[ConversationRepository] Initializing conversation repository...');
     if (IsarService.isInitialized) {
       try {
         await _loadFromIsar();
         _isInitialized = true;
-        AppLogger.info('Isar', '[ConversationRepository] Initialized successfully with ${_conversations.length} active conversations.');
+        AppLogger.info('Isar',
+            '[ConversationRepository] Initialized successfully with ${_conversations.length} active conversations.');
+        notifyListeners();
       } catch (e, stackTrace) {
-        AppLogger.error('Isar', '[ConversationRepository] Init error', e, stackTrace);
+        AppLogger.error(
+            'Isar', '[ConversationRepository] Init error', e, stackTrace);
       }
     } else {
-      AppLogger.warning('Isar', '[ConversationRepository] IsarService not initialized yet; deferring init.');
+      AppLogger.warning('Isar',
+          '[ConversationRepository] IsarService not initialized yet; deferring init.');
     }
-    notifyListeners();
   }
 
   // ── CRUD OPERATIONS ───────────────────────────────────────────────────────────
@@ -70,41 +87,118 @@ class ConversationRepository extends ChangeNotifier {
     final now = DateTime.now();
     final conversationId = id ?? 'local_${now.millisecondsSinceEpoch}';
 
+    final plainTitle = title;
     final model = ConversationIsarModel()
       ..conversationId = conversationId
-      ..title = title
+      ..title = plainTitle
       ..createdAt = now
       ..updatedAt = now;
 
     if (IsarService.isInitialized) {
-      AppLogger.info('Isar', '[ConversationRepository] Transaction write: creating conversation $conversationId ("$title")');
+      AppLogger.info('Isar',
+          '[ConversationRepository] Transaction write: creating conversation $conversationId ("$plainTitle")');
+      final encryptedModel = ConversationIsarModel()
+        ..conversationId = conversationId
+        ..title = await CryptoService.instance.encryptText(plainTitle)
+        ..createdAt = now
+        ..updatedAt = now;
+
       await IsarService.isar.writeTxn(() async {
-        await IsarService.isar.conversationIsarModels.put(model);
+        await IsarService.isar.conversationIsarModels.put(encryptedModel);
       });
-      AppLogger.debug('Isar', '[ConversationRepository] Saved conversation $conversationId to Isar DB.');
+      AppLogger.debug('Isar',
+          '[ConversationRepository] Saved conversation $conversationId to Isar DB.');
       await _loadFromIsar();
     } else {
       final conversation = model.toDomain();
       _conversations.insert(0, conversation);
-      AppLogger.debug('Isar', '[ConversationRepository] Saved conversation $conversationId to in-memory store.');
+      AppLogger.debug('Isar',
+          '[ConversationRepository] Saved conversation $conversationId to in-memory store.');
     }
 
     notifyListeners();
     return model.toDomain();
   }
 
+  bool _isUuid(String id) {
+    if (id.isEmpty) return false;
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    );
+    return uuidRegex.hasMatch(id);
+  }
+
+  void _updateCloudTitleIfSynced(String conversationId, String newTitle) {
+    if (_isUuid(conversationId) && AuthService.instance.isLoggedIn) {
+      final username = AuthService.instance.currentUsername;
+      if (username != null) {
+        AppLogger.info('CloudSync',
+            '[ConversationRepository] Triggering backend PATCH /chat/$conversationId on Supabase (title: "$newTitle")...');
+        BackendApiClient.instance
+            .updateConversationTitle(
+          conversationId: conversationId,
+          title: newTitle,
+          username: username,
+        )
+            .then((record) {
+          AppLogger.info('CloudSync',
+              '[ConversationRepository] Cloud conversation $conversationId title updated on Supabase (title="${record.title}").');
+        }).catchError((e, st) {
+          AppLogger.error(
+              'CloudSync',
+              '[ConversationRepository] Error executing PATCH /chat/$conversationId',
+              e,
+              st);
+        });
+      }
+    }
+  }
+
+  void _deleteFromCloudIfSynced(String conversationId) {
+    if (_isUuid(conversationId) && AuthService.instance.isLoggedIn) {
+      final username = AuthService.instance.currentUsername;
+      if (username != null) {
+        AppLogger.info('CloudSync',
+            '[ConversationRepository] Triggering backend DELETE /chat/$conversationId on Supabase...');
+        BackendApiClient.instance
+            .deleteConversation(
+          conversationId: conversationId,
+          username: username,
+        )
+            .then((success) {
+          if (success) {
+            AppLogger.info('CloudSync',
+                '[ConversationRepository] Cloud conversation $conversationId soft-deleted on Supabase.');
+          } else {
+            AppLogger.warning('CloudSync',
+                '[ConversationRepository] Cloud conversation $conversationId deletion returned false.');
+          }
+        }).catchError((e, st) {
+          AppLogger.error(
+              'CloudSync',
+              '[ConversationRepository] Error executing DELETE /chat/$conversationId',
+              e,
+              st);
+        });
+      }
+    }
+  }
+
   /// Updates the title of a conversation and bumps [updatedAt].
   Future<void> updateTitle(String id, String newTitle) async {
-    AppLogger.info('Isar', '[ConversationRepository] Updating conversation $id title to "$newTitle"');
+    AppLogger.info('Isar',
+        '[ConversationRepository] Updating conversation $id title to "$newTitle"');
     await _mutateConversation(id, (model) {
       model.title = newTitle;
       model.updatedAt = DateTime.now();
     });
+    _updateCloudTitleIfSynced(id, newTitle);
   }
 
   /// Bumps [updatedAt] on a conversation (called when a new message is sent).
   Future<void> touchUpdatedAt(String id) async {
-    AppLogger.debug('Isar', '[ConversationRepository] Touching updatedAt for conversation $id');
+    AppLogger.debug('Isar',
+        '[ConversationRepository] Touching updatedAt for conversation $id');
     await _mutateConversation(id, (model) {
       model.updatedAt = DateTime.now();
     });
@@ -113,24 +207,29 @@ class ConversationRepository extends ChangeNotifier {
   /// Soft-deletes a conversation by setting [deletedAt].
   /// The conversation is removed from the active [conversations] list.
   Future<void> softDeleteConversation(String id) async {
-    AppLogger.info('Isar', '[ConversationRepository] Soft-deleting conversation $id');
+    AppLogger.info(
+        'Isar', '[ConversationRepository] Soft-deleting conversation $id');
     await _mutateConversation(id, (model) {
       model.deletedAt = DateTime.now();
     });
+    _deleteFromCloudIfSynced(id);
   }
 
   /// Permanently wipes all conversations from the local Isar database.
   Future<void> clearAll() async {
     if (IsarService.isInitialized) {
-      AppLogger.info('Isar', '[ConversationRepository] Transaction write: clearing conversationIsarModels collection');
+      AppLogger.info('Isar',
+          '[ConversationRepository] Transaction write: clearing conversationIsarModels collection');
       await IsarService.isar.writeTxn(() async {
         await IsarService.isar.conversationIsarModels.clear();
       });
-      AppLogger.debug('Isar', '[ConversationRepository] Cleared all conversations from Isar DB.');
+      AppLogger.debug('Isar',
+          '[ConversationRepository] Cleared all conversations from Isar DB.');
       await _loadFromIsar();
     } else {
       _conversations.clear();
-      AppLogger.debug('Isar', '[ConversationRepository] Cleared all conversations from in-memory store.');
+      AppLogger.debug('Isar',
+          '[ConversationRepository] Cleared all conversations from in-memory store.');
     }
     notifyListeners();
   }
@@ -142,7 +241,8 @@ class ConversationRepository extends ChangeNotifier {
     if (newConversations.isEmpty) return;
 
     if (IsarService.isInitialized) {
-      AppLogger.info('Isar', '[ConversationRepository] Transaction write: batch saving ${newConversations.length} conversations');
+      AppLogger.info('Isar',
+          '[ConversationRepository] Transaction write: batch saving ${newConversations.length} conversations');
       await IsarService.isar.writeTxn(() async {
         for (final c in newConversations) {
           final existing = await IsarService.isar.conversationIsarModels
@@ -150,41 +250,50 @@ class ConversationRepository extends ChangeNotifier {
               .conversationIdEqualTo(c.id)
               .findFirst();
           final model = c.toIsar();
+          await model.encryptSensitiveFields();
           if (existing != null) {
             model.id = existing.id;
           }
           await IsarService.isar.conversationIsarModels.put(model);
         }
       });
-      AppLogger.debug('Isar', '[ConversationRepository] Batch saved ${newConversations.length} conversations to Isar DB.');
+      AppLogger.debug('Isar',
+          '[ConversationRepository] Batch saved ${newConversations.length} conversations to Isar DB.');
       await _loadFromIsar();
     } else {
       for (final c in newConversations) {
-        final index = _conversations.indexWhere((existing) => existing.id == c.id);
+        final index =
+            _conversations.indexWhere((existing) => existing.id == c.id);
         if (index >= 0) {
           _conversations[index] = c;
         } else {
           _conversations.insert(0, c);
         }
       }
-      AppLogger.debug('Isar', '[ConversationRepository] Batch saved ${newConversations.length} conversations to in-memory store.');
+      AppLogger.debug('Isar',
+          '[ConversationRepository] Batch saved ${newConversations.length} conversations to in-memory store.');
     }
     notifyListeners();
   }
 
   Future<void> _loadFromIsar() async {
     try {
-      final all = await IsarService.isar.conversationIsarModels
-          .where()
-          .findAll();
-      AppLogger.debug('Isar', '[ConversationRepository] Query result: fetched ${all.length} total conversation records from Isar DB.');
+      final all =
+          await IsarService.isar.conversationIsarModels.where().findAll();
+      AppLogger.debug('Isar',
+          '[ConversationRepository] Query result: fetched ${all.length} total conversation records from Isar DB.');
       // Filter active (non-deleted), sort by updatedAt descending in Dart
       final active = all.where((m) => m.deletedAt == null).toList()
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      AppLogger.debug('Isar', '[ConversationRepository] Query result: ${active.length} active (non-deleted) conversations.');
+      AppLogger.debug('Isar',
+          '[ConversationRepository] Query result: ${active.length} active (non-deleted) conversations.');
+      for (final m in active) {
+        await m.decryptSensitiveFields();
+      }
       _conversations = active.map((m) => m.toDomain()).toList();
     } catch (e, stackTrace) {
-      AppLogger.error('Isar', '[ConversationRepository] Load error', e, stackTrace);
+      AppLogger.error(
+          'Isar', '[ConversationRepository] Load error', e, stackTrace);
       _conversations = [];
     }
   }
@@ -195,18 +304,23 @@ class ConversationRepository extends ChangeNotifier {
     void Function(ConversationIsarModel model) mutator,
   ) async {
     if (IsarService.isInitialized) {
-      AppLogger.info('Isar', '[ConversationRepository] Transaction write: mutating conversation $id');
+      AppLogger.info('Isar',
+          '[ConversationRepository] Transaction write: mutating conversation $id');
       await IsarService.isar.writeTxn(() async {
         final existing = await IsarService.isar.conversationIsarModels
             .where()
             .conversationIdEqualTo(id)
             .findFirst();
         if (existing != null) {
+          await existing.decryptSensitiveFields();
           mutator(existing);
+          await existing.encryptSensitiveFields();
           await IsarService.isar.conversationIsarModels.put(existing);
-          AppLogger.debug('Isar', '[ConversationRepository] Saved mutated conversation $id to Isar DB.');
+          AppLogger.debug('Isar',
+              '[ConversationRepository] Saved mutated conversation $id to Isar DB.');
         } else {
-          AppLogger.warning('Isar', '[ConversationRepository] Conversation $id not found in Isar DB for mutation.');
+          AppLogger.warning('Isar',
+              '[ConversationRepository] Conversation $id not found in Isar DB for mutation.');
         }
       });
       await _loadFromIsar();
@@ -216,9 +330,11 @@ class ConversationRepository extends ChangeNotifier {
         final model = _conversations[index].toIsar();
         mutator(model);
         _conversations[index] = model.toDomain();
-        AppLogger.debug('Isar', '[ConversationRepository] Saved mutated conversation $id in in-memory store.');
+        AppLogger.debug('Isar',
+            '[ConversationRepository] Saved mutated conversation $id in in-memory store.');
       } else {
-        AppLogger.warning('Isar', '[ConversationRepository] Conversation $id not found in in-memory store for mutation.');
+        AppLogger.warning('Isar',
+            '[ConversationRepository] Conversation $id not found in in-memory store for mutation.');
       }
     }
     notifyListeners();

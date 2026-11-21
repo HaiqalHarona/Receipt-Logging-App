@@ -18,9 +18,8 @@ class VerificationViewModel extends ChangeNotifier {
   int get currentIndex => _currentIndex;
   bool get isSaving => _isSaving;
 
-  Receipt? get currentReceipt => _receipts.isNotEmpty
-      ? _receipts[_currentIndex]
-      : null;
+  Receipt? get currentReceipt =>
+      _receipts.isNotEmpty ? _receipts[_currentIndex] : null;
 
   /// Initializes the ViewModel with parsed receipts from OCR scanner.
   void setReceipts(List<Receipt> initialReceipts) {

@@ -1,5 +1,6 @@
 // File: lib/ui/features/auth/views/login_screen.dart
 
+import 'dart:async';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -12,10 +13,19 @@ import '../../../../services/app_logger_service.dart';
 import '../../../../data/repositories/receipt_repository.dart';
 import '../../../../data/repositories/conversation_repository.dart';
 import '../../../../data/repositories/chat_message_repository.dart';
+import '../../../../services/category_service.dart';
 import '../../../../services/isar_service.dart';
 import '../../../../data/models/receipt_isar.dart';
+import '../../../../data/models/chat_message_isar.dart';
 import '../../../../domain/models/receipt.dart';
 import 'package:isar/isar.dart';
+import '../../../../cloud/api/api_config.dart';
+import '../../../../cloud/services/google_auth_service.dart';
+import '../../../../cloud/models/user_models.dart';
+import '../../../core/widgets/two_factor_otp_sheet.dart';
+import '../../../core/widgets/neumorphic_loading_barrier.dart';
+import '../widgets/google_sign_in_button.dart';
+import '../widgets/guest_override_warning_modal.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   String? _errorMessage;
 
   @override
@@ -61,160 +72,57 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<bool> _hasLocalGuestData() async {
     await ReceiptRepository.instance.init();
     await ConversationRepository.instance.init();
+    await CategoryService.instance.init();
 
     List<Receipt> receipts = ReceiptRepository.instance.receipts;
     if (IsarService.isInitialized) {
       try {
-        final models = await IsarService.isar.receiptIsarModels.where().findAll();
+        final models =
+            await IsarService.isar.receiptIsarModels.where().findAll();
         receipts = models.map((m) => m.toDomain()).toList();
-        AppLogger.info('UI', '_hasLocalGuestData direct Isar query found ${receipts.length} receipts');
+        AppLogger.info('UI',
+            '_hasLocalGuestData direct Isar query found ${receipts.length} receipts');
       } catch (e) {
         AppLogger.error('UI', 'Error querying Isar in _hasLocalGuestData', e);
       }
     }
 
     final hasGuestReceipts = receipts.any((r) => !_isUuid(r.id));
-    final hasGuestConversations = ConversationRepository.instance.conversations.any((c) => !_isUuid(c.id));
-    return hasGuestReceipts || hasGuestConversations;
+    final hasGuestConversations = ConversationRepository.instance.conversations
+        .any((c) => !_isUuid(c.id));
+
+    bool hasGuestMessages = false;
+    if (IsarService.isInitialized) {
+      try {
+        final msgs =
+            await IsarService.isar.chatMessageIsarModels.where().findAll();
+        hasGuestMessages = msgs.any((m) => !_isUuid(m.conversationId));
+      } catch (e) {
+        AppLogger.error(
+            'UI', 'Error querying chat messages in _hasLocalGuestData', e);
+      }
+    }
+
+    final hasCustomCategories =
+        CategoryService.instance.customCategories.isNotEmpty;
+
+    return hasGuestReceipts ||
+        hasGuestConversations ||
+        hasGuestMessages ||
+        hasCustomCategories;
   }
 
   Future<void> _purgeLocalGuestData() async {
-    AppLogger.info('UI', 'Purging local guest data before logging in to existing account...');
+    AppLogger.info('UI',
+        'Purging local guest data before logging in to existing account...');
     await ReceiptRepository.instance.clearAll();
     await ConversationRepository.instance.clearAll();
     await ChatMessageRepository.instance.clearAll();
+    await CategoryService.instance.clearAll();
   }
 
   Future<bool> _showGuestOverrideWarningModal() async {
-    final controller = AppThemeController.instance;
-    final textPrimary = controller.textColor;
-    final textSecondary = controller.secondaryTextColor;
-
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        String inputText = '';
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            final canOverride = inputText.trim() == 'Override Data';
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              child: Neumorphic(
-                style: NeumorphicStyle(
-                  depth: 0,
-                  boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(20)),
-                  color: NeumorphicTheme.baseColor(dialogContext),
-                  border: NeumorphicBorder(color: Colors.red.shade700, width: 2.0),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 28),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              "Warning",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: textPrimary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "Cannot migrate local receipts, settings, and other data into an existing account. If you wish to save these data, please create a new account.",
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.4,
-                          color: textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        "To confirm data override, type 'Override Data' below (case-sensitive):",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Neumorphic(
-                        style: NeumorphicStyle(
-                          depth: -3,
-                          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(10)),
-                          color: NeumorphicTheme.baseColor(dialogContext),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                          child: TextField(
-                            onChanged: (val) {
-                              setDialogState(() {
-                                inputText = val;
-                              });
-                            },
-                            style: TextStyle(color: textPrimary, fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: 'Override Data',
-                              hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
-                              border: InputBorder.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(false),
-                            child: Text(
-                              "Cancel",
-                              style: TextStyle(color: textSecondary),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade700,
-                              disabledBackgroundColor: Colors.red.shade900.withValues(alpha: 0.4),
-                              disabledForegroundColor: Colors.white38,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                side: canOverride ? BorderSide.none : BorderSide(color: Colors.red.shade900, width: 1),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
-                            onPressed: canOverride ? () => Navigator.of(ctx).pop(true) : null,
-                            child: const Text(
-                              "Override Data",
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    return result ?? false;
+    return showGuestOverrideWarningModal(context);
   }
 
   Future<void> _onSignIn() async {
@@ -227,9 +135,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // Basic field validation — show same generic error to avoid enumeration
     if (identifier.isEmpty || password.isEmpty) {
-      AppLogger.warning('UI', 'Login validation failed: empty identifier or password');
+      AppLogger.warning(
+          'UI', 'Login validation failed: empty identifier or password');
       setState(() {
-        _errorMessage = 'Invalid username, email, or password. Please try again.';
+        _errorMessage =
+            'Invalid username, email, or password. Please try again.';
       });
       return;
     }
@@ -237,43 +147,158 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await BackendApiClient.instance.loginUser(
-        username: identifier,
-        password: password,
+      var response = await NeumorphicLoadingBarrier.runWithBarrier(
+        context,
+        message: 'Signing in...',
+        action: () => BackendApiClient.instance.loginUser(
+          username: identifier,
+          password: password,
+        ),
       );
+
+      // Handle Two-Factor Authentication (2FA) Challenge
+      if (response.requires2fa && response.tempToken != null) {
+        setState(() => _isLoading = false);
+        final tempToken = response.tempToken!;
+        final maskedEmail = response.maskedEmail;
+        UserLoginResponseDto? verifiedResponse;
+
+        if (!mounted) return;
+        await TwoFactorOtpSheet.show(
+          context,
+          title: 'Two-Factor Authentication',
+          subtitle: 'Enter the 6-digit verification code sent to your email',
+          maskedEmail: maskedEmail,
+          onVerify: (otp) async {
+            final vfy = await BackendApiClient.instance.login2faVerify(
+              tempToken: tempToken,
+              otp: otp,
+            );
+            verifiedResponse = vfy;
+          },
+          onResend: () async {
+            await BackendApiClient.instance.login2faResend(
+              tempToken: tempToken,
+            );
+          },
+        );
+
+        if (verifiedResponse == null || verifiedResponse!.user == null) {
+          AppLogger.info('UI', 'User dismissed 2FA sheet during login');
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
+          return;
+        }
+
+        final verifiedUser = verifiedResponse!.user!;
+
+        // Check if local unsynced guest data exists BEFORE saving user session and linking device
+        if (await _hasLocalGuestData()) {
+          AppLogger.info('UI',
+              'Local guest data detected. Prompting override warning modal...');
+          final confirmed = await _showGuestOverrideWarningModal();
+          if (!confirmed) {
+            AppLogger.info('UI', 'User canceled override modal. Aborting login.');
+            if (mounted) {
+              setState(() => _isLoading = false);
+            }
+            return;
+          }
+          await _purgeLocalGuestData();
+        } else {
+          // Clean slate: ensure local stores are cleared so no stale records duplicate with cloud data
+          await _purgeLocalGuestData();
+        }
+
+        if (!mounted) return;
+
+        // Wrap subsequent session initialization in NeumorphicLoadingBarrier
+        await NeumorphicLoadingBarrier.runWithBarrier(
+          context,
+          message: 'Completing sign in...',
+          action: () async {
+            // Persist session locally with JWT tokens
+            await AuthService.instance.saveSession(
+              verifiedUser,
+              accessToken: verifiedResponse!.accessToken,
+              refreshToken: verifiedResponse!.refreshToken,
+            );
+
+            // Fetch latest user profile
+            await AuthService.instance.getOrFetchProfile(force: true);
+
+            // Perform hardware device linking and cloud data sync asynchronously in the background
+            unawaited(AuthService.instance
+                .linkCurrentDevice(verifiedUser)
+                .then((_) => CloudSyncService.instance.syncOnLogin())
+                .catchError((e, st) {
+              AppLogger.error(
+                  'CloudSync', 'Background link/sync error post-login', e, st);
+            }));
+
+            if (!mounted) return;
+            setState(() => _isLoading = false);
+
+            AppLogger.info(
+                'UI', 'User logged in successfully: ${verifiedUser.username}');
+
+            AppSnackBar.show(
+              context,
+              message: 'Welcome back, ${verifiedUser.username}!',
+            );
+
+            // Navigate to dashboard immediately, clearing the auth stack
+            context.go('/dashboard');
+          },
+        );
+        return;
+      }
 
       final user = response.user;
       if (user == null) {
         AppLogger.warning('UI', 'Login failed: user response null');
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Invalid username, email, or password. Please try again.';
+          _errorMessage =
+              'Invalid username, email, or password. Please try again.';
         });
         return;
       }
 
-      // Persist session and link hardware device first
-      await AuthService.instance.saveSession(user, userToken: password);
-      await AuthService.instance.linkCurrentDevice(user, userToken: password);
-
-      // Check if local unsynced guest data exists AFTER successful login and device linking
+      // Check if local unsynced guest data exists BEFORE saving user session and linking device
       if (await _hasLocalGuestData()) {
-        AppLogger.info('UI', 'User authenticated. Local guest data detected. Prompting override warning modal...');
+        AppLogger.info('UI',
+            'Local guest data detected. Prompting override warning modal...');
         final confirmed = await _showGuestOverrideWarningModal();
         if (!confirmed) {
-          AppLogger.info('UI', 'User canceled override modal. Unlinking device and clearing session...');
-          await AuthService.instance.linkCurrentDevice(null);
-          await AuthService.instance.clearSession();
+          AppLogger.info('UI', 'User canceled override modal. Aborting login.');
           if (mounted) {
             setState(() => _isLoading = false);
           }
           return;
         }
         await _purgeLocalGuestData();
+      } else {
+        // Clean slate: ensure local stores are cleared so no stale records duplicate with cloud data
+        await _purgeLocalGuestData();
       }
 
-      // Perform initial cloud sync after modal confirmation
-      await CloudSyncService.instance.syncOnLogin();
+      // Persist session locally with JWT tokens
+      await AuthService.instance.saveSession(
+        user,
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
+
+      // Perform hardware device linking and cloud data sync asynchronously in the background
+      unawaited(AuthService.instance
+          .linkCurrentDevice(user)
+          .then((_) => CloudSyncService.instance.syncOnLogin())
+          .catchError((e, st) {
+        AppLogger.error(
+            'CloudSync', 'Background link/sync error post-login', e, st);
+      }));
 
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -285,7 +310,7 @@ class _LoginScreenState extends State<LoginScreen> {
         message: 'Welcome back, ${user.username}!',
       );
 
-      // Navigate to dashboard, clearing the auth stack
+      // Navigate to dashboard immediately, clearing the auth stack
       context.go('/dashboard');
     } on ApiException catch (e) {
       final msg = 'Invalid username, email, or password. Please try again.';
@@ -300,7 +325,8 @@ class _LoginScreenState extends State<LoginScreen> {
           isError: true,
         );
       }
-      AppLogger.error('UI', 'Login ApiException: ${e.statusCode} - ${e.message}', e);
+      AppLogger.error(
+          'UI', 'Login ApiException: ${e.statusCode} - ${e.message}', e);
     } catch (e) {
       const msg = 'Unable to connect. Please check your internet connection.';
       setState(() {
@@ -344,30 +370,46 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Navigation Bar
+                // Top Navigation Back Pill
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    NeumorphicIconBadge(
-                      icon: Icons.arrow_back_rounded,
-                      iconSize: 20,
-                      onTap: () {
+                    NeumorphicTactileButton(
+                      onPressed: () {
                         AppLogger.info('UI', 'User tapped Back on LoginScreen');
-                        context.pop();
+                        if (GoRouter.of(context).canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/auth');
+                        }
                       },
-                    ),
-                    Text(
-                      "Login",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: textPrimary,
+                      depth: 4.0,
+                      pressedDepth: 0.0,
+                      pressedScale: 0.97,
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
+                      color: controller.currentBaseColor,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_back_rounded,
+                              color: textPrimary, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Back",
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 40), // Spacer balancing back button
                   ],
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: 28),
 
                 // Welcome Header
                 Text(
@@ -381,15 +423,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "Sign in to your account to manage your receipts",
+                  "Sign in to your account to sync and manage your receipts on ${ApiConfig.appName}",
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
+                    height: 1.4,
                     color: textSecondary,
                   ),
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: 32),
 
-                // Username or Email Input Field
+                // ── USERNAME OR EMAIL ─────────────────────────────────────────
                 Text(
                   "USERNAME OR EMAIL",
                   style: TextStyle(
@@ -401,10 +444,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
-                      Icon(Icons.person_rounded, color: textSecondary, size: 20),
+                      Icon(Icons.person_rounded,
+                          color: textSecondary, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
@@ -413,11 +458,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.emailAddress,
                           autocorrect: false,
                           onChanged: (_) {
-                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                            if (_errorMessage != null) {
+                              setState(() => _errorMessage = null);
+                            }
                           },
                           decoration: InputDecoration(
                             hintText: "Enter your username or email",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -427,7 +476,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Password Input Field
+                // ── PASSWORD ──────────────────────────────────────────────────
                 Text(
                   "PASSWORD",
                   style: TextStyle(
@@ -439,7 +488,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
                       Icon(Icons.lock_rounded, color: textSecondary, size: 20),
@@ -450,11 +500,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: _obscurePassword,
                           style: TextStyle(color: textPrimary, fontSize: 14),
                           onChanged: (_) {
-                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                            if (_errorMessage != null) {
+                              setState(() => _errorMessage = null);
+                            }
                           },
                           decoration: InputDecoration(
                             hintText: "••••••••••••",
-                            hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.6), fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: textSecondary.withValues(alpha: 0.6),
+                                fontSize: 14),
                             border: InputBorder.none,
                           ),
                         ),
@@ -466,7 +520,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
                         },
                         child: Icon(
-                          _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          _obscurePassword
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
                           color: textSecondary,
                           size: 20,
                         ),
@@ -474,21 +530,44 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+
+                // Repositioned Forgot Password Link (Directly below Password)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: _onForgetPassword,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 4),
+                      child: Text(
+                        "Forgot Password?",
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: accent,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 // Inline Error Banner
                 if (_errorMessage != null) ...[
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4), width: 1),
+                      border: Border.all(
+                          color: Colors.redAccent.withValues(alpha: 0.4),
+                          width: 1),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 16),
+                        const Icon(Icons.error_outline_rounded,
+                            color: Colors.redAccent, size: 16),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -506,7 +585,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ] else
                   const SizedBox(height: 12),
 
-                // Sign In Button
+                // ── Sign In Button ────────────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -528,44 +607,85 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: 0.2,
                               ),
                             ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // Bottom Links: Forget Password (Left) & Sign Up (Right)
+                // ── Or Divider ───────────────────────────────────────────────
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    GestureDetector(
-                      onTap: _onForgetPassword,
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       child: Text(
-                        "Forget Password",
+                        "or continue with",
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: textSecondary,
-                          decoration: TextDecoration.underline,
-                          decorationColor: textSecondary,
+                          fontSize: 12,
+                          color: textSecondary.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: _onSignUp,
-                      child: Text(
-                        "Sign Up",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: accent,
-                          decoration: TextDecoration.underline,
-                          decorationColor: accent,
-                        ),
+                    Expanded(
+                      child: Divider(
+                        color: textSecondary.withValues(alpha: 0.25),
+                        thickness: 1,
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 20),
+
+                // ── Google Sign In Button ────────────────────────────────────
+                GoogleSignInButton(
+                  isLoading: _isGoogleLoading,
+                  label: "Sign in with Google",
+                  onPressed: () {
+                    GoogleAuthService.instance.signInWithGoogle(
+                      context,
+                      onLoadingChanged: (loading) {
+                        if (mounted) setState(() => _isGoogleLoading = loading);
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                // ── Bottom Centered Sign Up Link ──────────────────────────────
+                Center(
+                  child: GestureDetector(
+                    onTap: _onSignUp,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: RichText(
+                        text: TextSpan(
+                          style:
+                              TextStyle(fontSize: 13.5, color: textSecondary),
+                          children: [
+                            const TextSpan(text: "Don't have an account? "),
+                            TextSpan(
+                              text: "Sign Up",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: accent,
+                                decoration: TextDecoration.underline,
+                                decorationColor: accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

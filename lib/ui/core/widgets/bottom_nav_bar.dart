@@ -1,16 +1,34 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../services/scan_batch_controller.dart';
+import '../../../../services/tutorial_service.dart';
+import '../../../../cloud/services/quota_service.dart';
+import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
 import 'scan_progress_snack_bar.dart';
+import '../../features/subscription/widgets/ad_scan_reward_widget.dart';
 
 class AppBottomNavBar extends StatelessWidget {
   final String currentPath;
+  final GlobalKey? fabKey;
 
   const AppBottomNavBar({
     super.key,
     required this.currentPath,
+    this.fabKey,
   });
+
+  /// Calculates the bottom padding required for scrollable content so that
+  /// the lowest element clears the protruding center FAB with an extra margin
+  /// matching horizontal screen margin (default 24.0).
+  static double contentBottomPadding(BuildContext context, {double extraMargin = 24.0}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final margin5Percent = screenWidth * 0.05;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    // Nav bar height (70) + top protrusion of FAB (18) + bottom margin + system inset + extraMargin
+    return 70.0 + 18.0 + margin5Percent + bottomInset + extraMargin;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,15 +36,17 @@ class AppBottomNavBar extends StatelessWidget {
       animation: Listenable.merge([
         AppThemeController.instance,
         ScanBatchController.instance,
+        QuotaService.instance,
       ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
-        final isDark = controller.themeMode == ThemeMode.dark;
+        final isDark = controller.isDarkMode;
         final accent = controller.accentColor;
         final inactiveColor = controller.secondaryTextColor;
         final navBg = controller.currentBaseColor;
         final isScanning = ScanBatchController.instance.isScanning;
-        final hasReceiptsToReview = ScanBatchController.instance.hasReceiptsToReview;
+        final hasReceiptsToReview =
+            ScanBatchController.instance.hasReceiptsToReview;
 
         final screenWidth = MediaQuery.of(context).size.width;
         final margin5Percent = screenWidth * 0.05;
@@ -109,6 +129,7 @@ class AppBottomNavBar extends StatelessWidget {
                     isDark: isDark,
                     isScanning: isScanning,
                     hasReceiptsToReview: hasReceiptsToReview,
+                    fabKey: fabKey,
                   ),
                 ),
               ],
@@ -126,6 +147,7 @@ class _CenterScanFAB extends StatelessWidget {
   final bool isDark;
   final bool isScanning;
   final bool hasReceiptsToReview;
+  final GlobalKey? fabKey;
 
   const _CenterScanFAB({
     required this.accent,
@@ -133,82 +155,117 @@ class _CenterScanFAB extends StatelessWidget {
     required this.isDark,
     required this.isScanning,
     required this.hasReceiptsToReview,
+    this.fabKey,
   });
 
   @override
   Widget build(BuildContext context) {
-    final disabledColor = isDark ? const Color(0xFF38383A) : Colors.grey.shade400;
+    final disabledColor =
+        isDark ? const Color(0xFF38383A) : Colors.grey.shade400;
+    final isScanQuotaExhausted =
+        QuotaService.instance.isScanQuotaExhausted && !hasReceiptsToReview;
 
     VoidCallback? onTapHandler;
     if (isScanning) {
       onTapHandler = null;
     } else if (hasReceiptsToReview) {
       onTapHandler = () {
+        if (TutorialService.instance.currentStep == 1) {
+          TutorialService.instance.setStep(3);
+        }
         ScanProgressSnackBar.dismiss();
-        context.push('/verification', extra: ScanBatchController.instance.completedReceipts);
+        context.push('/verification',
+            extra: ScanBatchController.instance.completedReceipts);
+      };
+    } else if (isScanQuotaExhausted) {
+      onTapHandler = () {
+        showAdScanPromptDialog(context);
       };
     } else {
       onTapHandler = () {
+        if (TutorialService.instance.currentStep == 1) {
+          TutorialService.instance.advanceStep();
+        }
         context.push('/scanner');
       };
     }
 
     final IconData fabIcon = isScanning
         ? Icons.hourglass_top_rounded
-        : (hasReceiptsToReview ? Icons.edit_rounded : Icons.camera_alt_rounded);
+        : (hasReceiptsToReview
+            ? Icons.edit_rounded
+            : (isScanQuotaExhausted
+                ? Icons.lock_clock_rounded
+                : Icons.camera_alt_rounded));
 
-    return GestureDetector(
-      onTap: onTapHandler,
-      behavior: HitTestBehavior.opaque,
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: isScanning ? -3 : 10,
-          intensity: isScanning ? 0.4 : 0.95,
-          boxShape: const NeumorphicBoxShape.circle(),
-          color: isScanning ? disabledColor : accent,
-          border: NeumorphicBorder(
-            color: isDark
-                ? (isScanning ? Colors.white12 : Colors.white.withValues(alpha: 0.5))
-                : (isScanning ? Colors.white24 : Colors.white.withValues(alpha: 0.9)),
-            width: 2.5,
-          ),
-        ),
-        padding: const EdgeInsets.all(3),
-        child: Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isScanning ? disabledColor : null,
-            gradient: isScanning
-                ? null
-                : LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      accent,
-                      accent.withValues(alpha: 0.85),
-                    ],
-                  ),
-            boxShadow: isScanning
-                ? null
-                : [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.45),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-          ),
-          child: Icon(
-            fabIcon,
-            color: isScanning ? Colors.white70 : Colors.white,
-            size: isScanning ? 25 : 28,
-          ),
-        ),
+    final bool isDisabledState = isScanning || isScanQuotaExhausted;
+
+    Widget fabContent = Container(
+      width: 58,
+      height: 58,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDisabledState ? disabledColor : null,
+        gradient: isDisabledState
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  accent,
+                  accent.withValues(alpha: 0.85),
+                ],
+              ),
+        boxShadow: isDisabledState
+            ? null
+            : [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.45),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: Icon(
+        fabIcon,
+        color: isDisabledState ? Colors.white70 : Colors.white,
+        size: isScanning ? 25 : 28,
       ),
     );
+
+    Widget fabWidget = Container(
+      key: fabKey,
+      child: NeumorphicTactileButton(
+        onPressed: onTapHandler,
+        depth: isDisabledState ? 0.0 : 10.0,
+        pressedDepth: 0.0,
+        pressedScale: 0.94,
+        color: isDisabledState ? disabledColor : accent,
+        boxShape: const NeumorphicBoxShape.circle(),
+        border: NeumorphicBorder(
+          color: isDark
+              ? (isDisabledState
+                  ? Colors.white12
+                  : Colors.white.withValues(alpha: 0.5))
+              : (isDisabledState
+                  ? Colors.white24
+                  : Colors.white.withValues(alpha: 0.9)),
+          width: 2.5,
+        ),
+        padding: const EdgeInsets.all(3),
+        isLoading: isScanning,
+        child: fabContent,
+      ),
+    );
+
+    if (isScanQuotaExhausted) {
+      return Tooltip(
+        message: QuotaService.instance.scanTooltip,
+        child: fabWidget,
+      );
+    }
+    return fabWidget;
   }
 }
 
@@ -232,31 +289,56 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTapDown: (_) {
+        HapticFeedback.lightImpact();
+      },
       onTap: () {
         if (!isActive) context.go(path);
       },
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? accent : inactiveColor,
-              size: 22,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? accent : inactiveColor,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                letterSpacing: 0.2,
+      child: AnimatedScale(
+        scale: isActive ? 1.08 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutBack,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TweenAnimationBuilder<Color?>(
+                tween: ColorTween(
+                  begin: inactiveColor,
+                  end: isActive ? accent : inactiveColor,
+                ),
+                duration: const Duration(milliseconds: 200),
+                builder: (context, color, _) {
+                  return Icon(
+                    icon,
+                    color: color,
+                    size: 22,
+                  );
+                },
               ),
-            ),
-          ],
+              const SizedBox(height: 3),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  color: isActive ? accent : inactiveColor,
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                  letterSpacing: 0.2,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -412,4 +494,3 @@ class NotchedPillBorderPainter extends CustomPainter {
         oldDelegate.smoothRadius != smoothRadius;
   }
 }
-

@@ -1,6 +1,7 @@
 // File: lib/ui/features/dashboard/views/widgets/timeline_filter_bottom_sheet.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../view_models/dashboard_view_model.dart';
 
@@ -16,12 +17,36 @@ class TimelineFilterBottomSheet extends StatelessWidget {
   });
 
   static const List<_TimelineOption> _options = [
-    _TimelineOption(filter: TimelineFilter.thisMonth, label: '1m', subtitle: 'This Month (Daily breakdown)'),
-    _TimelineOption(filter: TimelineFilter.threeMonths, label: '3mo', subtitle: 'Last 3 Months'),
-    _TimelineOption(filter: TimelineFilter.sixMonths, label: '6mo', subtitle: 'Last 6 Months'),
-    _TimelineOption(filter: TimelineFilter.twelveMonths, label: '12mo', subtitle: 'Last 12 Months'),
-    _TimelineOption(filter: TimelineFilter.ytd, label: 'YTD', subtitle: 'Year to Date'),
-    _TimelineOption(filter: TimelineFilter.allTime, label: 'All', subtitle: 'All-time (since first receipt)'),
+    _TimelineOption(
+        filter: TimelineFilter.oneWeek,
+        label: '1w',
+        subtitle: 'Past 7 Days (Daily breakdown)'),
+    _TimelineOption(
+        filter: TimelineFilter.fourWeeks,
+        label: '4w',
+        subtitle: 'Past 4 Weeks (Weekly breakdown)'),
+    _TimelineOption(
+        filter: TimelineFilter.thisMonth,
+        label: '1m',
+        subtitle: 'This Month (Daily breakdown)'),
+    _TimelineOption(
+        filter: TimelineFilter.threeMonths,
+        label: '3mo',
+        subtitle: 'Last 3 Months'),
+    _TimelineOption(
+        filter: TimelineFilter.sixMonths,
+        label: '6mo',
+        subtitle: 'Last 6 Months'),
+    _TimelineOption(
+        filter: TimelineFilter.twelveMonths,
+        label: '12mo',
+        subtitle: 'Last 12 Months'),
+    _TimelineOption(
+        filter: TimelineFilter.ytd, label: 'YTD', subtitle: 'Year to Date'),
+    _TimelineOption(
+        filter: TimelineFilter.allTime,
+        label: 'All',
+        subtitle: 'All-time (since first receipt)'),
   ];
 
   @override
@@ -74,7 +99,8 @@ class TimelineFilterBottomSheet extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: () => Navigator.of(context).pop(),
-                child: Icon(Icons.close_rounded, color: textSecondary, size: 20),
+                child:
+                    Icon(Icons.close_rounded, color: textSecondary, size: 20),
               ),
             ],
           ),
@@ -85,57 +111,57 @@ class TimelineFilterBottomSheet extends StatelessWidget {
             final isSelected = opt.filter == activeFilter;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: GestureDetector(
+              child: NeumorphicFilterChip(
+                isSelected: isSelected,
                 onTap: () {
                   onSelect(opt.filter);
                   Navigator.of(context).pop();
                 },
-                child: Neumorphic(
-                  style: NeumorphicStyle(
-                    depth: isSelected ? -2 : 3,
-                    intensity: 0.8,
-                    color: isSelected ? accent : baseColor,
-                    boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(14)),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.white.withValues(alpha: 0.2) : accent.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          opt.label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? Colors.white : accent,
-                          ),
+                restDepth: 3.0,
+                selectedDepth: -2.0,
+                selectedColor: accent,
+                borderRadius: BorderRadius.circular(14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : accent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        opt.label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? Colors.white : accent,
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          opt.subtitle,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : textPrimary,
-                          ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        opt.subtitle,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : textPrimary,
                         ),
                       ),
-                      if (isSelected)
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                    ],
-                  ),
+                    ),
+                    if (isSelected)
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                  ],
                 ),
               ),
             );

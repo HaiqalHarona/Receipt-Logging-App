@@ -15,6 +15,7 @@
 
 import 'package:isar/isar.dart';
 import '../../services/api/api_models.dart';
+import '../../services/crypto_service.dart';
 
 part 'conversation_isar.g.dart';
 
@@ -48,8 +49,10 @@ class ConversationIsarModel {
     return ConversationIsarModel()
       ..conversationId = dto.id
       ..title = dto.title
-      ..createdAt = DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now()
-      ..updatedAt = DateTime.tryParse(dto.updatedAt)?.toLocal() ?? DateTime.now();
+      ..createdAt =
+          DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now()
+      ..updatedAt =
+          DateTime.tryParse(dto.updatedAt)?.toLocal() ?? DateTime.now();
   }
 
   /// Convert back to a network DTO for API calls.
@@ -62,13 +65,27 @@ class ConversationIsarModel {
       deviceId: deviceId,
     );
   }
+
+  /// Encrypts title in-place using AES-256-GCM envelope encryption.
+  Future<void> encryptSensitiveFields([CryptoService? crypto]) async {
+    if (title.isNotEmpty && !title.startsWith('enc:v1:')) {
+      title = await (crypto ?? CryptoService.instance).encryptText(title);
+    }
+  }
+
+  /// Decrypts title in-place if it contains an AES-256-GCM envelope.
+  Future<void> decryptSensitiveFields([CryptoService? crypto]) async {
+    if (title.startsWith('enc:v1:')) {
+      title = await (crypto ?? CryptoService.instance).decryptText(title);
+    }
+  }
 }
 
 // ── SAFE QUERY EXTENSIONS ────────────────────────────────────────────────────
 
-extension ConversationIsarQueryFilters
-    on QueryBuilder<ConversationIsarModel, ConversationIsarModel, QFilterCondition> {
+extension ConversationIsarQueryFilters on QueryBuilder<ConversationIsarModel,
+    ConversationIsarModel, QFilterCondition> {
   /// Filter active (non-deleted) conversations only.
-  QueryBuilder<ConversationIsarModel, ConversationIsarModel, QAfterFilterCondition>
-      activeOnly() => deletedAtIsNull();
+  QueryBuilder<ConversationIsarModel, ConversationIsarModel,
+      QAfterFilterCondition> activeOnly() => deletedAtIsNull();
 }

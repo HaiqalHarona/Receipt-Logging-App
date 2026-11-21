@@ -26,6 +26,7 @@ import 'line_item_isar.dart';
 import '../../domain/models/receipt.dart';
 import '../../data/mappers/line_item_mapper.dart';
 import '../../ui/core/utils/category_utils.dart';
+import '../../services/crypto_service.dart';
 
 part 'receipt_isar.g.dart';
 
@@ -58,6 +59,7 @@ class ReceiptIsarModel {
   String? imagePath;
   String? rawText;
   double? confidenceScore;
+  double? currencyRateAtReceiptDate;
 
   /// Embedded line-items list — mirrors receipt.line_items JSONB array.
   List<LineItemIsarModel> lineItems = [];
@@ -82,11 +84,16 @@ class ReceiptIsarModel {
       ..date = receipt.date
       ..totalAmount = receipt.amount
       ..currency = receipt.currency
-      ..category = receipt.category.split(',').map((c) => CategoryUtils.sanitize(c)).where((c) => c.isNotEmpty).join(', ')
+      ..category = receipt.category
+          .split(',')
+          .map((c) => CategoryUtils.sanitize(c))
+          .where((c) => c.isNotEmpty)
+          .join(', ')
       ..imagePath = receipt.imagePath
       ..createdAt = receipt.createdAt ?? DateTime.now()
       ..items = receipt.items
-      ..lineItems = receipt.lineItems.map((li) => li.toIsar()).toList();
+      ..lineItems = receipt.lineItems.map((li) => li.toIsar()).toList()
+      ..currencyRateAtReceiptDate = receipt.currencyRateAtReceiptDate;
   }
 
   Receipt toDomain() {
@@ -112,7 +119,22 @@ class ReceiptIsarModel {
       createdAt: createdAt,
       items: items,
       lineItems: domainLineItems,
+      currencyRateAtReceiptDate: currencyRateAtReceiptDate,
     );
+  }
+
+  /// Encrypts rawText in-place using AES-256-GCM envelope encryption.
+  Future<void> encryptSensitiveFields([CryptoService? crypto]) async {
+    if (rawText != null && rawText!.isNotEmpty && !rawText!.startsWith('enc:v1:')) {
+      rawText = await (crypto ?? CryptoService.instance).encryptText(rawText!);
+    }
+  }
+
+  /// Decrypts rawText in-place if it contains an AES-256-GCM envelope.
+  Future<void> decryptSensitiveFields([CryptoService? crypto]) async {
+    if (rawText != null && rawText!.startsWith('enc:v1:')) {
+      rawText = await (crypto ?? CryptoService.instance).decryptText(rawText!);
+    }
   }
 }
 

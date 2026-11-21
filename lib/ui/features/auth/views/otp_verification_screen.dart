@@ -1,5 +1,6 @@
 // File: lib/ui/features/auth/views/otp_verification_screen.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -28,7 +29,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialDevOtp != null) {
+    if (kDebugMode && widget.initialDevOtp != null) {
       _otpController.text = widget.initialDevOtp!;
     }
   }
@@ -98,7 +99,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    NeumorphicIconBadge(
+                    NeumorphicCircularButton(
                       icon: Icons.arrow_back_rounded,
                       iconSize: 20,
                       onTap: () => context.pop(),
@@ -149,7 +150,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
                 const SizedBox(height: 8),
                 NeumorphicInputFieldWidget(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
                       Icon(Icons.pin_rounded, color: textSecondary, size: 20),
@@ -166,7 +168,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             letterSpacing: 4,
                           ),
                           onChanged: (_) {
-                            if (_errorMessage != null) setState(() => _errorMessage = null);
+                            if (_errorMessage != null)
+                              setState(() => _errorMessage = null);
                           },
                           decoration: InputDecoration(
                             hintText: "123456",
@@ -187,7 +190,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                   const SizedBox(height: 8),
                   Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    style:
+                        const TextStyle(color: Colors.redAccent, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 32),
@@ -203,7 +207,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.5, color: Colors.white),
                             )
                           : const Text(
                               "Verify & Continue",

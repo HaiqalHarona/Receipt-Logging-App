@@ -1,30 +1,129 @@
 /// API configuration for Receipt Logger backend (FastAPI @ port 8085).
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../services/auth_service.dart';
 import '../services/device_identity_service.dart';
 
 class ApiConfig {
-  ApiConfig._();
-
-  /// Base URL for backend read dynamically from .env.
-  /// Defaults to localhost:8085 for Desktop/Web/iOS, with 10.0.2.2 for Android emulator.
-  static String get baseUrl {
-    final configured = dotenv.get('API_BASE_URL', fallback: 'http://localhost:8085/api/v1');
-    // if (defaultTargetPlatform == TargetPlatform.android && configured.contains('localhost')) {
-    //   return configured.replaceAll('localhost', '10.0.2.2');
-    // }
-    return configured;
+  static String _env(String key, [String fallback = '']) {
+    if (!dotenv.isInitialized) return fallback;
+    return dotenv.maybeGet(key) ?? fallback;
   }
 
-  /// Supabase Project URL read dynamically from .env
-  static String get supabaseUrl => dotenv.get('SUPABASE_URL', fallback: '');
+  /// Application display name read dynamically from environment or .env
+  static String get appName =>
+      const String.fromEnvironment('APP_NAME').isNotEmpty
+          ? const String.fromEnvironment('APP_NAME')
+          : _env('APP_NAME', 'Receipt Logger');
 
-  /// Supabase Key read dynamically from .env
-  static String get supabaseKey => dotenv.get('SUPABASE_KEY', fallback: '');
+  /// Current environment stage (alpha, staging, beta, production, development).
+  /// In debug mode (kDebugMode), defaults to 'development' unless explicitly set.
+  static String get appEnv => const String.fromEnvironment('APP_ENV').isNotEmpty
+      ? const String.fromEnvironment('APP_ENV')
+      : _env('APP_ENV', kDebugMode ? 'development' : 'alpha');
 
-  /// Gemini API Key read dynamically from .env
-  static String get geminiApiKey => dotenv.get('GEMINI_API_KEY', fallback: '');
+  /// Semantic version string (MAJOR.MINOR.PATCH), defaults to 1.0.1.
+  static String get appVersion =>
+      const String.fromEnvironment('APP_VERSION').isNotEmpty
+          ? const String.fromEnvironment('APP_VERSION')
+          : _env('APP_VERSION', '1.0.1');
+
+  /// Build / revision number (monotonic CI run integer), defaults to 1.
+  static int get appBuildNumber {
+    const fromEnv = int.fromEnvironment('APP_BUILD_NUMBER');
+    if (fromEnv != 0) return fromEnv;
+    return int.tryParse(_env('APP_BUILD_NUMBER', '1')) ?? 1;
+  }
+
+  /// Formatted display version string (e.g. 1.0.1.0.25).
+  static String get appVersionDisplay =>
+      const String.fromEnvironment('APP_VERSION_DISPLAY').isNotEmpty
+          ? const String.fromEnvironment('APP_VERSION_DISPLAY')
+          : _env('APP_VERSION_DISPLAY', '$appVersion.0.$appBuildNumber');
+
+  /// Staging manifest URL for Tailscale private network updates.
+  static String get stagingManifestUrl {
+    final direct =
+        const String.fromEnvironment('STAGING_MANIFEST_URL').isNotEmpty
+            ? const String.fromEnvironment('STAGING_MANIFEST_URL')
+            : _env('STAGING_MANIFEST_URL', '');
+    if (direct.isNotEmpty) return direct;
+
+    // Fallback derivation from baseUrl host (e.g. port 9090 on same host):
+    try {
+      final uri = Uri.parse(baseUrl);
+      if (uri.host.isNotEmpty &&
+          uri.host != 'localhost' &&
+          uri.host != '127.0.0.1' &&
+          uri.host != '10.0.2.2') {
+        return '${uri.scheme}://${uri.host}:9090/staging_manifest.json';
+      }
+    } catch (_) {}
+
+    // Default Tailscale host fallback for alpha / staging
+    if (isStaging) {
+      return 'http://100.119.110.55:9090/staging_manifest.json';
+    }
+
+    return '';
+  }
+
+  /// Helper boolean checks for environment mode
+  static bool get isAlpha => appEnv.toLowerCase() == 'alpha';
+  static bool get isStaging =>
+      appEnv.toLowerCase() == 'staging' ||
+      appEnv.toLowerCase() == 'alpha' ||
+      appEnv.toLowerCase() == 'beta' ||
+      appEnv.toLowerCase() == 'development' ||
+      appEnv.toLowerCase() == 'dev';
+  static bool get isProduction =>
+      appEnv.toLowerCase() == 'production' ||
+      appEnv.toLowerCase() == 'prod' ||
+      appEnv.toLowerCase() == 'release';
+
+  /// True only when APP_ENV is explicitly 'development' or 'dev'.
+  static bool get isDevelopment =>
+      appEnv.toLowerCase() == 'development' || appEnv.toLowerCase() == 'dev';
+
+  /// Base URL for backend read dynamically from environment or .env.
+  /// Defaults to localhost:8085 for development/debug, and Tailscale server for staging/alpha.
+  static String get baseUrl =>
+      const String.fromEnvironment('API_BASE_URL').isNotEmpty
+          ? const String.fromEnvironment('API_BASE_URL')
+          : _env(
+              'API_BASE_URL',
+              isDevelopment
+                  ? 'http://localhost:8085/api/v1'
+                  : (isStaging
+                      ? 'http://100.119.110.55:8085/api/v1'
+                      : 'http://localhost:8085/api/v1'),
+            );
+
+  /// Supabase Project URL read dynamically from environment or .env
+  static String get supabaseUrl =>
+      const String.fromEnvironment('SUPABASE_URL').isNotEmpty
+          ? const String.fromEnvironment('SUPABASE_URL')
+          : _env('SUPABASE_URL', '');
+
+  /// Supabase Key read dynamically from environment or .env
+  static String get supabaseKey =>
+      const String.fromEnvironment('SUPABASE_KEY').isNotEmpty
+          ? const String.fromEnvironment('SUPABASE_KEY')
+          : _env('SUPABASE_KEY', '');
+
+  /// AI API Key read dynamically from environment or .env (optional fallback)
+  static String get geminiApiKey =>
+      const String.fromEnvironment('GEMINI_API_KEY').isNotEmpty
+          ? const String.fromEnvironment('GEMINI_API_KEY')
+          : _env('GEMINI_API_KEY', '');
+
+  /// Optional Google Server Client ID for Google Sign-In backend verification.
+  static String get googleServerClientId =>
+      const String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID').isNotEmpty
+          ? const String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID')
+          : _env('GOOGLE_SERVER_CLIENT_ID', '');
 
   /// Persistent hardware device ID powered by DeviceIdentityService.
   static String get deviceId => DeviceIdentityService.instance.deviceId;
@@ -32,7 +131,7 @@ class ApiConfig {
   /// Persistent device auth token powered by DeviceIdentityService.
   static String get deviceToken => DeviceIdentityService.instance.deviceToken;
 
-  /// Default request timeout — Gemini vision can take ~3s.
+  /// Default request timeout — AI vision parsing can take ~3s.
   static const Duration timeout = Duration(seconds: 40);
 
   /// Builds device-scoped headers (GET /devices/me, DELETE /devices/me).
@@ -49,30 +148,52 @@ class ApiConfig {
 
   /// Builds user-scoped headers (GET/PATCH/DELETE /user/me, /receipts/*, /chat/*).
   static Map<String, String> buildUserHeaders({
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
+    String? accessToken,
   }) {
-    return {
+    final token = accessToken ?? AuthService.instance.accessToken;
+    final user = username ?? AuthService.instance.currentUsername;
+    final headers = <String, String>{
       'Content-Type': 'application/json',
-      'X-User-Name': username,
-      'X-User-Token': userToken,
     };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (user != null && user.isNotEmpty) {
+      headers['X-User-Name'] = user;
+    }
+    if (userToken != null && userToken.isNotEmpty) {
+      headers['X-User-Token'] = userToken;
+    }
+    return headers;
   }
 
   /// Builds 4-header link bridge headers required by POST /devices/link.
   static Map<String, String> buildLinkBridgeHeaders({
     required String deviceName,
     required String deviceToken,
-    required String username,
-    required String userToken,
+    String? username,
+    String? userToken,
+    String? accessToken,
   }) {
-    return {
+    final token = accessToken ?? AuthService.instance.accessToken;
+    final user = username ?? AuthService.instance.currentUsername;
+    final headers = <String, String>{
       'Content-Type': 'application/json',
       'X-Device-Name': deviceName,
       'X-Device-Token': deviceToken,
-      'X-User-Name': username,
-      'X-User-Token': userToken,
     };
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (user != null && user.isNotEmpty) {
+      headers['X-User-Name'] = user;
+    }
+    if (userToken != null && userToken.isNotEmpty) {
+      headers['X-User-Token'] = userToken;
+    }
+    return headers;
   }
 
   /// Builds scoped headers required by /scan/* and POST /chat/query.
@@ -82,6 +203,7 @@ class ApiConfig {
     String? deviceToken,
     String? username,
     String? userToken,
+    String? accessToken,
   }) {
     final cleanType = requestType.trim().toLowerCase();
     if (cleanType == 'guest') {
@@ -92,12 +214,22 @@ class ApiConfig {
         'X-Device-Token': deviceToken ?? '',
       };
     } else {
-      return {
+      final token = accessToken ?? AuthService.instance.accessToken;
+      final user = username ?? AuthService.instance.currentUsername;
+      final headers = <String, String>{
         'Content-Type': 'application/json',
         'X-Request-Type': 'user',
-        'X-User-Name': username ?? '',
-        'X-User-Token': userToken ?? '',
       };
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+      if (user != null && user.isNotEmpty) {
+        headers['X-User-Name'] = user;
+      }
+      if (userToken != null && userToken.isNotEmpty) {
+        headers['X-User-Token'] = userToken;
+      }
+      return headers;
     }
   }
 

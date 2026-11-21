@@ -218,12 +218,17 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
 
   Widget _buildRow(LineItem item, int index) {
     final basePrice = item.effectiveUnitPrice;
+    final isDiscount = basePrice < 0;
     final qtyStr = item.quantity != null
         ? (item.quantity! % 1 == 0
             ? item.quantity!.toInt().toString()
             : item.quantity!.toStringAsFixed(1))
         : '—';
-    final amtStr = basePrice > 0 ? basePrice.toStringAsFixed(2) : '—';
+    final amtStr = basePrice != 0
+        ? (isDiscount
+            ? '-${basePrice.abs().toStringAsFixed(2)}'
+            : basePrice.toStringAsFixed(2))
+        : '—';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -248,7 +253,11 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
           Expanded(
             child: Text(
               item.description,
-              style: TextStyle(fontSize: 13, color: widget.textPrimary),
+              style: TextStyle(
+                fontSize: 13,
+                color: widget.textPrimary,
+                fontWeight: isDiscount ? FontWeight.w600 : FontWeight.normal,
+              ),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
             ),
@@ -262,7 +271,7 @@ class _LineItemsTableWidgetState extends State<LineItemsTableWidget> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: widget.accent,
+                color: isDiscount ? const Color(0xFF34C759) : widget.accent,
               ),
             ),
           ),
@@ -324,7 +333,7 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
     );
     final basePrice = widget.item.effectiveUnitPrice;
     _amtController = TextEditingController(
-      text: basePrice > 0 ? basePrice.toStringAsFixed(2) : '',
+      text: basePrice != 0 ? basePrice.toStringAsFixed(2) : '',
     );
   }
 
@@ -339,7 +348,8 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
   void _save() {
     final qty = double.tryParse(_qtyController.text.trim());
     final unitPrice = double.tryParse(_amtController.text.trim());
-    final totalPrice = (unitPrice != null && qty != null) ? unitPrice * qty : unitPrice;
+    final totalPrice =
+        (unitPrice != null && qty != null) ? unitPrice * qty : unitPrice;
     final updated = LineItem(
       description: _descController.text.trim(),
       quantity: qty,
@@ -373,10 +383,13 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
               // Dialog title
               Row(
                 children: [
-                  Icon(Icons.receipt_long_rounded, color: widget.accent, size: 20),
+                  Icon(Icons.receipt_long_rounded,
+                      color: widget.accent, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    widget.onDelete != null ? 'Edit Line Item' : 'Add Line Item',
+                    widget.onDelete != null
+                        ? 'Edit Line Item'
+                        : 'Add Line Item',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -392,7 +405,7 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
               const SizedBox(height: 6),
               _buildNeumorphicField(
                 controller: _descController,
-                hint: 'e.g. Coffee Latte',
+                hint: 'e.g. Coffee Latte or Discount Voucher',
                 keyboardType: TextInputType.text,
                 textPrimary: widget.textPrimary,
                 base: base,
@@ -412,8 +425,10 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
                         _buildNeumorphicField(
                           controller: _qtyController,
                           hint: 'e.g. 2',
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          formatter: FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          formatter: FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d*')),
                           textPrimary: widget.textPrimary,
                           base: base,
                         ),
@@ -430,9 +445,11 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
                         const SizedBox(height: 6),
                         _buildNeumorphicField(
                           controller: _amtController,
-                          hint: 'e.g. 4.50',
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          formatter: FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                          hint: 'e.g. 4.50 or -2.50',
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true, signed: true),
+                          formatter: FilteringTextInputFormatter.allow(
+                              RegExp(r'^-?\d*\.?\d{0,2}')),
                           textPrimary: widget.accent,
                           base: base,
                           isBold: true,
@@ -458,13 +475,16 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
                         depth: 3,
                         intensity: 0.8,
                         color: base,
-                        boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                        boxShape: NeumorphicBoxShape.roundRect(
+                            BorderRadius.circular(12)),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red.shade400),
+                          Icon(Icons.delete_outline_rounded,
+                              size: 16, color: Colors.red.shade400),
                           const SizedBox(width: 4),
                           Text(
                             'Delete',
@@ -488,9 +508,11 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
                       depth: 3,
                       intensity: 0.8,
                       color: base,
-                      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
                     child: Text(
                       'Cancel',
                       style: TextStyle(
@@ -509,9 +531,11 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
                       depth: 3,
                       intensity: 0.85,
                       color: widget.accent,
-                      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(12)),
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          BorderRadius.circular(12)),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 10),
                     child: const Text(
                       'Save',
                       style: TextStyle(
@@ -568,8 +592,10 @@ class _LineItemEditDialogState extends State<_LineItemEditDialog> {
         ),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: widget.textSecondary.withValues(alpha: 0.5), fontSize: 13),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          hintStyle: TextStyle(
+              color: widget.textSecondary.withValues(alpha: 0.5), fontSize: 13),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           border: InputBorder.none,
         ),
       ),

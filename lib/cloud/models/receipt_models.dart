@@ -7,8 +7,21 @@
 ///   POST   /api/v1/receipts/        → [ReceiptRecordDto]
 ///   POST   /api/v1/receipts/batch   → List<[ReceiptRecordDto]>
 ///   GET    /api/v1/receipts/        → List<[ReceiptRecordDto]>
+///   PATCH  /api/v1/receipts/{id}    → [ReceiptRecordDto]
 ///   DELETE /api/v1/receipts/{id}    → bool
 library;
+
+import 'dart:convert';
+
+import '../../domain/models/receipt.dart';
+import '../../domain/models/line_item.dart';
+
+double? _safeToDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value.trim());
+  return null;
+}
 
 // ── LINE ITEM ──────────────────────────────────────────────────────────────────
 
@@ -28,11 +41,18 @@ class LineItemDto {
   factory LineItemDto.fromJson(Map<String, dynamic> json) {
     return LineItemDto(
       description: (json['description'] as String?) ?? '',
-      quantity: (json['quantity'] as num?)?.toDouble(),
-      unitPrice: (json['unit_price'] as num?)?.toDouble(),
-      totalPrice: (json['total_price'] as num?)?.toDouble(),
+      quantity: _safeToDouble(json['quantity']),
+      unitPrice: _safeToDouble(json['unit_price'] ?? json['unitPrice']),
+      totalPrice: _safeToDouble(json['total_price'] ?? json['totalPrice']),
     );
   }
+
+  factory LineItemDto.fromDomain(LineItem li) => LineItemDto(
+        description: li.description,
+        quantity: li.quantity,
+        unitPrice: li.unitPrice,
+        totalPrice: li.totalPrice,
+      );
 
   Map<String, dynamic> toJson() => {
         'description': description,
@@ -57,6 +77,7 @@ class ReceiptDto {
     this.category,
     this.confidenceScore = 0.0,
     this.notes,
+    this.currencyRateAtReceiptDate,
   });
 
   final String merchantName;
@@ -66,10 +87,11 @@ class ReceiptDto {
   final double totalAmount;
   final String currency;
   final String? category;
-  final String date;          // ISO 8601 string
+  final String date; // ISO 8601 string
   final String rawText;
   final double confidenceScore;
   final String? notes;
+  final double? currencyRateAtReceiptDate;
 
   factory ReceiptDto.fromJson(Map<String, dynamic> json) {
     return ReceiptDto(
@@ -78,15 +100,34 @@ class ReceiptDto {
               ?.map((e) => LineItemDto.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      subtotal: (json['subtotal'] as num?)?.toDouble(),
-      taxAmount: (json['tax_amount'] as num?)?.toDouble(),
-      totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
+      subtotal: _safeToDouble(json['subtotal']),
+      taxAmount: _safeToDouble(json['tax_amount']),
+      totalAmount: _safeToDouble(json['total_amount']) ?? 0.0,
       currency: (json['currency'] as String?) ?? 'USD',
       category: json['category'] as String?,
       date: (json['date'] as String?) ?? DateTime.now().toIso8601String(),
       rawText: (json['raw_text'] as String?) ?? '',
-      confidenceScore: (json['confidence_score'] as num?)?.toDouble() ?? 0.0,
+      confidenceScore: _safeToDouble(json['confidence_score']) ?? 0.0,
       notes: json['notes'] as String?,
+      currencyRateAtReceiptDate: _safeToDouble(
+          json['currency_rate_at_receipt_date'] ??
+              json['currencyRateAtReceiptDate']),
+    );
+  }
+
+  /// Converts a domain [Receipt] into a [ReceiptDto] for sending to the backend PATCH endpoint.
+  factory ReceiptDto.fromDomain(Receipt receipt) {
+    return ReceiptDto(
+      merchantName:
+          receipt.merchant.isNotEmpty ? receipt.merchant : 'Unknown Merchant',
+      totalAmount: receipt.amount,
+      date: receipt.date,
+      rawText: '',
+      lineItems: receipt.lineItems.map(LineItemDto.fromDomain).toList(),
+      currency: receipt.currency,
+      category: receipt.category.isNotEmpty ? receipt.category : null,
+      confidenceScore: 1.0,
+      currencyRateAtReceiptDate: receipt.currencyRateAtReceiptDate,
     );
   }
 
@@ -102,6 +143,8 @@ class ReceiptDto {
         'raw_text': rawText,
         'confidence_score': confidenceScore,
         if (notes != null) 'notes': notes,
+        if (currencyRateAtReceiptDate != null)
+          'currency_rate_at_receipt_date': currencyRateAtReceiptDate,
       };
 }
 
@@ -163,7 +206,8 @@ class BulkJobCreateResponseDto {
       batchId: (json['batch_id'] as String?) ?? '',
       totalJobs: (json['total_jobs'] as int?) ?? 0,
       jobs: (json['jobs'] as List<dynamic>?)
-              ?.map((e) => BulkJobSummaryDto.fromJson(e as Map<String, dynamic>))
+              ?.map(
+                  (e) => BulkJobSummaryDto.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
     );
@@ -184,6 +228,7 @@ class BulkJobStatusDto {
   final String jobId;
   final String batchId;
   final String? filename;
+
   /// One of: PENDING, PROCESSING, COMPLETED, FAILED
   final String status;
   final ReceiptDto? data;
@@ -194,14 +239,31 @@ class BulkJobStatusDto {
   bool get isTerminal => isCompleted || isFailed;
 
   factory BulkJobStatusDto.fromJson(Map<String, dynamic> json) {
+    ReceiptDto? parsedData;
+    final rawData = json['data'];
+    if (rawData != null) {
+      if (rawData is Map<String, dynamic>) {
+        parsedData = ReceiptDto.fromJson(rawData);
+      } else if (rawData is Map) {
+        parsedData = ReceiptDto.fromJson(Map<String, dynamic>.from(rawData));
+      } else if (rawData is String) {
+        try {
+          final decoded = jsonDecode(rawData);
+          if (decoded is Map<String, dynamic>) {
+            parsedData = ReceiptDto.fromJson(decoded);
+          } else if (decoded is Map) {
+            parsedData = ReceiptDto.fromJson(Map<String, dynamic>.from(decoded));
+          }
+        } catch (_) {}
+      }
+    }
+
     return BulkJobStatusDto(
       jobId: (json['job_id'] as String?) ?? '',
       batchId: (json['batch_id'] as String?) ?? '',
       filename: json['filename'] as String?,
       status: (json['status'] as String?) ?? 'PENDING',
-      data: json['data'] != null
-          ? ReceiptDto.fromJson(json['data'] as Map<String, dynamic>)
-          : null,
+      data: parsedData,
       error: json['error'] as String?,
     );
   }
@@ -225,16 +287,19 @@ class BulkBatchStatusResponseDto {
   bool get isAllDone => completedJobs >= totalJobs && totalJobs > 0;
 
   /// All successfully COMPLETED jobs with a non-null ReceiptDto.
-  List<ReceiptDto> get successfulReceipts =>
-      jobs.where((j) => j.isCompleted && j.data != null).map((j) => j.data!).toList();
+  List<ReceiptDto> get successfulReceipts => jobs
+      .where((j) => j.isCompleted && j.data != null)
+      .map((j) => j.data!)
+      .toList();
 
   /// All successfully COMPLETED jobs retaining their job metadata (jobId, filename).
   List<BulkJobStatusDto> get completedJobsList =>
       jobs.where((j) => j.isCompleted && j.data != null).toList();
 
   /// All FAILED jobs (or completed jobs without valid data).
-  List<BulkJobStatusDto> get failedJobsList =>
-      jobs.where((j) => j.isFailed || (j.isCompleted && j.data == null)).toList();
+  List<BulkJobStatusDto> get failedJobsList => jobs
+      .where((j) => j.isFailed || (j.isCompleted && j.data == null))
+      .toList();
 
   factory BulkBatchStatusResponseDto.fromJson(Map<String, dynamic> json) {
     return BulkBatchStatusResponseDto(
@@ -258,6 +323,7 @@ class ReceiptRecordDto {
     required this.receipt,
     required this.createdAt,
     this.userId,
+    this.receiptImagePath,
     this.deletedAt,
   });
 
@@ -265,6 +331,7 @@ class ReceiptRecordDto {
   final String? userId;
   final String deviceId;
   final ReceiptDto receipt;
+  final String? receiptImagePath;
   final String createdAt;
   final String? deletedAt;
 
@@ -274,6 +341,7 @@ class ReceiptRecordDto {
       userId: json['user_id'] as String?,
       deviceId: (json['device_id'] as String?) ?? '',
       receipt: ReceiptDto.fromJson(json['receipt'] as Map<String, dynamic>),
+      receiptImagePath: json['receipt_image_path'] as String?,
       createdAt: (json['created_at'] as String?) ?? '',
       deletedAt: json['deleted_at'] as String?,
     );

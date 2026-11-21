@@ -23,6 +23,9 @@ class Receipt {
   /// Preferred over [items] when non-empty.
   final List<LineItem> lineItems;
 
+  /// Historical currency exchange rate against SGD at the time/date of receipt purchase.
+  final double? currencyRateAtReceiptDate;
+
   const Receipt({
     required this.id,
     required this.merchant,
@@ -34,6 +37,7 @@ class Receipt {
     this.createdAt,
     this.items = const [],
     this.lineItems = const [],
+    this.currencyRateAtReceiptDate,
   });
 
   Receipt copyWith({
@@ -47,6 +51,7 @@ class Receipt {
     DateTime? createdAt,
     List<String>? items,
     List<LineItem>? lineItems,
+    double? currencyRateAtReceiptDate,
   }) {
     return Receipt(
       id: id ?? this.id,
@@ -59,6 +64,8 @@ class Receipt {
       createdAt: createdAt ?? this.createdAt,
       items: items ?? this.items,
       lineItems: lineItems ?? this.lineItems,
+      currencyRateAtReceiptDate:
+          currencyRateAtReceiptDate ?? this.currencyRateAtReceiptDate,
     );
   }
 
@@ -74,14 +81,15 @@ class Receipt {
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
       'items': items,
       'lineItems': lineItems.map((li) => li.toJson()).toList(),
+      if (currencyRateAtReceiptDate != null)
+        'currency_rate_at_receipt_date': currencyRateAtReceiptDate,
     };
   }
 
   factory Receipt.fromJson(Map<String, dynamic> json) {
-    final parsedItems = (json['items'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        const <String>[];
+    final parsedItems =
+        (json['items'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            const <String>[];
 
     List<LineItem> parsedLineItems = [];
     if (json['lineItems'] is List) {
@@ -106,7 +114,8 @@ class Receipt {
     }
 
     return Receipt(
-      id: json['id'] as String? ?? 'receipt_${DateTime.now().millisecondsSinceEpoch}',
+      id: json['id'] as String? ??
+          'receipt_${DateTime.now().millisecondsSinceEpoch}',
       merchant: json['merchant'] as String? ?? 'Unknown Merchant',
       date: json['date'] as String? ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
@@ -116,6 +125,8 @@ class Receipt {
       createdAt: parsedCreatedAt,
       items: parsedItems,
       lineItems: parsedLineItems,
+      currencyRateAtReceiptDate: (json['currency_rate_at_receipt_date'] as num?)?.toDouble() ??
+          (json['currencyRateAtReceiptDate'] as num?)?.toDouble(),
     );
   }
 
@@ -126,7 +137,8 @@ class Receipt {
       double? price;
 
       // Match price pattern like "- $4.99" or "$4.99" or "4.99" at end of string
-      final priceMatch = RegExp(r'[-–—]?\s*\$?\s*(\d+(?:\.\d{1,2})?)\s*$').firstMatch(desc);
+      final priceMatch =
+          RegExp(r'[-–—]?\s*\$?\s*(\d+(?:\.\d{1,2})?)\s*$').firstMatch(desc);
       if (priceMatch != null) {
         price = double.tryParse(priceMatch.group(1) ?? '');
         desc = desc.substring(0, priceMatch.start).trim();
@@ -159,7 +171,8 @@ class Receipt {
           imagePath == other.imagePath &&
           createdAt == other.createdAt &&
           listEquals(items, other.items) &&
-          listEquals(lineItems, other.lineItems);
+          listEquals(lineItems, other.lineItems) &&
+          currencyRateAtReceiptDate == other.currencyRateAtReceiptDate;
 
   @override
   int get hashCode =>
@@ -172,7 +185,8 @@ class Receipt {
       imagePath.hashCode ^
       createdAt.hashCode ^
       Object.hashAll(items) ^
-      Object.hashAll(lineItems);
+      Object.hashAll(lineItems) ^
+      currencyRateAtReceiptDate.hashCode;
 
   @override
   String toString() {

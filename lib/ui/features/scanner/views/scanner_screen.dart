@@ -1,6 +1,7 @@
 // File: lib/ui/features/scanner/views/scanner_screen.dart
 import 'dart:io';
 import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,7 +11,11 @@ import '../../../core/widgets/app_snack_bar.dart';
 import '../../../../domain/models/receipt.dart';
 import '../../../../services/currency_service.dart';
 import '../../../../services/scan_batch_controller.dart';
+import '../../../../services/tutorial_service.dart';
 import '../../../../services/app_logger_service.dart';
+import '../../../../cloud/services/quota_service.dart';
+import '../../../core/widgets/coach_mark_overlay.dart';
+import '../../subscription/widgets/ad_scan_reward_widget.dart';
 
 /// Vision Receipt Scanner Screen
 /// Supports single scan vs. bulk mode (capped at 10 receipts max),
@@ -114,11 +119,23 @@ class _ScannerScreenState extends State<ScannerScreen>
     }
   }
 
-  Future<void> _capturePhoto() async {
-    if (_cameraController == null || !_isCameraInitialized || _isSubmitting) return;
+  int get _maxBulkCount => QuotaService.instance.isPremium ? 10 : 5;
 
-    if (_isBulkMode && _queuedImages.length >= 10) {
-      _showToast("Maximum of 10 receipts reached for bulk scan.");
+  Future<void> _capturePhoto() async {
+    if (_cameraController == null ||
+        !_isCameraInitialized ||
+        _cameraController!.value.isTakingPicture ||
+        _isSubmitting) {
+      return;
+    }
+
+    if (QuotaService.instance.isScanQuotaExhausted) {
+      showAdScanPromptDialog(context);
+      return;
+    }
+
+    if (_isBulkMode && _queuedImages.length >= _maxBulkCount) {
+      _showToast("Maximum of $_maxBulkCount receipts reached for bulk scan.");
       return;
     }
 
@@ -131,6 +148,9 @@ class _ScannerScreenState extends State<ScannerScreen>
           _queuedImages.add(photo);
         });
       } else {
+        if (TutorialService.instance.currentStep == 2) {
+          TutorialService.instance.advanceStep();
+        }
         await ScanBatchController.instance.startBatchScan([photo]);
       }
     } catch (e) {
@@ -142,23 +162,30 @@ class _ScannerScreenState extends State<ScannerScreen>
   Future<void> _pickFromGallery() async {
     if (_isSubmitting) return;
 
+    if (QuotaService.instance.isScanQuotaExhausted) {
+      showAdScanPromptDialog(context);
+      return;
+    }
+
     try {
       if (_isBulkMode) {
-        final remaining = 10 - _queuedImages.length;
-        if (remaining <= 0) {
-          _showToast("Maximum of 10 receipts reached for bulk scan.");
-          return;
-        }
-
-        final List<XFile> pickedFiles = await _picker.pickMultiImage(
-          limit: remaining,
-        );
+        final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
         if (pickedFiles.isNotEmpty) {
+          final remainingSlots = _maxBulkCount - _queuedImages.length;
+          if (remainingSlots <= 0) {
+            _showToast("Maximum of $_maxBulkCount receipts reached for bulk scan.");
+            return;
+          }
+          final toAdd = pickedFiles.take(remainingSlots).toList();
           setState(() {
-            _queuedImages.addAll(pickedFiles.take(remaining));
+            _queuedImages.addAll(toAdd);
           });
-          AppLogger.info('UI', 'Imported ${pickedFiles.length} image(s) into bulk queue');
+          if (pickedFiles.length > remainingSlots) {
+            _showToast("Added $remainingSlots receipts (capped at $_maxBulkCount).");
+          }
+          AppLogger.info(
+              'UI', 'Imported ${toAdd.length} image(s) into bulk queue (total: ${_queuedImages.length})');
         }
       } else {
         final XFile? image = await _picker.pickImage(
@@ -166,7 +193,11 @@ class _ScannerScreenState extends State<ScannerScreen>
         );
 
         if (image != null) {
-          AppLogger.info('UI', 'Single image picked from gallery: ${image.path}');
+          AppLogger.info(
+              'UI', 'Single image picked from gallery: ${image.path}');
+          if (TutorialService.instance.currentStep == 2) {
+            TutorialService.instance.advanceStep();
+          }
           await ScanBatchController.instance.startBatchScan([image]);
         }
       }
@@ -190,10 +221,14 @@ class _ScannerScreenState extends State<ScannerScreen>
       _isSubmitting = true;
     });
 
-    AppLogger.info('UI', 'Submitting ${_queuedImages.length} image(s) to async batch scan pipeline');
+    AppLogger.info('UI',
+        'Submitting ${_queuedImages.length} image(s) to async batch scan pipeline');
 
     try {
-      await ScanBatchController.instance.startBatchScan(_queuedImages);
+      if (TutorialService.instance.currentStep == 2) {
+        TutorialService.instance.advanceStep();
+      }
+      await ScanBatchController.instance.startBatchScan(_queuedImages, context);
     } finally {
       if (mounted) {
         setState(() {
@@ -207,8 +242,18 @@ class _ScannerScreenState extends State<ScannerScreen>
     AppLogger.info('UI', 'User tapped Manual entry on ScannerScreen');
     final now = DateTime.now();
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final formattedDate =
         '${months[now.month - 1]} ${now.day.toString().padLeft(2, '0')}, ${now.year}';
@@ -240,7 +285,10 @@ class _ScannerScreenState extends State<ScannerScreen>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: AppThemeController.instance,
+      animation: Listenable.merge([
+        AppThemeController.instance,
+        TutorialService.instance,
+      ]),
       builder: (context, _) {
         final controller = AppThemeController.instance;
         final textPrimary = controller.textColor;
@@ -268,7 +316,8 @@ class _ScannerScreenState extends State<ScannerScreen>
                         accent: accent,
                         textSecondary: textSecondary,
                         onSingleSelect: () {
-                          AppLogger.info('UI', 'User selected Single Scan mode');
+                          AppLogger.info(
+                              'UI', 'User selected Single Scan mode');
                           setState(() {
                             _isBulkMode = false;
                             _queuedImages.clear();
@@ -291,6 +340,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                           scanAnimationController: _scanAnimationController,
                           isBulkMode: _isBulkMode,
                           queuedCount: _queuedImages.length,
+                          maxBulkCount: _maxBulkCount,
                         ),
                       ),
                       if (_isBulkMode && _queuedImages.isNotEmpty)
@@ -299,6 +349,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                           accent: accent,
                           onRemoveItem: _removeQueuedImage,
                         ),
+                      const ScannerQuotaExhaustedBanner(),
                       _ScannerBottomControls(
                         controller: controller,
                         accent: accent,
@@ -306,6 +357,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                         isBulkMode: _isBulkMode,
                         isProcessing: _isSubmitting,
                         queuedCount: _queuedImages.length,
+                        maxBulkCount: _maxBulkCount,
                         onPickGallery: _pickFromGallery,
                         onCapture: _capturePhoto,
                         onProcessQueue: _processQueueAndNavigate,
@@ -313,6 +365,30 @@ class _ScannerScreenState extends State<ScannerScreen>
                       ),
                     ],
                   ),
+
+                  // Step 2 Tutorial Overlay (Top Full-Width Header + Guidance Card)
+                  if (TutorialService.instance.currentStep == 2) ...[
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: TutorialTopHeader(
+                          stepIndicator: 'Step 2 of 3: Capture',
+                          onSkip: () =>
+                              TutorialService.instance.dismissTutorial(),
+                        ),
+                      ),
+                    ),
+                    const Positioned(
+                      top: 68,
+                      left: 16,
+                      right: 16,
+                      child: _TutorialScannerHintCard(),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -347,49 +423,42 @@ class _ScannerTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Row(
         children: [
-          NeumorphicButton(
-            onPressed: () {
+          NeumorphicCircularButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            iconSize: 18,
+            padding: 12,
+            depth: 4,
+            iconColor: textPrimary,
+            onTap: () {
               AppLogger.info('UI', 'User tapped Back on ScannerScreen');
               context.pop();
             },
-            style: NeumorphicStyle(
-              depth: 4,
-              intensity: 0.8,
-              boxShape: const NeumorphicBoxShape.circle(),
-              color: controller.currentBaseColor,
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 18,
-              color: textPrimary,
-            ),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 "Scan Receipt",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: textPrimary,
                 ),
               ),
             ),
           ),
-          NeumorphicButton(
+          NeumorphicTactileButton(
             onPressed: onToggleFlash,
-            style: NeumorphicStyle(
-              depth: isFlashOn ? -4 : 4,
-              intensity: 0.85,
-              boxShape: const NeumorphicBoxShape.circle(),
-              color: controller.currentBaseColor,
-              border: isFlashOn
-                  ? NeumorphicBorder(
-                      color: accent.withValues(alpha: 0.5),
-                      width: 1.5,
-                    )
-                  : const NeumorphicBorder.none(),
-            ),
+            depth: isFlashOn ? -4.0 : 4.0,
+            pressedDepth: 0.0,
+            pressedScale: 0.96,
+            boxShape: const NeumorphicBoxShape.circle(),
+            color: controller.currentBaseColor,
+            border: isFlashOn
+                ? NeumorphicBorder(
+                    color: accent.withValues(alpha: 0.5),
+                    width: 1.5,
+                  )
+                : const NeumorphicBorder.none(),
             padding: const EdgeInsets.all(12),
             child: Icon(
               isFlashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
@@ -429,6 +498,10 @@ class _ScanModeToggleBar extends StatelessWidget {
           children: [
             Expanded(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) {
+                  HapticFeedback.lightImpact();
+                },
                 onTap: onSingleSelect,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -451,6 +524,10 @@ class _ScanModeToggleBar extends StatelessWidget {
             ),
             Expanded(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (_) {
+                  HapticFeedback.lightImpact();
+                },
                 onTap: onBulkSelect,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -460,7 +537,7 @@ class _ScanModeToggleBar extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      "Bulk Mode (Max 10)",
+                      "Bulk Scan",
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -488,6 +565,7 @@ class _ViewfinderArea extends StatelessWidget {
   final AnimationController scanAnimationController;
   final bool isBulkMode;
   final int queuedCount;
+  final int maxBulkCount;
 
   const _ViewfinderArea({
     required this.controller,
@@ -498,6 +576,7 @@ class _ViewfinderArea extends StatelessWidget {
     required this.scanAnimationController,
     required this.isBulkMode,
     required this.queuedCount,
+    this.maxBulkCount = 10,
   });
 
   @override
@@ -599,7 +678,7 @@ class _ViewfinderArea extends StatelessWidget {
                       ),
                       child: Text(
                         isBulkMode
-                            ? "Queue: $queuedCount / 10 receipts"
+                            ? "Queue: $queuedCount / $maxBulkCount receipts"
                             : "Position receipt inside frame",
                         style: TextStyle(
                           fontSize: 12,
@@ -700,6 +779,7 @@ class _ScannerBottomControls extends StatelessWidget {
   final bool isBulkMode;
   final bool isProcessing;
   final int queuedCount;
+  final int maxBulkCount;
   final VoidCallback onPickGallery;
   final VoidCallback onCapture;
   final VoidCallback onProcessQueue;
@@ -712,6 +792,7 @@ class _ScannerBottomControls extends StatelessWidget {
     required this.isBulkMode,
     required this.isProcessing,
     required this.queuedCount,
+    this.maxBulkCount = 10,
     required this.onPickGallery,
     required this.onCapture,
     required this.onProcessQueue,
@@ -720,6 +801,81 @@ class _ScannerBottomControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isScanQuotaExhausted = QuotaService.instance.isScanQuotaExhausted;
+
+    Widget galleryButton = _buildSideButton(
+      icon: Icons.photo_library_rounded,
+      label: isBulkMode ? "Import" : "Gallery",
+      onTap: isProcessing
+          ? () {}
+          : (isScanQuotaExhausted
+              ? () => showAdScanPromptDialog(context)
+              : onPickGallery),
+    );
+
+    if (isScanQuotaExhausted) {
+      galleryButton = Tooltip(
+        message: QuotaService.instance.scanTooltip,
+        child: galleryButton,
+      );
+    }
+
+    final VoidCallback? captureTapHandler = isProcessing
+        ? null
+        : (isScanQuotaExhausted
+            ? () => showAdScanPromptDialog(context)
+            : onCapture);
+
+    Widget captureButton = NeumorphicTactileButton(
+      onPressed: captureTapHandler,
+      depth: (isScanQuotaExhausted || isProcessing) ? 0.0 : 8.0,
+      pressedDepth: 0.0,
+      pressedScale: 0.92,
+      color: controller.currentBaseColor,
+      boxShape: const NeumorphicBoxShape.circle(),
+      border: NeumorphicBorder(
+        color: isScanQuotaExhausted
+            ? Colors.white12
+            : accent.withValues(alpha: 0.4),
+        width: 2.0,
+      ),
+      padding: const EdgeInsets.all(6),
+      isLoading: isProcessing,
+      child: Container(
+        width: 66,
+        height: 66,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: (queuedCount >= maxBulkCount || isProcessing || isScanQuotaExhausted)
+              ? Colors.grey
+              : accent,
+          boxShadow: (isScanQuotaExhausted || isProcessing)
+              ? null
+              : [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.4),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+        ),
+        child: Icon(
+          isScanQuotaExhausted
+              ? Icons.lock_clock_rounded
+              : Icons.camera_alt_rounded,
+          color: Colors.white,
+          size: 30,
+        ),
+      ),
+    );
+
+    if (isScanQuotaExhausted) {
+      captureButton = Tooltip(
+        message: QuotaService.instance.scanTooltip,
+        child: captureButton,
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(
         left: 32,
@@ -730,91 +886,46 @@ class _ScannerBottomControls extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildSideButton(
-            icon: Icons.photo_library_rounded,
-            label: isBulkMode ? "Import" : "Gallery",
-            onTap: isProcessing ? () {} : onPickGallery,
-          ),
-          GestureDetector(
-            onTap: isProcessing ? null : onCapture,
-            child: Neumorphic(
-              style: NeumorphicStyle(
-                depth: 8,
-                intensity: 0.9,
-                boxShape: const NeumorphicBoxShape.circle(),
-                color: controller.currentBaseColor,
-                border: NeumorphicBorder(
-                  color: accent.withValues(alpha: 0.4),
-                  width: 2.0,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: Container(
-                  width: 66,
-                  height: 66,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: (queuedCount >= 10 || isProcessing) ? Colors.grey : accent,
-                    boxShadow: [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_rounded,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          galleryButton,
+          captureButton,
           if (isBulkMode && queuedCount > 0)
-            GestureDetector(
-              onTap: isProcessing ? null : onProcessQueue,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Neumorphic(
-                    style: NeumorphicStyle(
-                      depth: isProcessing ? -2 : 6,
-                      intensity: isProcessing ? 0.5 : 0.9,
-                      boxShape: const NeumorphicBoxShape.circle(),
-                      color: isProcessing ? accent.withValues(alpha: 0.7) : accent,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: isProcessing
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                    ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NeumorphicTactileButton(
+                  onPressed: isProcessing ? null : onProcessQueue,
+                  depth: isProcessing ? 0.0 : 6.0,
+                  pressedDepth: 0.0,
+                  pressedScale: 0.96,
+                  color: isProcessing ? accent.withValues(alpha: 0.7) : accent,
+                  boxShape: const NeumorphicBoxShape.circle(),
+                  padding: const EdgeInsets.all(14),
+                  isLoading: isProcessing,
+                  child: isProcessing
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isProcessing ? "Processing…" : "Process ($queuedCount)",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: accent,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isProcessing ? "Processing…" : "Process ($queuedCount)",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: accent,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             )
           else
             _buildSideButton(
@@ -832,38 +943,31 @@ class _ScannerBottomControls extends StatelessWidget {
     required String label,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Neumorphic(
-            style: NeumorphicStyle(
-              depth: 4,
-              intensity: 0.8,
-              boxShape: const NeumorphicBoxShape.circle(),
-              color: controller.currentBaseColor,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Icon(icon, color: textSecondary, size: 22),
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        NeumorphicCircularButton(
+          icon: icon,
+          iconSize: 22,
+          padding: 14,
+          iconColor: textSecondary,
+          color: controller.currentBaseColor,
+          depth: 4,
+          onTap: onTap,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: textSecondary,
           ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: textSecondary,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
-
 
 class _ScannerBracketsPainter extends CustomPainter {
   final Color color;
@@ -932,5 +1036,74 @@ class _ScannerBracketsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ScannerBracketsPainter oldDelegate) {
     return oldDelegate.color != color;
+  }
+}
+
+/// Floating guidance hint card shown during Step 2 of the first-start tutorial.
+class _TutorialScannerHintCard extends StatelessWidget {
+  const _TutorialScannerHintCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: AppThemeController.instance,
+      builder: (context, _) {
+        final controller = AppThemeController.instance;
+        final baseColor = controller.currentBaseColor;
+        final textPrimary = controller.textColor;
+        final textSecondary = controller.secondaryTextColor;
+        final accent = controller.accentColor;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: baseColor.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: accent.withValues(alpha: 0.5),
+              width: 1.2,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.camera_alt_rounded, color: accent, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Point camera at receipt',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.bold,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Line up your receipt in the frame and tap the capture button below.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

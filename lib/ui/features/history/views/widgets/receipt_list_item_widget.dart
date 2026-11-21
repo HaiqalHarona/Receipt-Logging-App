@@ -1,6 +1,7 @@
 // File: lib/ui/features/history/views/widgets/receipt_list_item_widget.dart
 
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../../domain/models/receipt.dart';
 import '../../../../core/utils/category_utils.dart';
 
@@ -41,20 +42,17 @@ class ReceiptListItemWidget extends StatelessWidget {
     final primaryColor = CategoryUtils.getCategoryColor(primaryTag);
     final categoryIcon = CategoryUtils.getCategoryIcon(primaryTag);
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: 3,
-          intensity: 0.8,
-          boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
-        ),
-        child: SizedBox(
-          height: 76,
-          width: double.infinity,
+    return NeumorphicTactileButton(
+      onPressed: onTap,
+      depth: 3.0,
+      pressedDepth: 0.0,
+      pressedScale: 0.98,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      boxShape: NeumorphicBoxShape.roundRect(BorderRadius.circular(16)),
+      child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 54),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
             child: Row(
               children: [
                 // Uniquely colour-coded primary category icon badge (Left)
@@ -127,8 +125,7 @@ class ReceiptListItemWidget extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildCategoryTags(List<String> allTags) {
@@ -151,7 +148,8 @@ class ReceiptListItemWidget extends StatelessWidget {
         } else {
           int selectedK = 0;
           for (int k = m - 1; k >= 1; k--) {
-            final double tagsWidth = tagWidths.take(k).fold(0.0, (sum, w) => sum + w);
+            final double tagsWidth =
+                tagWidths.take(k).fold(0.0, (sum, w) => sum + w);
             final double badgeWidth = _badgeTotalWidth(m - k);
             if (tagsWidth + badgeWidth <= maxWidth) {
               selectedK = k;
@@ -168,7 +166,8 @@ class ReceiptListItemWidget extends StatelessWidget {
           }
         }
 
-        return ClipRect(
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -179,7 +178,8 @@ class ReceiptListItemWidget extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(right: 4),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: tagColor.withAlpha(30),
                         borderRadius: BorderRadius.circular(6),
@@ -204,7 +204,8 @@ class ReceiptListItemWidget extends StatelessWidget {
               }),
               if (remainingCount > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(
                     color: textSecondary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -236,11 +237,11 @@ class ReceiptListItemWidget extends StatelessWidget {
 
   double _tagTotalWidth(String tag) {
     const style = TextStyle(fontSize: 10, fontWeight: FontWeight.bold);
-    return _measureTextWidth(tag, style) + 16.0;
+    return _measureTextWidth(tag, style) + 20.0;
   }
 
   double _badgeTotalWidth(int count) {
     const style = TextStyle(fontSize: 9, fontWeight: FontWeight.bold);
-    return _measureTextWidth('+$count', style) + 14.0;
+    return _measureTextWidth('+$count', style) + 16.0;
   }
 }

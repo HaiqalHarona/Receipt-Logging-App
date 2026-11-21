@@ -11,8 +11,18 @@ class ReceiptSeeder {
   ReceiptSeeder._();
 
   static const List<String> _monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
   ];
 
   static const List<String> _merchants = [
@@ -98,7 +108,8 @@ class ReceiptSeeder {
 
   /// Generates 24 realistic receipt records spanning the last 12 months (2 per month).
   static List<Receipt> generate24Receipts({Random? randomOverride}) {
-    final rand = randomOverride ?? Random(42); // Deterministic seed for consistency
+    final rand =
+        randomOverride ?? Random(42); // Deterministic seed for consistency
     final List<Receipt> generated = [];
     final now = DateTime.now();
 
@@ -114,8 +125,10 @@ class ReceiptSeeder {
       final day2 = min(15 + rand.nextInt(10), daysInMonth);
 
       final datesInMonth = [
-        DateTime(yearMonth.year, yearMonth.month, day1, 10 + rand.nextInt(8), rand.nextInt(59)),
-        DateTime(yearMonth.year, yearMonth.month, day2, 11 + rand.nextInt(8), rand.nextInt(59)),
+        DateTime(yearMonth.year, yearMonth.month, day1, 10 + rand.nextInt(8),
+            rand.nextInt(59)),
+        DateTime(yearMonth.year, yearMonth.month, day2, 11 + rand.nextInt(8),
+            rand.nextInt(59)),
       ];
 
       for (final receiptDate in datesInMonth) {
@@ -133,8 +146,10 @@ class ReceiptSeeder {
         double receiptTotal = 0.0;
 
         for (int k = 0; k < lineItemCount; k++) {
-          final primaryCat = selectedCategories[rand.nextInt(selectedCategories.length)];
-          final catalog = _itemCatalog[primaryCat] ?? _itemCatalog['Groceries']!;
+          final primaryCat =
+              selectedCategories[rand.nextInt(selectedCategories.length)];
+          final catalog =
+              _itemCatalog[primaryCat] ?? _itemCatalog['Groceries']!;
           final description = catalog[rand.nextInt(catalog.length)];
 
           // Price between $5.00 and $30.00
@@ -158,7 +173,8 @@ class ReceiptSeeder {
         }
 
         receiptTotal = (receiptTotal * 100).round() / 100.0;
-        final dateString = '${_monthNames[receiptDate.month - 1]} ${receiptDate.day.toString().padLeft(2, '0')}, ${receiptDate.year}';
+        final dateString =
+            '${_monthNames[receiptDate.month - 1]} ${receiptDate.day.toString().padLeft(2, '0')}, ${receiptDate.year}';
 
         generated.add(
           Receipt(

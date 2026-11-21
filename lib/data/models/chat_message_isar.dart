@@ -15,6 +15,7 @@
 
 import 'package:isar/isar.dart';
 import '../../services/api/api_models.dart';
+import '../../services/crypto_service.dart';
 
 part 'chat_message_isar.g.dart';
 
@@ -48,7 +49,8 @@ class ChatMessageIsarModel {
       ..conversationId = dto.conversationId
       ..sender = dto.sender
       ..content = dto.content
-      ..createdAt = DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now();
+      ..createdAt =
+          DateTime.tryParse(dto.createdAt)?.toLocal() ?? DateTime.now();
   }
 
   /// Convert back to a network DTO for optimistic UI state.
@@ -61,13 +63,29 @@ class ChatMessageIsarModel {
       createdAt: createdAt.toUtc().toIso8601String(),
     );
   }
+
+  /// Encrypts content in-place using AES-256-GCM envelope encryption.
+  Future<void> encryptSensitiveFields([CryptoService? crypto]) async {
+    if (content.isNotEmpty && !content.startsWith('enc:v1:')) {
+      content = await (crypto ?? CryptoService.instance).encryptText(content);
+    }
+  }
+
+  /// Decrypts content in-place if it contains an AES-256-GCM envelope.
+  Future<void> decryptSensitiveFields([CryptoService? crypto]) async {
+    if (content.startsWith('enc:v1:')) {
+      content = await (crypto ?? CryptoService.instance).decryptText(content);
+    }
+  }
 }
 
 // ── SAFE QUERY EXTENSIONS ────────────────────────────────────────────────────
 
-extension ChatMessageIsarQueryFilters
-    on QueryBuilder<ChatMessageIsarModel, ChatMessageIsarModel, QFilterCondition> {
+extension ChatMessageIsarQueryFilters on QueryBuilder<ChatMessageIsarModel,
+    ChatMessageIsarModel, QFilterCondition> {
   /// Filter messages belonging to a specific conversation UUID.
-  QueryBuilder<ChatMessageIsarModel, ChatMessageIsarModel, QAfterFilterCondition>
-      byConversation(String convId) => conversationIdEqualTo(convId);
+  QueryBuilder<ChatMessageIsarModel, ChatMessageIsarModel,
+      QAfterFilterCondition> byConversation(
+          String convId) =>
+      conversationIdEqualTo(convId);
 }

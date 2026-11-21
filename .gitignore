@@ -53,4 +53,14 @@ app.*.map.json
 .codeagentswarm/
 AGENTS.md
 artifacts/
-test/
+.scripts/*
+.dev.dart-define.json
+.staging.dart-define.json
+.prod.dart-define.json
+
+# Android Keystore & Release Signing Secrets (TODO-35)
+**/key.properties
+!**/key.properties.example
+*.keystore
+*.jks
+!**/staging.keystore
