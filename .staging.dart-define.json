@@ -1,0 +1,11 @@
+{
+  "APP_NAME": "SancFund",
+  "API_BASE_URL": "https://stagingsancfund.effoc.org/api/v1",
+  "APP_VERSION": "1.1.0",
+  "APP_BUILD_NUMBER": "2",
+  "APP_VERSION_DISPLAY": "1.1.0.0.1",
+  "APP_ENV": "staging",
+  "REVENUE_CAT_KEY": "goog_OYFkpggzSHFSwrghtjyXxrhZgpL",
+  "GOOGLE_SERVER_CLIENT_ID": "375413677116-ihf89u22nhshkh7u7teoeg57i2un1sl0.apps.googleusercontent.com",
+  "STAGING_MANIFEST_URL": "http://100.98.101.54:9090/staging_manifest.json"
+}

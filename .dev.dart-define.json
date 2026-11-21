@@ -1,0 +1,14 @@
+{
+  "APP_NAME": "SancFund",
+  "API_BASE_URL": "http://localhost:8085/api/v1",
+  "APP_VERSION": "1.1.0",
+  "APP_BUILD_NUMBER": "1",
+  "APP_VERSION_DISPLAY": "1.1.0.0.1",
+  "APP_ENV": "development",
+  "REVENUE_CAT_KEY": "test_dTHXcVfWxtUJwrFTDbNgcbBDtns",
+  "GOOGLE_SERVER_CLIENT_ID": "375413677116-6an2d93a89bh8ehhonbukj5gqunmlv32.apps.googleusercontent.com",
+  "STAGING_MANIFEST_URL": "http://100.98.101.54:9090/staging_manifest.json",
+  "USE_FIXED_DEVICE_ID": "true",
+  "FIXED_DEVICE_ID": "dev_fixed_debug_device_001",
+  "FIXED_DEVICE_TOKEN": "token_fixed_debug_secret_001"
+}
