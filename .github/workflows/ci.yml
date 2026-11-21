@@ -116,7 +116,7 @@ jobs:
           VERSION_NAME="${{ steps.version.outputs.version_name }}"
           VERSION_DISPLAY="${VERSION_NAME}+${BUILD_NUM}"
 
-          flutter build apk --debug --no-tree-shake-icons \
+          flutter build apk --debug --no-tree-shake-icons --android-skip-build-dependency-validation \
             --build-name="${VERSION_NAME}" \
             --build-number="${BUILD_NUM}" \
             --dart-define=APP_NAME="SancFund" \
