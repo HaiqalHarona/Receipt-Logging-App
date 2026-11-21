@@ -53,7 +53,7 @@ void main() {
   });
 
   group('TODO-17: Dashboard Screen Layout Tests', () {
-    testWidgets('Dashboard SingleChildScrollView has dynamic bottom padding clearing FAB with ~24px clearance', (WidgetTester tester) async {
+    testWidgets('Dashboard SingleChildScrollView has standard bottom padding of 20px', (WidgetTester tester) async {
       configureViewport(tester);
       await tester.pumpWidget(buildTestableWidget(const DashboardScreen()));
       await tester.pump();
@@ -62,8 +62,7 @@ void main() {
       expect(scrollFinder, findsOneWidget);
       final singleScroll = tester.widget<SingleChildScrollView>(scrollFinder);
       final padding = singleScroll.padding as EdgeInsets;
-      // Greater than 110 (70 nav + 18 fab + 5% margin + 24 extra margin)
-      expect(padding.bottom, greaterThan(110.0));
+      expect(padding.bottom, 20.0);
       expect(padding.left, 24.0);
       expect(padding.right, 24.0);
     });
